@@ -13,6 +13,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
+    "dotenv": "^17.3.1",
     "fuse.js": "^7.0.0",
     "next": "^15.1.0",
     "openai": "^4.77.0",
@@ -21,7 +22,9 @@
     "react-markdown": "^9.0.1",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.0",
-    "shiki": "^1.24.0"
+    "rxjs": "^7.8.2",
+    "shiki": "^1.24.0",
+    "tiktoken": "^1.0.22"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.0.0",

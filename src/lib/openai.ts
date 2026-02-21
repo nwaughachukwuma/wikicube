@@ -281,7 +281,6 @@ ${context}`,
   const res = await openai.chat.completions.create({
     model: MODEL,
     messages,
-    temperature: 0.4,
     stream: true,
   });
 
