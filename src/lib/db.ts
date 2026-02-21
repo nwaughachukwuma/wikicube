@@ -1,4 +1,4 @@
-import { createClient } from "./supabase/server";
+import { getServerClient } from "./supabase/server";
 import type { Wiki, Feature, WikiStatus, Chunk } from "./types";
 
 /* ─── Wikis ─── */
@@ -8,7 +8,7 @@ export async function upsertWiki(
   repo: string,
   defaultBranch: string,
 ): Promise<Wiki> {
-  const db = await createClient();
+  const db = getServerClient();
 
   // Check if wiki already exists
   const { data: existing } = await db
@@ -59,7 +59,7 @@ export async function updateWikiStatus(
   status: WikiStatus,
   overview?: string,
 ) {
-  const db = await createClient();
+  const db = getServerClient();
   const updates: Record<string, unknown> = {
     status,
     updated_at: new Date().toISOString(),
@@ -73,7 +73,7 @@ export async function getWiki(
   owner: string,
   repo: string,
 ): Promise<Wiki | null> {
-  const db = await createClient();
+  const db = getServerClient();
   const { data } = await db
     .from("wikis")
     .select("*")
@@ -84,7 +84,7 @@ export async function getWiki(
 }
 
 export async function getWikiById(wikiId: string): Promise<Wiki | null> {
-  const db = await createClient();
+  const db = getServerClient();
   const { data } = await db.from("wikis").select("*").eq("id", wikiId).single();
   return data as Wiki | null;
 }
@@ -94,7 +94,7 @@ export async function getWikiById(wikiId: string): Promise<Wiki | null> {
 export async function insertFeature(
   feature: Omit<Feature, "id">,
 ): Promise<Feature> {
-  const db = await createClient();
+  const db = getServerClient();
   const { data, error } = await db
     .from("features")
     .insert(feature)
@@ -105,7 +105,7 @@ export async function insertFeature(
 }
 
 export async function getFeatures(wikiId: string): Promise<Feature[]> {
-  const db = await createClient();
+  const db = getServerClient();
   const { data, error } = await db
     .from("features")
     .select("*")
@@ -119,7 +119,7 @@ export async function getFeatureBySlug(
   wikiId: string,
   slug: string,
 ): Promise<Feature | null> {
-  const db = await createClient();
+  const db = getServerClient();
   const { data } = await db
     .from("features")
     .select("*")
@@ -134,7 +134,7 @@ export async function getFeatureBySlug(
 export async function insertChunks(
   chunks: Array<Omit<Chunk, "id">>,
 ): Promise<void> {
-  const db = await createClient();
+  const db = getServerClient();
   const batchSize = 50;
   for (let i = 0; i < chunks.length; i += batchSize) {
     const batch = chunks.slice(i, i + batchSize);
@@ -157,7 +157,7 @@ export async function matchChunks(
     similarity: number;
   }>
 > {
-  const db = await createClient();
+  const db = getServerClient();
   const { data, error } = await db.rpc("match_chunks", {
     query_embedding: queryEmbedding,
     p_wiki_id: wikiId,
