@@ -1,0 +1,18 @@
+<svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="200" height="200" fill="#FAFAF8"/>
+  
+  <g transform="translate(100, 105)">
+    <path d="M0 0L45 -26V26L0 52V0Z" fill="#171E19"/>
+    
+    <path d="M0 0L-45 -26V26L0 52V0Z" fill="#0D110E"/>
+    
+    <path d="M0 -52L45 -26L0 0L-45 -26L0 -52Z" fill="#FFE17C"/>
+    
+    <path d="M0 -15L25 -30V-10L0 5V-15Z" fill="#171E19" opacity="0.3"/>
+    
+    <text x="-48" y="80" fill="#171E19" font-family="sans-serif" font-weight="900" font-size="22" letter-spacing="-1">CUBIC WIKI</text>
+  </g>
+  
+  <line x1="20" y1="20" x2="40" y2="20" stroke="#171E19" stroke-width="4"/>
+  <line x1="20" y1="20" x2="20" y2="40" stroke="#171E19" stroke-width="4"/>
+</svg>
