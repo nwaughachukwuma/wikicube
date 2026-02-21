@@ -77,7 +77,7 @@ export default function HomePage() {
       {/* Hero */}
       <section className="flex-1 flex flex-col items-center justify-center px-6 py-20">
         <h1 className="font-display text-5xl md:text-7xl lg:text-[5.5rem] text-center uppercase leading-[0.9] tracking-tight max-w-4xl">
-          Instant Developer Docs
+          Instant Wiki
           <br />
           <span className="text-text-muted">for Any Repo</span>
         </h1>

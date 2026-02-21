@@ -1,4 +1,4 @@
-# WikiGen — Instant Developer Docs for Any GitHub Repo
+# WikiGen — Instant Wiki for Any GitHub Repo
 
 Paste a GitHub URL and get a polished, AI-generated wiki organized by user-facing features. One click. Zero setup.
 
