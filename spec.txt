@@ -1,0 +1,100 @@
+# cubic Coding Challenge
+
+We’re excited that you’re considering joining our founding engineering team. This short project is designed to let you **show off what makes you great.** Your speed, craft, product instincts, and intelligent use of AI tools. It is intentionally open-ended so that you can lean into your strengths while still producing something we can run and evaluate end-to-end.
+
+## **1. Challenge overview**
+
+**Goal**
+
+Build an automatic **Wiki Generator** for a public GitHub repository we'll provide. Think "one-click developer docs" that a real engineering team would want to read.
+
+**Time window**
+
+You may start as soon as you’re reading this. You have **48 hours total**. We recommend candidates spend **≈ 5 focused hours**; but it’s up to you on how long you spend.
+
+**Freedom of tech**
+
+Use any language, framework, or service you like. To keep AI simple, use OpenAI and the key we give you (see below).
+
+---
+
+## **2. What to build**
+
+1. **Repository analyser**
+    - Programmatically identify high-level subsystems from a user-facing, feature-driven perspective.
+    - Think about what the software does for users, not just how it's technically organized.
+        - Good structure: User onboarding flow, authentication, feature one, feature two, feature three.
+        - Bad structure: Frontend, API, backend, utils.
+        - Within each feature, explain how it works and include relevant technical details.
+    - Produce a machine-readable structure (JSON, DB, even a plain object) that the wiki layer can consume.
+2. **Wiki generator**
+    - Create human-readable pages for each subsystem.
+    - Include a concise description, public interfaces or entry points, and **inline citations** that link back to the specific lines or files in the repo.
+    - Provide simple navigation (sidebar, search, table-of-contents—up to you).
+3. **Deployment**
+    - Give us a publicly reachable URL (Vercel, Netlify, Fly.io, GitHub Pages, etc.).
+    - We should be able to click and explore with zero local setup.
+4. **Code quality & commit history**
+    - Write idiomatic, lint-clean code you’re proud of.  Use of AI is encouraged, but submit code that you’re proud of—just like if you were writing this feature for real production.
+    - Use commits to narrate your thinking; perfection not required, clarity appreciated.
+
+---
+
+## **3. Bonus features (optional)**
+
+Feel free to use your own creative sense of how to build more on top of this!
+
+- **Q&A** across a wiki: user can ask a question about the wiki and have an AI answer
+
+---
+
+## **4. How we evaluate**
+
+We score holistically across five dimensions.  We will of course take into account that this is just a weekend project:
+
+- **End-to-end working demo** – Does it run and feel coherent?
+- **Technical correctness** – Sensible architecture, error handling.
+- **Quality of AI-generated content** (Very important)
+    - Are the wiki pages accurate, useful, and well-structured?
+    - Does the content reflect a user-facing, feature-driven organization rather than technical layers?
+    - Does the content reflect a user-facing, feature-driven organization rather than technical layers?
+- **UI/UX craft & product thinking** – Is the UI polished and easy to navigate? Would real engineers actually want to use these docs?
+
+**We’ll be looking at a variety of types of repos, some examples below**
+
+- https://github.com/Textualize/rich-cli
+- https://github.com/browser-use/browser-use
+- https://github.com/tastejs/todomvc
+
+---
+
+## **5. AI usage rules**
+
+- The provided OPENAI_API_KEY is **for this challenge only**.  DO not share it with anyone or use it for anything else.
+    - `sk-proj-2ReEOeuu8k-...`
+- Stay on the model **gpt-5-mini** unless you clear an upgrade with us.
+
+---
+
+## **6. Submission checklist**
+
+1. **Email Paul** at paul@cubic.dev (subject: [cubic Coding Challenge] <Your Name>).
+2. Include:
+    - A **GitHub link** to your code (public repo or add us as collaborators).
+    - A **live demo URL**.
+    - **A short reflection** (can be a loom) covering:
+        - What you'd improve with another few days.
+        - What you think isn't production-ready yet.
+        - What you think isn't production-ready yet.
+        - What's missing if this were to go live for real users.
+3. Send the email **within 48 hours** of receiving this.
+
+---
+
+## **7. Tips for success**
+
+- Feel free to ask clarifying questions—ping Paul on email anytime with questions!
+
+---
+
+**Have fun and show us something you’re proud of. We can’t wait to see what you build!**
