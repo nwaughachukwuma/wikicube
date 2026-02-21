@@ -63,7 +63,6 @@ ${treeString}`;
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    temperature: 0.3,
     response_format: { type: "json_object" },
   });
 
@@ -159,7 +158,6 @@ ${fileContext}`;
       { role: "system", content: systemPrompt },
       { role: "user", content: userPrompt },
     ],
-    temperature: 0.3,
     response_format: { type: "json_object" },
   });
 
@@ -243,7 +241,6 @@ Features identified:
 ${featureList}`,
       },
     ],
-    temperature: 0.3,
   });
 
   return (

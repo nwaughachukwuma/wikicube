@@ -7,7 +7,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "pregenerate": "npx tsx scripts/pregenerate.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

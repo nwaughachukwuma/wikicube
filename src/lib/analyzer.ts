@@ -18,24 +18,8 @@ import {
   insertFeature,
   insertChunks,
 } from "./db";
+import { chunkCodeFile, chunkWikiContent, chunkOverview } from "./chunker";
 import type { AnalysisEvent, Feature } from "./types";
-
-/** Split text into ~500-token chunks at paragraph/heading boundaries */
-function chunkText(text: string, maxChunkSize = 1500): string[] {
-  const paragraphs = text.split(/\n\n+/);
-  const chunks: string[] = [];
-  let current = "";
-
-  for (const para of paragraphs) {
-    if (current.length + para.length > maxChunkSize && current.length > 0) {
-      chunks.push(current.trim());
-      current = "";
-    }
-    current += para + "\n\n";
-  }
-  if (current.trim()) chunks.push(current.trim());
-  return chunks;
-}
 
 /** Run the full analysis pipeline with SSE progress reporting */
 export async function runAnalysisPipeline(
@@ -105,7 +89,9 @@ export async function runAnalysisPipeline(
     await updateWikiStatus(wikiId, "generating_pages");
 
     // Phase C + D: Fetch files & generate pages (with concurrency limit)
+    // We also collect all fetched source files for code-chunk embedding later.
     const features: Feature[] = [];
+    const allSourceFiles = new Map<string, string>();
     const concurrency = 3;
     const queue = [...identifiedFeatures];
     let sortOrder = 0;
@@ -126,6 +112,11 @@ export async function runAnalysisPipeline(
             meta.defaultBranch,
             filesToFetch,
           );
+
+          // Save raw files for code embedding
+          for (const [path, content] of fileContents) {
+            allSourceFiles.set(path, content);
+          }
 
           // Generate wiki page
           const page = await generateFeaturePage(
@@ -186,7 +177,7 @@ export async function runAnalysisPipeline(
     );
     await updateWikiStatus(wikiId, "embedding", overview);
 
-    // Phase F: Embedding
+    // Phase F: Embedding — contextual chunking for wiki + code
     onEvent({
       type: "status",
       status: "embedding",
@@ -200,9 +191,9 @@ export async function runAnalysisPipeline(
       source_file: string | null;
     }> = [];
 
-    // Chunk overview
-    for (const chunk of chunkText(overview)) {
-      allChunkTexts.push(chunk);
+    // 1. Chunk overview at section boundaries
+    for (const text of chunkOverview(overview)) {
+      allChunkTexts.push(text);
       chunkMeta.push({
         feature_id: null,
         source_type: "wiki",
@@ -210,13 +201,15 @@ export async function runAnalysisPipeline(
       });
     }
 
-    // Chunk each feature's wiki content
+    // 2. Chunk each feature's wiki content at feature/section level
     for (const feature of features) {
-      const featureChunks = chunkText(
-        `# ${feature.title}\n\n${feature.summary}\n\n${feature.markdown_content}`,
+      const wikiChunks = chunkWikiContent(
+        feature.title,
+        feature.summary,
+        feature.markdown_content,
       );
-      for (const chunk of featureChunks) {
-        allChunkTexts.push(chunk);
+      for (const wc of wikiChunks) {
+        allChunkTexts.push(wc.content);
         chunkMeta.push({
           feature_id: feature.id,
           source_type: "wiki",
@@ -224,6 +217,26 @@ export async function runAnalysisPipeline(
         });
       }
     }
+
+    // 3. Chunk source code at function/class/module boundaries
+    //    Each chunk includes file path + import context for call-graph awareness
+    for (const [filePath, content] of allSourceFiles) {
+      const codeChunks = chunkCodeFile(filePath, content);
+      for (const cc of codeChunks) {
+        allChunkTexts.push(cc.content);
+        chunkMeta.push({
+          feature_id: null, // code chunks aren't feature-scoped
+          source_type: "code",
+          source_file: cc.filePath,
+        });
+      }
+    }
+
+    onEvent({
+      type: "status",
+      status: "embedding",
+      message: `Embedding ${allChunkTexts.length} chunks (${allSourceFiles.size} source files + wiki)...`,
+    });
 
     // Generate embeddings
     if (allChunkTexts.length > 0) {
