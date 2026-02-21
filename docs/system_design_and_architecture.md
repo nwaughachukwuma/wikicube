@@ -10,7 +10,7 @@
 - Install: openai, @supabase/supabase-js, react-markdown, rehype-raw, remark-gfm, shiki, fuse.js (fallback client search)
 - Fonts: Anton (display headlines) + Inter (body/UI) via next/font/google
 - Set up .env.local: OPENAI_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GITHUB_TOKEN (optional, for rate limits)
-- Push to nwaughachukwuma/cubic-ch repo on main branch; commit each logical step
+- Push to nwaughachukwuma/cubic-wiki repo on main branch; commit each logical step
 
 ## 2. Supabase Schema — run via Supabase SQL editor or migration file
 
@@ -41,7 +41,7 @@ This is the critical path. Designed to handle repos with 10k+ files without blow
 ### _Phase A — Context Gathering_
 
 - Fetch repo metadata + file tree
-- Filter tree: exclude node_modules/, vendor/, dist/, build/, _.lock, _.min.js, \*.map, test fixtures, assets (images/fonts/videos), .git
+- Filter tree: exclude node*modules/, vendor/, dist/, build/, *.lock, \_.min.js, \*.map, test fixtures, assets (images/fonts/videos), .git
 - Produce a filtered tree string (paths only, typically <15k tokens even for huge repos)
 - Fetch README (+ fallbacks above if short/missing)
 - Fetch manifest files: package.json, pyproject.toml, Cargo.toml, go.mod, pom.xml, Gemfile, composer.json — extract project name, description, dependencies
@@ -154,7 +154,7 @@ Design tokens adapted from the Bold Editorial Style to light mode:
 
 ## 9. Deploy
 
-- Link nwaughachukwuma/cubic-ch to Vercel
+- Link nwaughachukwuma/cubic-wiki to Vercel
 - Enable Vercel-Supabase integration (auto-injects env vars)
 - Set maxDuration = 300 on /api/analyze route (large repos can take a few minutes)
 - Additional env: OPENAI_API_KEY, GITHUB_TOKEN
