@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Fuse from "fuse.js";
 
 interface SearchResult {
   content: string;
@@ -12,26 +13,62 @@ interface SearchResult {
   featureSlug: string | null;
 }
 
+interface FeatureItem {
+  title: string;
+  slug: string;
+}
+
 interface Props {
   wikiId: string;
   owner: string;
   repo: string;
+  features?: FeatureItem[];
   onNavigate?: () => void;
 }
 
-export default function SearchBar({ wikiId, owner, repo, onNavigate }: Props) {
+export default function SearchBar({
+  wikiId,
+  owner,
+  repo,
+  features = [],
+  onNavigate,
+}: Props) {
   const router = useRouter();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<SearchResult[]>([]);
+  const [semanticResults, setSemanticResults] = useState<SearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Fuse.js fuzzy matcher on feature titles
+  const fuse = useMemo(
+    () =>
+      new Fuse(features, {
+        keys: ["title"],
+        threshold: 0.4,
+        includeScore: true,
+      }),
+    [features],
+  );
+
+  // Fuzzy results (instant, client-side)
+  const fuzzyResults = useMemo(() => {
+    if (!query.trim()) return [];
+    return fuse
+      .search(query)
+      .filter((v) => v.score && v.score > 0.5)
+      .slice(0, 4);
+  }, [query, fuse]);
+
+  // Semantic results (debounced, server-side)
   useEffect(() => {
     if (!query.trim()) {
-      setResults([]);
+      setSemanticResults([]);
       setIsOpen(false);
       return;
     }
+
+    // Open dropdown immediately for fuzzy results
+    setIsOpen(true);
 
     const timer = setTimeout(async () => {
       setLoading(true);
@@ -43,8 +80,7 @@ export default function SearchBar({ wikiId, owner, repo, onNavigate }: Props) {
         });
         if (res.ok) {
           const data = await res.json();
-          setResults(data.results || []);
-          setIsOpen(true);
+          setSemanticResults(data.results || []);
         }
       } catch {
         // silently fail search
@@ -56,11 +92,51 @@ export default function SearchBar({ wikiId, owner, repo, onNavigate }: Props) {
     return () => clearTimeout(timer);
   }, [query, wikiId]);
 
+  // Merge fuzzy + semantic results, deduplicating by featureSlug
+  const mergedResults = useMemo(() => {
+    const seen = new Set<string>();
+    const merged: Array<{
+      featureTitle: string;
+      featureSlug: string;
+      content?: string;
+      source: "fuzzy" | "semantic";
+    }> = [];
+
+    // Fuzzy results first (instant, title matches)
+    for (const r of fuzzyResults) {
+      if (!seen.has(r.item.slug)) {
+        seen.add(r.item.slug);
+        merged.push({
+          featureTitle: r.item.title,
+          featureSlug: r.item.slug,
+          source: "fuzzy",
+        });
+      }
+    }
+
+    // Then semantic results
+    for (const r of semanticResults) {
+      if (r.featureSlug && !seen.has(r.featureSlug)) {
+        seen.add(r.featureSlug);
+        merged.push({
+          featureTitle: r.featureTitle || r.featureSlug,
+          featureSlug: r.featureSlug,
+          content: r.content,
+          source: "semantic",
+        });
+      }
+    }
+
+    return merged; //.slice(0, 8);
+  }, [fuzzyResults, semanticResults]);
+
+  const hasResults = mergedResults.length > 0;
+
   return (
     <div className="relative">
       <div className="flex items-center gap-2 border border-border px-2.5 py-1.5 bg-card">
         <svg
-          className="w-3.5 h-3.5 text-text-muted flex-shrink-0"
+          className="w-3.5 h-3.5 text-text-muted shrink-0"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -76,7 +152,7 @@ export default function SearchBar({ wikiId, owner, repo, onNavigate }: Props) {
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => results.length > 0 && setIsOpen(true)}
+          onFocus={() => hasResults && setIsOpen(true)}
           onBlur={() => setTimeout(() => setIsOpen(false), 200)}
           placeholder="Search wiki..."
           className="flex-1 text-xs bg-transparent focus:outline-none placeholder:text-text-muted/50"
@@ -87,29 +163,32 @@ export default function SearchBar({ wikiId, owner, repo, onNavigate }: Props) {
       </div>
 
       {/* Results dropdown */}
-      {isOpen && results.length > 0 && (
+      {isOpen && hasResults && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border shadow-lg z-50 max-h-64 overflow-y-auto">
-          {results.map((result, i) => (
+          {mergedResults.map((result, i) => (
             <button
-              key={i}
+              key={`${result.featureSlug}-${i}`}
               className="w-full text-left px-3 py-2 hover:bg-bg-alt transition border-b border-border last:border-0"
               onClick={() => {
-                if (result.featureSlug) {
-                  router.push(`/wiki/${owner}/${repo}/${result.featureSlug}`);
-                  setQuery("");
-                  setIsOpen(false);
-                  onNavigate?.();
-                }
+                router.push(`/wiki/${owner}/${repo}/${result.featureSlug}`);
+                setQuery("");
+                setIsOpen(false);
+                onNavigate?.();
               }}
             >
-              {result.featureTitle && (
+              <div className="flex items-center gap-1.5">
                 <div className="text-xs font-medium text-text">
                   {result.featureTitle}
                 </div>
-              )}
-              <div className="text-[11px] text-text-muted mt-0.5 line-clamp-2">
-                {result.content}
+                <span className="text-[9px] text-text-muted uppercase tracking-wider">
+                  {result.source === "fuzzy" ? "title" : "content"}
+                </span>
               </div>
+              {result.content && (
+                <div className="text-[11px] text-text-muted mt-0.5 line-clamp-2">
+                  {result.content}
+                </div>
+              )}
             </button>
           ))}
         </div>

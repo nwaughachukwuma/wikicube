@@ -1,5 +1,5 @@
 {
-  "name": "cubic-wiki",
+  "name": "wikicube",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -15,16 +15,19 @@
     "@supabase/supabase-js": "^2.97.0",
     "dotenv": "^17.3.1",
     "fuse.js": "^7.0.0",
+    "github-slugger": "^2.0.0",
+    "lucide-react": "^0.575.0",
     "next": "^15.1.0",
     "openai": "^4.77.0",
+    "p-retry": "^7.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-markdown": "^9.0.1",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.0",
-    "rxjs": "^7.8.2",
     "shiki": "^1.24.0",
-    "tiktoken": "^1.0.22"
+    "tiktoken": "^1.0.22",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.0.0",

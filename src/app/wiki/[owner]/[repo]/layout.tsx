@@ -8,7 +8,6 @@ export default async function WikiLayout({
   children: React.ReactNode;
 }) {
   const { owner, repo } = await params;
-
   return (
     <WikiShell owner={owner} repo={repo}>
       {children}

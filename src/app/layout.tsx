@@ -22,7 +22,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WikiGen — Instant Wiki for Any GitHub Repo",
+  title: "WikiCube — Instant Wiki for Any GitHub Repo",
   description:
     "Paste a GitHub URL and get a polished, AI-generated wiki organized by user-facing features.",
 };

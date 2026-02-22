@@ -92,6 +92,7 @@ export interface TreeEntry {
 
 export type AnalysisEvent =
   | { type: "status"; status: WikiStatus; message: string }
+  | { type: "features_list"; features: string[] }
   | { type: "feature_started"; featureTitle: string }
   | { type: "feature_done"; featureTitle: string }
   | { type: "done"; wikiId: string }

@@ -1,11 +1,9 @@
 /**
  * Pregenerate wikis for example repositories.
- *
  * Usage:
  *   npx tsx scripts/pregenerate.ts
  *
- * Reads .env.local for API keys. Processes repos sequentially to stay
- * within rate limits.
+ * Reads .env.local for API keys. Processes repos sequentially to stay within rate limits.
  */
 
 import * as fs from "fs";
@@ -15,11 +13,14 @@ import * as path from "path";
 const envPath = path.resolve(__dirname, "../.env.local");
 if (fs.existsSync(envPath)) {
   const envContent = fs.readFileSync(envPath, "utf-8");
+
   for (const line of envContent.split("\n")) {
     const trimmed = line.trim();
     if (!trimmed || trimmed.startsWith("#")) continue;
+
     const eqIdx = trimmed.indexOf("=");
     if (eqIdx === -1) continue;
+
     const key = trimmed.slice(0, eqIdx).trim();
     const value = trimmed.slice(eqIdx + 1).trim();
     if (!process.env[key]) {
@@ -29,7 +30,7 @@ if (fs.existsSync(envPath)) {
 }
 
 // Now import project modules (they read process.env at call time)
-import { runAnalysisPipeline } from "../src/lib/analyzer";
+import { runAnalysisPipeline } from "../src/lib/code-analyzer";
 import type { AnalysisEvent } from "../src/lib/types";
 
 const EXAMPLE_REPOS = [

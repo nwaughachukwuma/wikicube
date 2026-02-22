@@ -1,0 +1,403 @@
+import {
+  getRepoMeta,
+  getRepoTree,
+  filterTree,
+  formatTreeString,
+  fetchProjectContext,
+  getMultipleFiles,
+} from "../github";
+import {
+  identifyFeatures,
+  generateFeaturePage,
+  generateOverview,
+  generateEmbeddings,
+} from "../openai";
+import {
+  upsertWiki,
+  updateWikiStatus,
+  insertFeature,
+  insertChunks,
+} from "../db";
+import { chunkCodeFile, chunkWikiContent, chunkOverview } from "../chunker";
+import { batchAll } from "../batchOps";
+import { logger } from "../logger";
+import type {
+  AnalysisEvent,
+  Feature,
+  IdentifiedFeature,
+  RepoMeta,
+} from "../types";
+import GithubSlugger from "github-slugger";
+
+const log = logger("analyzer");
+const slugger = new GithubSlugger();
+
+/** Run the full analysis pipeline with SSE progress reporting */
+export async function runAnalysisPipeline(
+  owner: string,
+  repo: string,
+  onEvent: (event: AnalysisEvent) => void,
+): Promise<string> {
+  log.info("pipeline started", { owner, repo });
+  const pipelineDone = log.time("pipeline");
+
+  // Phase A: Context gathering
+  onEvent({
+    type: "status",
+    status: "fetching_tree",
+    message: "Fetching repository metadata...",
+  });
+
+  try {
+    const metaDone = log.time("getRepoMeta");
+    const meta = await getRepoMeta(owner, repo);
+    metaDone({ defaultBranch: meta.defaultBranch });
+
+    onEvent({
+      type: "status",
+      status: "fetching_tree",
+      message: "Fetching file tree...",
+    });
+
+    const treeDone = log.time("upsertWiki+getRepoTree");
+    const [wiki, rawTree] = await Promise.all([
+      upsertWiki(owner, repo, meta.defaultBranch),
+      getRepoTree(owner, repo, meta.defaultBranch),
+    ]);
+    treeDone({ rawTreeSize: rawTree.length });
+
+    const wikiId = wiki.id;
+    const tree = filterTree(rawTree);
+    const treeString = formatTreeString(tree);
+    const treePaths = tree.map((e) => e.path);
+
+    log.info("tree filtered", {
+      wikiId,
+      rawFiles: rawTree,
+      filteredFiles: tree,
+    });
+
+    onEvent({
+      type: "status",
+      status: "fetching_tree",
+      message: "Fetching README and manifests...",
+    });
+    const ctxDone = log.time("fetchProjectContext");
+    const { readme, manifests } = await fetchProjectContext(
+      owner,
+      repo,
+      meta.defaultBranch,
+      treePaths,
+    );
+    ctxDone({
+      readme,
+      readmeLength: readme.length,
+      manifests,
+      manifestLength: manifests.length,
+    });
+
+    await updateWikiStatus(wikiId, "identifying_features");
+
+    // Phase B: Feature identification
+    onEvent({
+      type: "status",
+      status: "identifying_features",
+      message: "Identifying user-facing features...",
+    });
+    const featuresDone = log.time("identifyFeatures");
+    const identifiedFeatures = await identifyFeatures(
+      `${owner}/${repo}`,
+      treeString,
+      readme,
+      manifests,
+      meta.description,
+    );
+    featuresDone({ identifiedFeatures });
+
+    if (!identifiedFeatures.length) {
+      throw new Error("No features identified in repository");
+    }
+
+    // Emit the full list of features so the UI can show all at once
+    onEvent({
+      type: "features_list",
+      features: identifiedFeatures.map((f) => f.title),
+    });
+
+    onEvent({
+      type: "status",
+      status: "generating_pages",
+      message: `Found ${identifiedFeatures.length} features. Generating wiki pages...`,
+    });
+
+    await updateWikiStatus(wikiId, "generating_pages");
+
+    // Phase C + D: Fetch files & generate pages using batch concurrency.
+    // Collect all fetched source files for code-chunk embedding later.
+    const pageGenDone = log.time("generateAllPages");
+
+    const filesAndPageResults = await batchAll(
+      identifiedFeatures,
+      async (identified, order) =>
+        fetchFilesGeneratePage({
+          identified,
+          order,
+          owner,
+          repo,
+          meta,
+          wikiId,
+          onEvent,
+        }),
+      5,
+    ).then((res) => res.filter((f) => f !== null));
+
+    const features = filesAndPageResults.map((r) => r.feature);
+    const allSourceFiles = filesAndPageResults
+      .map((r) => r.allSourceFiles)
+      .reduce((acc, sfiles) => {
+        for (const [path, content] of sfiles) acc.set(path, content);
+        return acc;
+      }, new Map<string, string>());
+
+    pageGenDone({
+      featuresCount: features.length,
+      totalIdentified: identifiedFeatures.length,
+      sourceFiles: allSourceFiles.size,
+    });
+
+    // Phase E: Generate overview
+    onEvent({
+      type: "status",
+      status: "generating_pages",
+      message: "Generating overview page...",
+    });
+    const overviewDone = log.time("generateOverview");
+    const overview = await generateOverview(
+      `${owner}/${repo}`,
+      meta.description,
+      readme,
+      features.map((f) => ({ title: f.title, summary: f.summary })),
+    );
+    await updateWikiStatus(wikiId, "embedding", overview);
+    overviewDone({ overviewLength: overview.length });
+
+    // Phase F: Embedding — contextual chunking for wiki + code
+    await embedWikiAndCode({
+      wikiId,
+      features,
+      allSourceFiles,
+      overview,
+      onEvent,
+    });
+
+    // Done
+    await updateWikiStatus(wikiId, "done");
+    pipelineDone({ wikiId, featureCount: features.length });
+    onEvent({ type: "done", wikiId });
+
+    return wikiId;
+  } catch (err: any) {
+    log.error("pipeline failed", {
+      owner,
+      repo,
+      error: "message" in err ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    onEvent({
+      type: "error",
+      message: err instanceof Error ? err.message : "Unknown error",
+    });
+    throw err;
+  }
+}
+
+/**
+ * Helper to fetch files and generate a wiki page for a single feature
+ * */
+async function fetchFilesGeneratePage(params: {
+  identified: IdentifiedFeature;
+  order: number;
+  owner: string;
+  repo: string;
+  meta: RepoMeta;
+  wikiId: string;
+  onEvent: (event: AnalysisEvent) => void;
+}) {
+  const { order, owner, repo, meta, wikiId, onEvent, identified } = params;
+  const allSourceFiles = new Map<string, string>();
+  onEvent({
+    type: "feature_started",
+    featureTitle: identified.title,
+  });
+
+  const filesToFetch = identified.relevantFiles; //.slice(0, 30);
+
+  try {
+    const fetchDone = log.time(`fetchFiles:${identified.title}`);
+    const fileContents = await getMultipleFiles(
+      owner,
+      repo,
+      meta.defaultBranch,
+      filesToFetch,
+    );
+
+    fetchDone({
+      filesToFetch,
+      filesToFetchLength: filesToFetch.length,
+      fileContents,
+      fileContentsLength: fileContents.size,
+    });
+
+    // Save raw files for code embedding
+    for (const [path, content] of fileContents) {
+      allSourceFiles.set(path, content);
+    }
+
+    // Generate wiki page
+    const genDone = log.time(`generatePage:${identified.title}`);
+    const page = await generateFeaturePage(
+      `${owner}/${repo}`,
+      owner,
+      repo,
+      meta.defaultBranch,
+      identified,
+      fileContents,
+    );
+
+    genDone({
+      entryPoints: page.entryPoints,
+      citations: page.citations,
+    });
+
+    // Save to DB
+    const slug = identified.id || slugger.slug(identified.title); //.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+    const feature = await insertFeature({
+      wiki_id: wikiId,
+      slug,
+      title: identified.title,
+      summary: identified.summary,
+      markdown_content: page.markdownContent,
+      entry_points: page.entryPoints,
+      citations: page.citations,
+      sort_order: order,
+    });
+
+    onEvent({
+      type: "feature_done",
+      featureTitle: identified.title,
+    });
+
+    return { feature, allSourceFiles };
+  } catch (err) {
+    log.error(`feature generation failed: ${identified.title}`, {
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    });
+    onEvent({
+      type: "feature_done",
+      featureTitle: `${identified.title} (partial)`,
+    });
+    return null;
+  }
+}
+
+/**
+ * Chunk and embed wiki+code
+ */
+async function embedWikiAndCode(params: {
+  wikiId: string;
+  features: Feature[];
+  allSourceFiles: Map<string, string>;
+  overview: string;
+  onEvent: (event: AnalysisEvent) => void;
+}) {
+  log.info("starting embedding phase", { wikiId: params.wikiId });
+  const { wikiId, features, allSourceFiles, overview, onEvent } = params;
+  onEvent({
+    type: "status",
+    status: "embedding",
+    message: "Creating search index...",
+  });
+  const allChunkTexts: string[] = [];
+  const chunkMeta: Array<{
+    feature_id: string | null;
+    source_type: "wiki" | "code";
+    source_file: string | null;
+  }> = [];
+
+  // 1. Chunk overview at section boundaries
+  for (const text of chunkOverview(overview)) {
+    allChunkTexts.push(text);
+    chunkMeta.push({
+      source_type: "wiki",
+      feature_id: null,
+      source_file: null,
+    });
+  }
+
+  // 2. Chunk each feature's wiki content at feature/section level
+  for (const feature of features) {
+    const wikiChunks = chunkWikiContent(
+      feature.title,
+      feature.summary,
+      feature.markdown_content,
+    );
+
+    for (const wc of wikiChunks) {
+      allChunkTexts.push(wc.content);
+      chunkMeta.push({
+        source_type: "wiki",
+        feature_id: feature.id,
+        source_file: null,
+      });
+    }
+  }
+
+  // 3. Chunk source code at function/class/module boundaries
+  // Each chunk includes file path + import context for call-graph awareness
+  for (const [filePath, content] of allSourceFiles) {
+    const codeChunks = chunkCodeFile(filePath, content);
+    for (const cc of codeChunks) {
+      allChunkTexts.push(cc.content);
+      chunkMeta.push({
+        source_type: "code",
+        feature_id: null, // code chunks aren't feature-scoped
+        source_file: cc.filePath,
+      });
+    }
+  }
+
+  log.info("chunking complete", {
+    totalChunks: allChunkTexts.length,
+    wikiChunks: chunkMeta.filter((c) => c.source_type === "wiki").length,
+    codeChunks: chunkMeta.filter((c) => c.source_type === "code").length,
+    sourceFiles: allSourceFiles.size,
+  });
+
+  onEvent({
+    type: "status",
+    status: "embedding",
+    message: `Embedding ${allChunkTexts.length} chunks (${allSourceFiles.size} source files + wiki)...`,
+  });
+
+  // Generate embeddings
+  if (allChunkTexts.length > 0) {
+    const embedDone = log.time("generateEmbeddings");
+    const embeddings = await generateEmbeddings(allChunkTexts.slice(0, 100));
+    embedDone({ chunks: allChunkTexts.length });
+
+    // Build chunk records
+    const chunkRecords = allChunkTexts.slice(0, 100).map((text, i) => ({
+      wiki_id: wikiId,
+      feature_id: chunkMeta[i].feature_id,
+      content: text,
+      source_type: chunkMeta[i].source_type,
+      source_file: chunkMeta[i].source_file,
+      embedding: embeddings[i],
+    }));
+
+    const insertDone = log.time("insertChunks");
+    await insertChunks(chunkRecords);
+    insertDone({ records: chunkRecords.length });
+  }
+}

@@ -10,9 +10,11 @@ interface Message {
 
 interface Props {
   wikiId: string;
+  /** Current page title + summary passed as extra context to the model */
+  pageContext?: string;
 }
 
-export default function ChatPanel({ wikiId }: Props) {
+export default function ChatPanel({ wikiId, pageContext }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -22,7 +24,7 @@ export default function ChatPanel({ wikiId }: Props) {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, isStreaming]);
 
   useEffect(() => {
     if (isOpen) inputRef.current?.focus();
@@ -49,7 +51,8 @@ export default function ChatPanel({ wikiId }: Props) {
         body: JSON.stringify({
           wikiId,
           question,
-          history: newMessages.slice(-10), // Last 10 messages for context
+          history: newMessages.slice(-10),
+          pageContext,
         }),
       });
 
@@ -142,21 +145,11 @@ export default function ChatPanel({ wikiId }: Props) {
           style={{ height: "min(500px, calc(100vh - 8rem))" }}
         >
           {/* Header */}
-          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-            <div>
-              <div className="font-display text-sm uppercase">Ask the Wiki</div>
-              <div className="text-[10px] text-text-muted">
-                AI-powered Q&A about this codebase
-              </div>
+          <div className="px-4 py-3 border-b border-border">
+            <div className="font-display text-sm uppercase">Ask the Wiki</div>
+            <div className="text-[10px] text-text-muted">
+              AI-powered Q&A about this codebase
             </div>
-            {messages.length > 0 && (
-              <button
-                onClick={() => setMessages([])}
-                className="text-[10px] text-text-muted hover:text-text uppercase tracking-wider"
-              >
-                Clear
-              </button>
-            )}
           </div>
 
           {/* Messages */}
@@ -177,21 +170,54 @@ export default function ChatPanel({ wikiId }: Props) {
                   msg.role === "user" ? "text-right" : "text-left"
                 }`}
               >
+                {msg.role === "user" ? (
+                  <div className="mb-1">
+                    <span className="text-[10px] uppercase tracking-wider text-text-muted">
+                      You
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mb-1">
+                    <span className="text-[10px] uppercase tracking-wider text-text-muted">
+                      Wiki
+                    </span>
+                  </div>
+                )}
                 <div
-                  className={`inline-block max-w-[85%] text-sm ${
+                  className={`inline-block max-w-[95%] text-sm ${
                     msg.role === "user"
                       ? "bg-text text-bg px-3 py-2"
                       : "bg-bg-alt px-3 py-2"
                   }`}
                 >
                   {msg.role === "assistant" ? (
-                    <MarkdownRenderer content={msg.content || "..."} />
+                    msg.content ? (
+                      <MarkdownRenderer content={msg.content} />
+                    ) : null
                   ) : (
                     msg.content
                   )}
                 </div>
               </div>
             ))}
+
+            {/* Thinking indicator — shown while streaming and last message is empty */}
+            {isStreaming &&
+              messages.length > 0 &&
+              messages[messages.length - 1].role === "assistant" &&
+              !messages[messages.length - 1].content && (
+                <div className="text-left">
+                  <div className="inline-flex items-center gap-1.5 bg-bg-alt px-3 py-2 text-sm text-text-muted">
+                    <span className="flex gap-1">
+                      <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce [animation-delay:0ms]" />
+                      <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce [animation-delay:150ms]" />
+                      <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce [animation-delay:300ms]" />
+                    </span>
+                    <span className="ml-1">Thinking...</span>
+                  </div>
+                </div>
+              )}
+
             <div ref={messagesEndRef} />
           </div>
 

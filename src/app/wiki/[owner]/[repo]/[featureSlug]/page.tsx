@@ -21,10 +21,10 @@ export default function FeaturePage() {
       const res = await fetch(`/api/wiki/${owner}/${repo}`);
       if (res.ok) {
         const data = await res.json();
-        const found = data.features.find(
-          (f: Feature) => f.slug === featureSlug,
-        );
-        setFeature(found || null);
+        const features = data.features as Feature[];
+        const found = features.find((f) => f.slug === featureSlug);
+
+        if (found) setFeature(found);
       }
       setLoading(false);
     }
@@ -100,7 +100,7 @@ export default function FeaturePage() {
       </div>
 
       {/* Table of contents — desktop only */}
-      <div className="hidden xl:block w-56 flex-shrink-0">
+      <div className="hidden xl:block w-56 shrink-0">
         <div className="sticky top-8 py-10 pr-4">
           <TableOfContents content={feature.markdown_content} />
         </div>

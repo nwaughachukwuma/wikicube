@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { OptimLink } from "@/components/OptimisticLink";
 
 const EXAMPLE_REPOS = [
   {
@@ -62,10 +63,10 @@ export default function HomePage() {
       {/* Header */}
       <header className="border-b border-border px-6 py-4 flex items-center justify-between">
         <div className="font-display text-xl uppercase tracking-tight">
-          WikiGen
+          WikiCube
         </div>
         <a
-          href="https://github.com/nwaughachukwuma/cubic-wiki"
+          href="https://github.com/nwaughachukwuma/wikicube"
           target="_blank"
           rel="noopener noreferrer"
           className="text-sm text-text-muted hover:text-text transition"
@@ -79,7 +80,7 @@ export default function HomePage() {
         <h1 className="font-display text-5xl md:text-7xl lg:text-[5.5rem] text-center uppercase leading-[0.9] tracking-tight max-w-4xl">
           Instant Wiki
           <br />
-          <span className="text-text-muted">for Any Repo</span>
+          <span className="text-text-muted">For Any Repo</span>
         </h1>
 
         <p className="mt-6 text-lg text-text-muted text-center max-w-xl">
@@ -123,11 +124,9 @@ export default function HomePage() {
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {EXAMPLE_REPOS.map((example) => (
-              <button
+              <OptimLink
                 key={`${example.owner}/${example.repo}`}
-                onClick={() =>
-                  router.push(`/wiki/${example.owner}/${example.repo}`)
-                }
+                href={`/wiki/${example.owner}/${example.repo}`}
                 className="text-left p-4 border border-border hover:border-border-strong
                            hover:bg-card transition group"
               >
@@ -137,7 +136,7 @@ export default function HomePage() {
                 <div className="mt-1 text-xs text-text-muted">
                   {example.description}
                 </div>
-              </button>
+              </OptimLink>
             ))}
           </div>
         </div>

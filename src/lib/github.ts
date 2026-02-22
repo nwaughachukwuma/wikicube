@@ -1,17 +1,23 @@
 import type { RepoMeta, TreeEntry } from "./types";
+import { logger } from "./logger";
 
+const log = logger("github");
 const GITHUB_API = "https://api.github.com";
 
-function headers(): HeadersInit {
-  const h: HeadersInit = {
+const headers = (): HeadersInit =>
+  ({
     Accept: "application/vnd.github.v3+json",
-    "User-Agent": "cubic-wiki-generator",
-  };
-  if (process.env.GITHUB_TOKEN) {
-    h.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-  }
-  return h;
-}
+    "User-Agent": "wikicube/1.0",
+    Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+  }) satisfies HeadersInit;
+
+// Detection
+export const GITHUB_URL_RE =
+  /^https?:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(\/.*)?$/;
+
+// Extraction:
+export const GITHUB_REPO_RE =
+  /(?:github\.com\/)?([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/;
 
 /** Parse "owner/repo" from a GitHub URL */
 export function parseRepoUrl(url: string): { owner: string; repo: string } {
@@ -20,9 +26,7 @@ export function parseRepoUrl(url: string): { owner: string; repo: string } {
     .trim()
     .replace(/\/+$/, "")
     .replace(/\.git$/, "");
-  const match = cleaned.match(
-    /(?:github\.com\/)?([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/,
-  );
+  const match = cleaned.match(GITHUB_REPO_RE);
   if (!match) throw new Error(`Invalid GitHub URL: ${url}`);
   return { owner: match[1], repo: match[2] };
 }
@@ -35,8 +39,10 @@ export async function getRepoMeta(
   const res = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`, {
     headers: headers(),
   });
-  if (!res.ok)
+  if (!res.ok) {
     throw new Error(`GitHub API error ${res.status}: ${await res.text()}`);
+  }
+
   const data = await res.json();
   return {
     owner,
@@ -45,7 +51,7 @@ export async function getRepoMeta(
     description: data.description || "",
     homepage: data.homepage || null,
     topics: data.topics || [],
-  };
+  } satisfies RepoMeta;
 }
 
 /** Fetch full file tree */
@@ -58,18 +64,24 @@ export async function getRepoTree(
     `${GITHUB_API}/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
     { headers: headers() },
   );
-  if (!res.ok) throw new Error(`Failed to fetch tree: ${res.status}`);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch tree: ${res.status}`);
+  }
+
   const data = await res.json();
   if (data.truncated) {
-    console.warn("Tree was truncated by GitHub API — very large repo");
+    log.warn("tree truncated by GitHub API", { owner, repo, branch });
   }
   return (
-    data.tree as Array<{ path: string; type: string; size?: number }>
-  ).map((e) => ({
-    path: e.path,
-    type: e.type as "blob" | "tree",
-    size: e.size,
-  }));
+    data.tree as Array<object & { path: string; type: string; size?: number }>
+  ).map(
+    (e) =>
+      ({
+        path: e.path,
+        type: e.type as "blob" | "tree",
+        size: e.size,
+      }) satisfies TreeEntry,
+  );
 }
 
 /** Fetch raw file content via raw.githubusercontent.com (no API rate limit) */
@@ -178,6 +190,7 @@ export function formatTreeString(entries: TreeEntry[]): string {
 const MANIFEST_FILES = [
   "package.json",
   "pyproject.toml",
+  "requirements.txt",
   "Cargo.toml",
   "go.mod",
   "pom.xml",
@@ -185,6 +198,12 @@ const MANIFEST_FILES = [
   "composer.json",
   "setup.py",
   "setup.cfg",
+  "Package.swift",
+  "CMakeLists.txt",
+  "pubspec.yaml",
+  "mix.exs",
+  "build.gradle",
+  "package.yaml",
 ];
 
 const README_FILES = [
@@ -193,6 +212,10 @@ const README_FILES = [
   "README.txt",
   "README",
   "readme.md",
+  "README.mdx",
+  "CHANGELOG.md",
+  "docs/intro.md",
+  "mkdocs.yml",
   "docs/README.md",
   "docs/index.md",
   "CONTRIBUTING.md",
@@ -204,30 +227,29 @@ export async function fetchProjectContext(
   branch: string,
   treePaths: string[],
 ): Promise<{ readme: string; manifests: string }> {
-  // Find README
   const readmePath = README_FILES.find((r) =>
     treePaths.some((p) => p.toLowerCase() === r.toLowerCase()),
   );
-  const readmeContent = readmePath
-    ? await getFileContent(owner, repo, branch, readmePath)
-    : "";
-
-  // Find manifests
   const manifestPaths = MANIFEST_FILES.filter((m) =>
     treePaths.some((p) => p === m),
+  ); //.slice(0, 3);
+
+  // Fetch README + all manifests in parallel
+  const [readmeContent, ...manifestResults] = await Promise.all(
+    [...(readmePath ? [readmePath] : []), ...manifestPaths].map((mp) =>
+      getFileContent(owner, repo, branch, mp),
+    ),
   );
-  const manifestContents: string[] = [];
-  for (const mp of manifestPaths.slice(0, 3)) {
-    const content = await getFileContent(owner, repo, branch, mp);
-    if (content) {
-      // Truncate manifests to avoid bloat (just need name/description/deps)
-      const truncated = content.slice(0, 2000);
-      manifestContents.push(`--- ${mp} ---\n${truncated}`);
-    }
-  }
+
+  const manifestContents = manifestResults
+    .map((content, i) => {
+      if (!content) return null;
+      return `--- ${manifestPaths[i]} ---\n${content}`; //.slice(0, 2000)}`;
+    })
+    .filter((v): v is string => !!v);
 
   return {
-    readme: readmeContent.slice(0, 8000), // cap README to ~2k tokens
+    readme: readmeContent, //.slice(0, 8000),
     manifests: manifestContents.join("\n\n"),
   };
 }

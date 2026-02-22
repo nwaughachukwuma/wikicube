@@ -1,4 +1,4 @@
-# WikiGen — Instant Wiki for Any GitHub Repo
+# WikiCube — Instant Wiki for Any GitHub Repo
 
 Paste a GitHub URL and get a polished, AI-generated wiki organized by user-facing features. One click. Zero setup.
 
@@ -32,8 +32,8 @@ Paste a GitHub URL and get a polished, AI-generated wiki organized by user-facin
 1. Clone the repo:
 
    ```bash
-   git clone https://github.com/nwaughachukwuma/cubic-wiki.git
-   cd cubic-wiki
+   git clone https://github.com/nwaughachukwuma/wikicube.git
+   cd wikicube
    npm install
    ```
 

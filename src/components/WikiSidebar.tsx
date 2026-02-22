@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useCallback } from "react";
 import type { Feature } from "@/lib/types";
 import SearchBar from "@/components/SearchBar";
+import { OptimLink } from "./OptimisticLink";
 
 interface Props {
   owner: string;
@@ -21,7 +23,16 @@ export default function WikiSidebar({
   onNavigate,
 }: Props) {
   const pathname = usePathname();
+  const router = useRouter();
   const basePath = `/wiki/${owner}/${repo}`;
+
+  /** Optimistic prefetch on hover — reduces perceived latency ~500ms */
+  const prefetchOnHover = useCallback(
+    (path: string) => () => {
+      router.prefetch(path);
+    },
+    [router],
+  );
 
   return (
     <div className="h-full flex flex-col">
@@ -31,7 +42,7 @@ export default function WikiSidebar({
           href="/"
           className="text-xs uppercase tracking-widest text-text-muted hover:text-text transition"
         >
-          WikiGen
+          WikiCube
         </Link>
         <Link
           href={basePath}
@@ -48,13 +59,14 @@ export default function WikiSidebar({
           wikiId={wikiId}
           owner={owner}
           repo={repo}
+          features={features.map((f) => ({ title: f.title, slug: f.slug }))}
           onNavigate={onNavigate}
         />
       </div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto p-3 space-y-0.5">
-        <Link
+        <OptimLink
           href={basePath}
           onClick={onNavigate}
           className={`block px-3 py-2 text-sm transition rounded-sm ${
@@ -64,7 +76,7 @@ export default function WikiSidebar({
           }`}
         >
           Overview
-        </Link>
+        </OptimLink>
 
         <div className="pt-3 pb-1 px-3">
           <span className="text-[10px] uppercase tracking-widest text-text-muted">
@@ -77,7 +89,7 @@ export default function WikiSidebar({
           const isActive = pathname === featurePath;
 
           return (
-            <Link
+            <OptimLink
               key={feature.id}
               href={featurePath}
               onClick={onNavigate}
@@ -88,7 +100,7 @@ export default function WikiSidebar({
               }`}
             >
               {feature.title}
-            </Link>
+            </OptimLink>
           );
         })}
       </nav>

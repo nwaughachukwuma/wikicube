@@ -6,11 +6,11 @@
 
 ## 1. Project Setup
 
-- npx create-next-app@latest cubic-wiki --typescript --tailwind --app
+- npx create-next-app@latest wikicube --typescript --tailwind --app
 - Install: openai, @supabase/supabase-js, react-markdown, rehype-raw, remark-gfm, shiki, fuse.js (fallback client search)
 - Fonts: Anton (display headlines) + Inter (body/UI) via next/font/google
 - Set up .env.local: OPENAI_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GITHUB_TOKEN (optional, for rate limits)
-- Push to nwaughachukwuma/cubic-wiki repo on main branch; commit each logical step
+- Push to nwaughachukwuma/wikicube repo on main branch; commit each logical step
 
 ## 2. Supabase Schema — run via Supabase SQL editor or migration file
 
@@ -154,7 +154,7 @@ Design tokens adapted from the Bold Editorial Style to light mode:
 
 ## 9. Deploy
 
-- Link nwaughachukwuma/cubic-wiki to Vercel
+- Link nwaughachukwuma/wikicube to Vercel
 - Enable Vercel-Supabase integration (auto-injects env vars)
 - Set maxDuration = 300 on /api/analyze route (large repos can take a few minutes)
 - Additional env: OPENAI_API_KEY, GITHUB_TOKEN

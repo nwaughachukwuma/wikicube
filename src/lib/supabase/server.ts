@@ -1,15 +1,16 @@
 import { createServerClient } from "@supabase/ssr";
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 /**
- * Admin server client (bypasses RLS). For background jobs, admin ops, cross-user writes.
+ * Singleton Admin server client (bypasses RLS). For background jobs, admin ops, cross-user writes.
  */
+let _adminClient: SupabaseClient | null = null;
 export function getServerClient() {
-  return createClient(
+  return (_adminClient ||= createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_SUPABASE_SECRET_KEY,
-  );
+  ));
 }
 
 /**

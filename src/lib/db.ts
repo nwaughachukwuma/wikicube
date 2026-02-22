@@ -1,5 +1,26 @@
+import { batchAll } from "./batchOps";
+import { logger } from "./logger";
 import { getServerClient } from "./supabase/server";
 import type { Wiki, Feature, WikiStatus, Chunk } from "./types";
+
+const log = logger("db");
+
+/**
+ * Strip PostgreSQL-incompatible null bytes from all string values in an object
+ */
+function stripNullBytes<T>(obj: T): T {
+  if (typeof obj === "string") return obj.replace(/\0/g, "") as unknown as T;
+  if (Array.isArray(obj)) return obj.map(stripNullBytes) as unknown as T;
+
+  if (obj && typeof obj === "object") {
+    const cleaned: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj)) {
+      cleaned[k] = stripNullBytes(v);
+    }
+    return cleaned as T;
+  }
+  return obj;
+}
 
 /* ─── Wikis ─── */
 
@@ -20,6 +41,7 @@ export async function upsertWiki(
 
   if (existing) {
     // Reset for re-generation
+    log.info("resetting existing wiki", { wikiId: existing.id, owner, repo });
     const { data, error } = await db
       .from("wikis")
       .update({
@@ -30,11 +52,14 @@ export async function upsertWiki(
       .eq("id", existing.id)
       .select()
       .single();
+
     if (error) throw error;
 
-    // Clear old features and chunks
-    await db.from("features").delete().eq("wiki_id", existing.id);
-    await db.from("chunks").delete().eq("wiki_id", existing.id);
+    // Clear old features and chunks in parallel
+    await Promise.all([
+      db.from("chunks").delete().eq("wiki_id", existing.id),
+      db.from("features").delete().eq("wiki_id", existing.id),
+    ]);
 
     return data as Wiki;
   }
@@ -50,7 +75,10 @@ export async function upsertWiki(
     })
     .select()
     .single();
+
   if (error) throw error;
+  log.info("wiki created", { wikiId: data.id, owner, repo });
+
   return data as Wiki;
 }
 
@@ -59,13 +87,20 @@ export async function updateWikiStatus(
   status: WikiStatus,
   overview?: string,
 ) {
-  const db = getServerClient();
   const updates: Record<string, unknown> = {
     status,
     updated_at: new Date().toISOString(),
   };
-  if (overview !== undefined) updates.overview = overview;
-  const { error } = await db.from("wikis").update(updates).eq("id", wikiId);
+
+  if (overview !== undefined) {
+    updates.overview = stripNullBytes(overview);
+  }
+
+  const { error } = await getServerClient()
+    .from("wikis")
+    .update(stripNullBytes(updates))
+    .eq("id", wikiId);
+
   if (error) throw error;
 }
 
@@ -73,19 +108,23 @@ export async function getWiki(
   owner: string,
   repo: string,
 ): Promise<Wiki | null> {
-  const db = getServerClient();
-  const { data } = await db
+  const { data } = await getServerClient()
     .from("wikis")
     .select("*")
     .eq("owner", owner)
     .eq("repo", repo)
     .single();
+
   return data as Wiki | null;
 }
 
 export async function getWikiById(wikiId: string): Promise<Wiki | null> {
-  const db = getServerClient();
-  const { data } = await db.from("wikis").select("*").eq("id", wikiId).single();
+  const { data } = await getServerClient()
+    .from("wikis")
+    .select("*")
+    .eq("id", wikiId)
+    .single();
+
   return data as Wiki | null;
 }
 
@@ -94,10 +133,9 @@ export async function getWikiById(wikiId: string): Promise<Wiki | null> {
 export async function insertFeature(
   feature: Omit<Feature, "id">,
 ): Promise<Feature> {
-  const db = getServerClient();
-  const { data, error } = await db
+  const { data, error } = await getServerClient()
     .from("features")
-    .insert(feature)
+    .insert(stripNullBytes(feature))
     .select()
     .single();
   if (error) throw error;
@@ -105,13 +143,14 @@ export async function insertFeature(
 }
 
 export async function getFeatures(wikiId: string): Promise<Feature[]> {
-  const db = getServerClient();
-  const { data, error } = await db
+  const { data, error } = await getServerClient()
     .from("features")
     .select("*")
     .eq("wiki_id", wikiId)
     .order("sort_order", { ascending: true });
+
   if (error) throw error;
+
   return (data || []) as Feature[];
 }
 
@@ -119,13 +158,13 @@ export async function getFeatureBySlug(
   wikiId: string,
   slug: string,
 ): Promise<Feature | null> {
-  const db = getServerClient();
-  const { data } = await db
+  const { data } = await getServerClient()
     .from("features")
     .select("*")
     .eq("wiki_id", wikiId)
     .eq("slug", slug)
     .single();
+
   return data as Feature | null;
 }
 
@@ -135,10 +174,30 @@ export async function insertChunks(
   chunks: Array<Omit<Chunk, "id">>,
 ): Promise<void> {
   const db = getServerClient();
-  const batchSize = 50;
-  for (let i = 0; i < chunks.length; i += batchSize) {
-    const batch = chunks.slice(i, i + batchSize);
-    const { error } = await db.from("chunks").insert(batch);
+  const BATCH_SIZE = 50;
+  const batches: Array<Omit<Chunk, "id">>[] = [];
+  for (let i = 0; i < chunks.length; i += BATCH_SIZE) {
+    batches.push(chunks.slice(i, i + BATCH_SIZE));
+  }
+
+  log.info("inserting chunks", {
+    totalChunks: chunks.length,
+    batches: batches.length,
+  });
+
+  const results = await batchAll(
+    batches,
+    async (batch) => {
+      try {
+        return db.from("chunks").insert(stripNullBytes(batch));
+      } catch (error) {
+        return { error };
+      }
+    },
+    5,
+  );
+
+  for (const { error } of results) {
     if (error) throw error;
   }
 }
@@ -157,13 +216,14 @@ export async function matchChunks(
     similarity: number;
   }>
 > {
-  const db = getServerClient();
-  const { data, error } = await db.rpc("match_chunks", {
+  const { data, error } = await getServerClient().rpc("match_chunks", {
     query_embedding: queryEmbedding,
     p_wiki_id: wikiId,
     match_count: matchCount,
     match_threshold: matchThreshold,
   });
+
   if (error) throw error;
+
   return data || [];
 }

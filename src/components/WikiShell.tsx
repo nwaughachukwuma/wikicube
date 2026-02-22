@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import type { Wiki, Feature } from "@/lib/types";
 import WikiSidebar from "@/components/WikiSidebar";
 import ChatPanel from "@/components/ChatPanel";
@@ -24,6 +25,7 @@ export default function WikiShell({
   const [loading, setLoading] = useState(true);
   const [needsGeneration, setNeedsGeneration] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     async function fetchWiki() {
@@ -61,6 +63,20 @@ export default function WikiShell({
   }
 
   if (!data) return null;
+
+  // Derive current page context from pathname + features list
+  const basePath = `/wiki/${owner}/${repo}`;
+  const pageContext = (() => {
+    if (pathname === basePath || pathname === `${basePath}/`) {
+      return `Currently viewing: Overview page for ${owner}/${repo}`;
+    }
+    const featureSlug = pathname.replace(`${basePath}/`, "");
+    const feature = data.features.find((f) => f.slug === featureSlug);
+    if (feature) {
+      return `Currently viewing feature: ${feature.title}`;
+    }
+    return undefined;
+  })();
 
   return (
     <div className="min-h-screen flex">
@@ -111,8 +127,8 @@ export default function WikiShell({
       {/* Main content */}
       <main className="flex-1 min-w-0">{children}</main>
 
-      {/* Chat panel */}
-      <ChatPanel wikiId={data.wiki.id} />
+      {/* Chat panel — pass current page context */}
+      <ChatPanel wikiId={data.wiki.id} pageContext={pageContext} />
     </div>
   );
 }
