@@ -50,14 +50,6 @@ export default function WikiShell({
     fetchWiki();
   }, [owner, repo]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-3 h-3 bg-accent rounded-full animate-pulse" />
-      </div>
-    );
-  }
-
   const handleAnalysisComplete = useCallback(() => {
     setNeedsGeneration(false);
     setLoading(true);
@@ -71,6 +63,14 @@ export default function WikiShell({
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [owner, repo]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="w-3 h-3 bg-accent rounded-full animate-pulse" />
+      </div>
+    );
+  }
 
   if (needsGeneration) {
     return (
