@@ -53,10 +53,7 @@ export default function SearchBar({
   // Fuzzy results (instant, client-side)
   const fuzzyResults = useMemo(() => {
     if (!query.trim()) return [];
-    return fuse
-      .search(query)
-      .filter((v) => v.score && v.score > 0.5)
-      .slice(0, 4);
+    return fuse.search(query).slice(0, 4);
   }, [query, fuse]);
 
   // Semantic results (debounced, server-side)

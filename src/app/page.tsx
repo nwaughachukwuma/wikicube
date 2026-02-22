@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { OptimLink } from "@/components/OptimisticLink";
+import WikiHistoryPanel from "@/components/WikiHistoryPanel";
 
 const EXAMPLE_REPOS = [
   {
@@ -62,8 +63,11 @@ export default function HomePage() {
     <main className="min-h-screen flex flex-col">
       {/* Header */}
       <header className="border-b border-border px-6 py-4 flex items-center justify-between">
-        <div className="font-display text-xl uppercase tracking-tight">
-          WikiCube
+        <div className="flex items-center gap-3">
+          <WikiHistoryPanel />
+          <div className="font-display text-xl uppercase tracking-tight">
+            WikiCube
+          </div>
         </div>
         <a
           href="https://github.com/nwaughachukwuma/wikicube"
