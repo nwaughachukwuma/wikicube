@@ -3,31 +3,18 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { AnalysisEvent, WikiStatus } from "@/lib/types";
-import { CheckIcon, Loader2Icon } from "lucide-react";
+import type {
+  ProgressStep,
+  TrackedFeature,
+  FeatureStatus,
+} from "./analysis-progress/types";
+import { ErrorPanel } from "./analysis-progress/ErrorPanel";
+import { ProgressSteps } from "./analysis-progress/ProgressSteps";
+import { FeatureProgress } from "./analysis-progress/FeatureProgress";
 
 interface Props {
   owner: string;
   repo: string;
-}
-
-interface ProgressStep {
-  label: string;
-  status: "pending" | "active" | "done" | "error";
-}
-
-type FeatureStatus = "queued" | "in-progress" | "done";
-
-interface TrackedFeature {
-  title: string;
-  status: FeatureStatus;
-}
-
-function QueuedDot() {
-  return (
-    <div className="w-4 h-4 flex items-center justify-center">
-      <div className="w-2 h-2 border border-border-strong rounded-full" />
-    </div>
-  );
 }
 
 export default function AnalysisProgress({ owner, repo }: Props) {
@@ -40,7 +27,6 @@ export default function AnalysisProgress({ owner, repo }: Props) {
   ]);
   const [features, setFeatures] = useState<TrackedFeature[]>([]);
   const [error, setError] = useState("");
-  const [showCompleted, setShowCompleted] = useState(false);
   const [running, setRunning] = useState(false);
   const activeRef = useRef<HTMLDivElement>(null);
 
@@ -209,9 +195,6 @@ export default function AnalysisProgress({ owner, repo }: Props) {
     return () => abortController.abort();
   }, [owner, repo, router, handleStreamingResponse]);
 
-  const completedFeatures = features.filter((f) => f.status === "done");
-  const activeFeatures = features.filter((f) => f.status !== "done");
-
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6">
       <div className="w-full max-w-md flex flex-col items-center">
@@ -223,122 +206,12 @@ export default function AnalysisProgress({ owner, repo }: Props) {
         </p>
 
         {error ? (
-          <div className="w-full">
-            <div className="p-4 border-2 border-red-400 bg-red-50 text-red-800 text-sm">
-              <p className="font-medium">Analysis failed</p>
-              <p className="mt-1">{error}</p>
-            </div>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-4 px-4 py-2 border-2 border-border-strong text-sm font-display uppercase hover:bg-accent hover:border-accent transition"
-            >
-              Retry
-            </button>
-          </div>
+          <ErrorPanel error={error} />
         ) : (
           <div className="w-full flex flex-col items-center">
-            {/* Phase progress steps */}
-            <div className="space-y-3">
-              {steps.map((step, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="w-5 h-5 flex items-center justify-center">
-                    {step.status === "done" ? (
-                      <CheckIcon size={5} />
-                    ) : step.status === "active" ? (
-                      // <Loader2Icon size={5} />
-                      <div className="w-3 h-3 bg-accent rounded-full animate-pulse" />
-                    ) : (
-                      <div className="w-3 h-3 border border-border rounded-full" />
-                    )}
-                  </div>
-                  <span
-                    className={`text-sm ${
-                      step.status === "done"
-                        ? "text-text"
-                        : step.status === "active"
-                          ? "text-text font-medium"
-                          : "text-text-muted"
-                    }`}
-                  >
-                    {step.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Feature progress */}
+            <ProgressSteps steps={steps} />
             {features.length > 0 && (
-              <div className="mt-6 pt-4 border-t border-border w-full flex flex-col">
-                <p className="text-xs uppercase tracking-widest text-text-muted mb-3">
-                  Features ({completedFeatures.length}/{features.length})
-                </p>
-
-                {/* Collapsed completed section */}
-                {completedFeatures.length > 0 && (
-                  <button
-                    onClick={() => setShowCompleted(!showCompleted)}
-                    className="mb-2 text-xs text-text-muted hover:text-text transition flex items-center gap-1"
-                  >
-                    <svg
-                      className={`w-3 h-3 transition-transform ${showCompleted ? "rotate-90" : ""}`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 5l7 7-7 7"
-                      />
-                    </svg>
-                    {completedFeatures.length} completed
-                  </button>
-                )}
-
-                {showCompleted && completedFeatures.length > 0 && (
-                  <div className="mb-3 space-y-1.5 w-full flex-col max-h-40 overflow-y-auto">
-                    {completedFeatures.map((f, i) => (
-                      <div key={i} className="flex items-center gap-2 text-sm">
-                        <CheckIcon />
-                        <span className="text-text-muted">{f.title}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Active + queued features in a scrolling container */}
-                <div className="max-h-52 flex flex-col py-2 items-start overflow-y-auto space-y-1.5 w-full">
-                  {activeFeatures.map((f, i) => {
-                    const isActive = f.status === "in-progress";
-                    return (
-                      <div
-                        key={i}
-                        ref={isActive ? activeRef : undefined}
-                        className="flex items-center gap-2 text-sm justify-center"
-                      >
-                        {isActive ? (
-                          <Loader2Icon
-                            className="animate-spin"
-                            style={{ animation: "spin 0.3s linear infinite" }}
-                          />
-                        ) : (
-                          <QueuedDot />
-                        )}
-                        <span
-                          className={
-                            isActive
-                              ? "text-text font-medium"
-                              : "text-text-muted"
-                          }
-                        >
-                          {f.title}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
+              <FeatureProgress features={features} activeRef={activeRef} />
             )}
           </div>
         )}
