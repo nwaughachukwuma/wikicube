@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import MarkdownRenderer from "./MarkdownRenderer";
+import { XIcon, MessageSquareMore } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -19,6 +20,8 @@ export default function ChatPanel({ wikiId, pageContext }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+
+  const [isThinking, setIsThinking] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -43,6 +46,7 @@ export default function ChatPanel({ wikiId, pageContext }: Props) {
     ];
     setMessages(newMessages);
     setIsStreaming(true);
+    setIsThinking(true);
 
     try {
       const res = await fetch("/api/chat", {
@@ -65,7 +69,6 @@ export default function ChatPanel({ wikiId, pageContext }: Props) {
 
       const decoder = new TextDecoder();
       let assistantContent = "";
-
       setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
 
       while (true) {
@@ -73,6 +76,7 @@ export default function ChatPanel({ wikiId, pageContext }: Props) {
         if (done) break;
 
         assistantContent += decoder.decode(value, { stream: true });
+        setIsThinking(false);
         setMessages((prev) => {
           const updated = [...prev];
           updated[updated.length - 1] = {
@@ -106,33 +110,9 @@ export default function ChatPanel({ wikiId, pageContext }: Props) {
         aria-label="Toggle Q&A chat"
       >
         {isOpen ? (
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
+          <XIcon className="w-5 h-5" />
         ) : (
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"
-            />
-          </svg>
+          <MessageSquareMore className="w-5 h-5" />
         )}
       </button>
 
@@ -145,11 +125,20 @@ export default function ChatPanel({ wikiId, pageContext }: Props) {
           style={{ height: "min(500px, calc(100vh - 8rem))" }}
         >
           {/* Header */}
-          <div className="px-4 py-3 border-b border-border">
-            <div className="font-display text-sm uppercase">Ask the Wiki</div>
-            <div className="text-[10px] text-text-muted">
-              AI-powered Q&A about this codebase
+          <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+            <div>
+              <div className="font-display text-sm uppercase">Ask WikiCube</div>
+              <div className="text-[10px] text-text-muted">
+                AI-powered Q&A about this codebase
+              </div>
             </div>
+
+            <button
+              className="text-[10px] rounded-full p-2 transition-opacity text-text-muted hover:text-text bg-neutral-900/10 hover:bg-neutral-900/20 uppercase tracking-wider"
+              onClick={() => setIsOpen(false)}
+            >
+              <XIcon className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Messages */}
@@ -162,7 +151,6 @@ export default function ChatPanel({ wikiId, pageContext }: Props) {
                 </p>
               </div>
             )}
-
             {messages.map((msg, i) => (
               <div
                 key={i}
@@ -179,14 +167,14 @@ export default function ChatPanel({ wikiId, pageContext }: Props) {
                 ) : (
                   <div className="mb-1">
                     <span className="text-[10px] uppercase tracking-wider text-text-muted">
-                      Wiki
+                      WikiCube
                     </span>
                   </div>
                 )}
                 <div
                   className={`inline-block max-w-[95%] text-sm ${
                     msg.role === "user"
-                      ? "bg-text text-bg px-3 py-2"
+                      ? "bg-text text-bg px-3 py-2 text-left"
                       : "bg-bg-alt px-3 py-2"
                   }`}
                 >
@@ -201,22 +189,18 @@ export default function ChatPanel({ wikiId, pageContext }: Props) {
               </div>
             ))}
 
-            {/* Thinking indicator — shown while streaming and last message is empty */}
-            {isStreaming &&
-              messages.length > 0 &&
-              messages[messages.length - 1].role === "assistant" &&
-              !messages[messages.length - 1].content && (
-                <div className="text-left">
-                  <div className="inline-flex items-center gap-1.5 bg-bg-alt px-3 py-2 text-sm text-text-muted">
-                    <span className="flex gap-1">
-                      <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce [animation-delay:0ms]" />
-                      <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce [animation-delay:150ms]" />
-                      <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce [animation-delay:300ms]" />
-                    </span>
-                    <span className="ml-1">Thinking...</span>
-                  </div>
+            {/* Thinking indicator */}
+            {isThinking && (
+              <div className="text-left">
+                <div className="inline-flex items-center gap-1.5 bg-bg-alt px-3 py-3 text-sm text-text-muted">
+                  <span className="flex gap-1">
+                    <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce [animation-delay:0ms]" />
+                    <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce [animation-delay:150ms]" />
+                    <span className="w-1.5 h-1.5 bg-text-muted rounded-full animate-bounce [animation-delay:300ms]" />
+                  </span>
                 </div>
-              )}
+              </div>
+            )}
 
             <div ref={messagesEndRef} />
           </div>
