@@ -68,12 +68,21 @@ export default function WikiShell({
   const basePath = `/wiki/${owner}/${repo}`;
   const pageContext = (() => {
     if (pathname === basePath || pathname === `${basePath}/`) {
-      return `Currently viewing: Overview page for ${owner}/${repo}`;
+      return [
+        `Currently viewing: Overview page for ${owner}/${repo}`,
+        data.wiki.overview ? `\n${data.wiki.overview.slice(0, 2000)}` : "",
+      ].join("");
     }
     const featureSlug = pathname.replace(`${basePath}/`, "");
     const feature = data.features.find((f) => f.slug === featureSlug);
     if (feature) {
-      return `Currently viewing feature: ${feature.title}`;
+      return [
+        `Currently viewing feature: ${feature.title}`,
+        `\nSummary: ${feature.summary}`,
+        feature.markdown_content
+          ? `\n${feature.markdown_content.slice(0, 3000)}`
+          : "",
+      ].join("");
     }
     return undefined;
   })();

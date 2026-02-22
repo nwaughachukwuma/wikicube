@@ -28,9 +28,16 @@ export async function POST(req: NextRequest) {
   }
 
   // Embed the search query
-  const [queryEmbedding] = await generateEmbeddings([query]);
+  const embeddings = await generateEmbeddings([query]);
+  if (!embeddings.length || !embeddings[0]?.length) {
+    return NextResponse.json(
+      { error: "Failed to generate query embedding" },
+      { status: 502 },
+    );
+  }
+
   // Semantic search
-  const chunks = await matchChunks(wikiId, queryEmbedding, 10, 0.5);
+  const chunks = await matchChunks(wikiId, embeddings[0], 10, 0.5);
   // Get features to map feature_id to feature info
   const features = await getFeatures(wikiId);
   const featureMap = new Map(features.map((f) => [f.id, f]));

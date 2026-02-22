@@ -1,9 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { OptimLink } from "@/components/OptimisticLink";
 import WikiHistoryPanel from "@/components/WikiHistoryPanel";
+
+/** Matches owner/repo or github.com/owner/repo */
+const GITHUB_REPO_RE =
+  /(?:github\.com\/)?([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/;
 
 const EXAMPLE_REPOS = [
   {
@@ -28,6 +32,15 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+
+  const isValidUrl = useMemo(() => {
+    if (!url.trim()) return false;
+    const cleaned = url
+      .trim()
+      .replace(/\/+$/, "")
+      .replace(/\.git$/, "");
+    return GITHUB_REPO_RE.test(cleaned);
+  }, [url]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +123,7 @@ export default function HomePage() {
           />
           <button
             type="submit"
-            disabled={loading || !url.trim()}
+            disabled={loading || !isValidUrl}
             className="px-6 py-3 bg-text text-bg font-display uppercase text-sm tracking-wide
                        hover:bg-accent hover:text-text transition
                        disabled:opacity-50 disabled:cursor-not-allowed"

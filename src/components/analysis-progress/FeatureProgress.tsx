@@ -75,7 +75,7 @@ export function FeatureProgress({ features, activeRef }: FeatureProgressProps) {
             >
               {isActive ? (
                 <Loader2Icon
-                  className="animate-spin"
+                  className="w-4 h-4 animate-spin shrink-0"
                   style={{ animation: "spin 0.3s linear infinite" }}
                 />
               ) : (

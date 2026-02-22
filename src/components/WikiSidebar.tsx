@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { Feature } from "@/lib/types";
 import SearchBar from "@/components/SearchBar";
+import WikiHistoryPanel from "@/components/WikiHistoryPanel";
 import { OptimLink } from "./OptimisticLink";
 
 interface Props {
@@ -28,12 +29,15 @@ export default function WikiSidebar({
     <div className="h-full flex flex-col">
       {/* Header */}
       <div className="p-4 border-b border-border">
-        <Link
-          href="/"
-          className="text-xs uppercase tracking-widest text-text-muted hover:text-text transition"
-        >
-          WikiCube
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link
+            href="/"
+            className="text-xs uppercase tracking-widest text-text-muted hover:text-text transition"
+          >
+            WikiCube
+          </Link>
+          <WikiHistoryPanel />
+        </div>
         <Link
           href={basePath}
           className="mt-2 block font-mono text-sm font-medium hover:text-text-muted transition"

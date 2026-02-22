@@ -80,13 +80,11 @@ function segmentByTime(wikis: WikiEntry[]): TimeGroup[] {
 export default function WikiHistoryPanel() {
   const [open, setOpen] = useState(false);
   const [wikis, setWikis] = useState<WikiEntry[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  // Prefetch on mount
   useEffect(() => {
-    if (!open) return;
-
     let cancelled = false;
-    setLoading(true);
 
     fetch("/api/wikis")
       .then((r) => r.json())
@@ -103,7 +101,7 @@ export default function WikiHistoryPanel() {
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, []);
 
   const groups = useMemo(() => segmentByTime(wikis), [wikis]);
 

@@ -64,8 +64,8 @@ export default function SearchBar({
       return;
     }
 
-    // Open dropdown immediately for fuzzy results
-    setIsOpen(true);
+    // Open dropdown once semantic results arrive
+    setIsOpen(false);
 
     const timer = setTimeout(async () => {
       setLoading(true);
@@ -83,6 +83,7 @@ export default function SearchBar({
         // silently fail search
       } finally {
         setLoading(false);
+        setIsOpen(true);
       }
     }, 300);
 
@@ -94,8 +95,9 @@ export default function SearchBar({
     const seen = new Set<string>();
     const merged: Array<{
       featureTitle: string;
-      featureSlug: string;
+      featureSlug: string | null;
       content?: string;
+      sourceFile?: string | null;
       source: "fuzzy" | "semantic";
     }> = [];
 
@@ -113,7 +115,8 @@ export default function SearchBar({
 
     // Then semantic results
     for (const r of semanticResults) {
-      if (r.featureSlug && !seen.has(r.featureSlug)) {
+      if (r.featureSlug) {
+        if (seen.has(r.featureSlug)) continue;
         seen.add(r.featureSlug);
         merged.push({
           featureTitle: r.featureTitle || r.featureSlug,
@@ -121,10 +124,24 @@ export default function SearchBar({
           content: r.content,
           source: "semantic",
         });
+      } else {
+        // Code/overview chunks without a linked feature
+        const key = r.sourceFile || r.content?.slice(0, 60) || "";
+        if (seen.has(key)) continue;
+        seen.add(key);
+        merged.push({
+          featureTitle: r.sourceFile
+            ? r.sourceFile.split("/").pop() || r.sourceFile
+            : "Overview",
+          featureSlug: null,
+          content: r.content,
+          sourceFile: r.sourceFile,
+          source: "semantic",
+        });
       }
     }
 
-    return merged; //.slice(0, 8);
+    return merged.slice(0, 8);
   }, [fuzzyResults, semanticResults]);
 
   const hasResults = mergedResults.length > 0;
@@ -164,21 +181,30 @@ export default function SearchBar({
         <div className="absolute top-full left-0 right-0 mt-1 bg-card border border-border shadow-lg z-50 max-h-64 overflow-y-auto">
           {mergedResults.map((result, i) => (
             <button
-              key={`${result.featureSlug}-${i}`}
+              key={`${result.featureSlug || result.sourceFile || i}-${i}`}
               className="w-full text-left px-3 py-2 hover:bg-bg-alt transition border-b border-border last:border-0"
               onClick={() => {
-                router.push(`/wiki/${owner}/${repo}/${result.featureSlug}`);
+                const target = result.featureSlug
+                  ? `/wiki/${owner}/${repo}/${result.featureSlug}`
+                  : `/wiki/${owner}/${repo}`;
+                router.push(target);
                 setQuery("");
                 setIsOpen(false);
                 onNavigate?.();
               }}
             >
               <div className="flex items-center gap-1.5">
-                <div className="text-xs font-medium text-text">
+                <div className="text-xs font-medium text-text truncate">
                   {result.featureTitle}
                 </div>
-                <span className="text-[9px] text-text-muted uppercase tracking-wider">
-                  {result.source === "fuzzy" ? "title" : "content"}
+                <span className="text-[9px] text-text-muted uppercase tracking-wider shrink-0">
+                  {result.source === "fuzzy"
+                    ? "title"
+                    : result.featureSlug
+                      ? "content"
+                      : result.sourceFile
+                        ? "code"
+                        : "wiki"}
                 </span>
               </div>
               {result.content && (

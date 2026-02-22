@@ -147,7 +147,7 @@ export default function ChatPanel({ wikiId, pageContext }: Props) {
               <div className="text-center text-text-muted text-sm py-8">
                 <p>Ask anything about this codebase.</p>
                 <p className="mt-2 text-xs">
-                  e.g. &ldquo;Provide a high-level summary of this repo?&rdquo;
+                  e.g. &ldquo;Provide a high-level summary of this repo&rdquo;
                 </p>
               </div>
             )}
