@@ -15,9 +15,10 @@ import { FeatureProgress } from "./analysis-progress/FeatureProgress";
 interface Props {
   owner: string;
   repo: string;
+  onComplete?: () => void;
 }
 
-export default function AnalysisProgress({ owner, repo }: Props) {
+export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
   const router = useRouter();
   const [steps, setSteps] = useState<ProgressStep[]>([
     { label: "Fetching repository tree", status: "active" },
@@ -133,7 +134,11 @@ export default function AnalysisProgress({ owner, repo }: Props) {
             case "done":
               updateStep(3, "done");
               setTimeout(() => {
-                router.replace(`/wiki/${owner}/${repo}`);
+                if (onComplete) {
+                  onComplete();
+                } else {
+                  router.replace(`/wiki/${owner}/${repo}`);
+                }
               }, 500);
               break;
             case "error":
@@ -143,7 +148,7 @@ export default function AnalysisProgress({ owner, repo }: Props) {
         }
       }
     },
-    [owner, repo, router, updateStep, handleStatusEvent],
+    [owner, repo, router, updateStep, handleStatusEvent, onComplete],
   );
 
   useEffect(() => {
@@ -163,9 +168,6 @@ export default function AnalysisProgress({ owner, repo }: Props) {
 
         if (!res.ok) {
           const data = await res.json();
-          if (data.cached) {
-            return router.replace(`/wiki/${owner}/${repo}`);
-          }
           throw new Error(data.error || "Analysis failed");
         }
 
@@ -173,15 +175,18 @@ export default function AnalysisProgress({ owner, repo }: Props) {
         const contentType = res.headers.get("content-type") || "";
         if (contentType.includes("application/json")) {
           const data = await res.json();
-          if (data.status === "done") {
-            return router.replace(`/wiki/${owner}/${repo}`);
+          if (data.status === "done" || data.cached) {
+            if (onComplete) {
+              onComplete();
+            } else {
+              window.location.href = `/wiki/${owner}/${repo}`;
+            }
+            return;
           }
         }
 
         // SSE stream
         await handleStreamingResponse(res);
-        // navigate to wiki on completion
-        return router.replace(`/wiki/${owner}/${repo}`);
       } catch (err) {
         if (!abortController.signal.aborted) {
           setError(err instanceof Error ? err.message : "Analysis failed");
@@ -193,7 +198,7 @@ export default function AnalysisProgress({ owner, repo }: Props) {
 
     runAnalysis();
     return () => abortController.abort();
-  }, [owner, repo, router, handleStreamingResponse]);
+  }, [owner, repo, router, handleStreamingResponse, onComplete]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6">

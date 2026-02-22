@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { AnalysisEvent } from "@/lib/types";
 import { parseRepoUrl, GITHUB_URL_RE } from "@/lib/github";
 import { runAnalysisPipeline } from "@/lib/code-analyzer";
-import { getCachedWiki } from "@/lib/cache";
+import { getWiki } from "@/lib/db";
 import { extractError } from "@/lib/error";
 
 const PostSchema = z.object({
@@ -17,7 +17,7 @@ const PostSchema = z.object({
     ),
 });
 
-export const maxDuration = 900; // 15 minutes for large repos
+export const maxDuration = 300; // 15 minutes for large repos
 
 /**
  *  Notes:
@@ -34,8 +34,8 @@ export async function POST(req: NextRequest) {
 
   const { repoUrl } = parsed.data;
   const { owner, repo } = parseRepoUrl(repoUrl);
-  // Check if we already have a completed wiki
-  const existing = await getCachedWiki(owner, repo);
+  // Check if we already have a completed wiki (bypass cache to avoid stale reads)
+  const existing = await getWiki(owner, repo);
   if (existing && existing.status === "done") {
     return NextResponse.json({
       wikiId: existing.id,

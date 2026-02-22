@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
 import type { Wiki, Feature } from "@/lib/types";
 import WikiSidebar from "@/components/WikiSidebar";
@@ -58,8 +58,28 @@ export default function WikiShell({
     );
   }
 
+  const handleAnalysisComplete = useCallback(() => {
+    setNeedsGeneration(false);
+    setLoading(true);
+    fetch(`/api/wiki/${owner}/${repo}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then((json) => {
+        if (json.wiki?.status === "done") {
+          setData(json);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [owner, repo]);
+
   if (needsGeneration) {
-    return <AnalysisProgress owner={owner} repo={repo} />;
+    return (
+      <AnalysisProgress
+        owner={owner}
+        repo={repo}
+        onComplete={handleAnalysisComplete}
+      />
+    );
   }
 
   if (!data) return null;

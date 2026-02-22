@@ -40,6 +40,16 @@ export async function upsertWiki(
     .single();
 
   if (existing) {
+    // Return if already done
+    if (existing.status === "done") {
+      log.info("wiki already done", {
+        wikiId: existing.id,
+        owner,
+        repo,
+      });
+      return existing as Wiki;
+    }
+
     // Reset for re-generation
     log.info("resetting existing wiki", { wikiId: existing.id, owner, repo });
     const { data, error } = await db
