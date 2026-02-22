@@ -56,7 +56,7 @@ export function FeatureProgress({ features, activeRef }: FeatureProgressProps) {
         <div className="mb-3 space-y-1.5 w-full flex-col max-h-40 overflow-y-auto">
           {completedFeatures.map((f, i) => (
             <div key={i} className="flex items-center gap-2 text-sm">
-              <CheckIcon />
+              <CheckIcon className="w-4 h-4 text-green-600" />
               <span className="text-text-muted">{f.title}</span>
             </div>
           ))}
