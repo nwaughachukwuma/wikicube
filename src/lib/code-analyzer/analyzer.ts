@@ -5,6 +5,7 @@ import { gatherContext } from "./contextGatherer";
 import { identifyRepoFeatures } from "./featureIdentifier";
 import { generateAllPages } from "./pageGenerator";
 import { generateOverviewAndEmbed } from "./embedder";
+import { extractError } from "../error";
 
 const log = logger("analyzer");
 
@@ -66,11 +67,12 @@ export async function runAnalysisPipeline(
     onEvent({ type: "done", wikiId });
 
     return wikiId;
-  } catch (err: any) {
+  } catch (err) {
     log.error("pipeline failed", {
       owner,
       repo,
-      error: "message" in err ? err.message : String(err),
+      // @ts-expect-error - err might not be an Error object
+      error: extractError(err),
       stack: err instanceof Error ? err.stack : undefined,
     });
     onEvent({

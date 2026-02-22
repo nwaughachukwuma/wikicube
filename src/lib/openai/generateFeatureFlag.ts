@@ -35,28 +35,28 @@ const GeneratedPageSchema = z.object({
 });
 
 /** Truncate file content intelligently — keep signatures and structure */
-function truncateFile(content: string, maxLines = 300): string {
-  const lines = content.split("\n");
-  if (lines.length <= maxLines) return content;
+// function truncateFile(content: string, maxLines = 300): string {
+//   const lines = content.split("\n");
+//   if (lines.length <= maxLines) return content;
 
-  // Take first 100 lines, last 30 lines, and extract signatures from middle
-  const head = lines.slice(0, 100);
-  const tail = lines.slice(-30);
-  const middle = lines.slice(100, -30);
+//   // Take first 100 lines, last 30 lines, and extract signatures from middle
+//   const head = lines.slice(0, 100);
+//   const tail = lines.slice(-30);
+//   const middle = lines.slice(100, -30);
 
-  // Extract function/class/export signatures from middle
-  const sigPatterns =
-    /^(export |public |private |protected |async |def |fn |func |class |interface |type |const |let |var |function |module |impl |struct |enum )/;
-  const signatures = middle.filter((line) => sigPatterns.test(line.trim()));
+//   // Extract function/class/export signatures from middle
+//   const sigPatterns =
+//     /^(export |public |private |protected |async |def |fn |func |class |interface |type |const |let |var |function |module |impl |struct |enum )/;
+//   const signatures = middle.filter((line) => sigPatterns.test(line.trim()));
 
-  return [
-    ...head,
-    `\n// ... ${middle.length} lines omitted — key signatures below ...\n`,
-    ...signatures.slice(0, 50),
-    "\n// ... end of middle section ...\n",
-    ...tail,
-  ].join("\n");
-}
+//   return [
+//     ...head,
+//     `\n// ... ${middle.length} lines omitted — key signatures below ...\n`,
+//     ...signatures.slice(0, 50),
+//     "\n// ... end of middle section ...\n",
+//     ...tail,
+//   ].join("\n");
+// }
 
 export async function generateFeaturePage(
   repoName: string,

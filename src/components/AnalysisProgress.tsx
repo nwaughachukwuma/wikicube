@@ -68,91 +68,97 @@ export default function AnalysisProgress({ owner, repo }: Props) {
     [],
   );
 
-  function handleStatusEvent(status: WikiStatus) {
-    if (status === "fetching_tree") {
-      updateStep(0, "active");
-    } else if (status === "identifying_features") {
-      updateStep(0, "done");
-      updateStep(1, "active");
-    } else if (status === "generating_pages") {
-      updateStep(1, "done");
-      updateStep(2, "active");
-    } else if (status === "embedding") {
-      updateStep(2, "done");
-      updateStep(3, "active");
-    }
-  }
+  const handleStatusEvent = useCallback(
+    (status: WikiStatus) => {
+      if (status === "fetching_tree") {
+        updateStep(0, "active");
+      } else if (status === "identifying_features") {
+        updateStep(0, "done");
+        updateStep(1, "active");
+      } else if (status === "generating_pages") {
+        updateStep(1, "done");
+        updateStep(2, "active");
+      } else if (status === "embedding") {
+        updateStep(2, "done");
+        updateStep(3, "active");
+      }
+    },
+    [updateStep],
+  );
 
   // SSE stream
-  async function handleStreamingResponse(res: Response) {
-    const reader = res.body?.getReader();
-    if (!reader) return;
-    const decoder = new TextDecoder();
-    let buffer = "";
+  const handleStreamingResponse = useCallback(
+    async (res: Response) => {
+      const reader = res.body?.getReader();
+      if (!reader) return;
+      const decoder = new TextDecoder();
+      let buffer = "";
 
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split("\n\n");
-      buffer = lines.pop() || "";
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n\n");
+        buffer = lines.pop() || "";
 
-      for (const line of lines) {
-        if (!line.startsWith("data: ")) continue;
-        let event: AnalysisEvent | undefined;
-        try {
-          event = JSON.parse(line.slice(6));
-        } catch {
-          // Skip malformed events
-        }
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          let event: AnalysisEvent | undefined;
+          try {
+            event = JSON.parse(line.slice(6));
+          } catch {
+            // Skip malformed events
+          }
 
-        if (!event) continue;
+          if (!event) continue;
 
-        switch (event.type) {
-          case "status":
-            handleStatusEvent(event.status);
-            break;
-          case "features_list":
-            setFeatures(
-              event.features.map((title) => ({
-                title,
-                status: "queued" as FeatureStatus,
-              })),
-            );
-            break;
-          case "feature_started":
-            setFeatures((prev) =>
-              prev.map((f) =>
-                f.title === event.featureTitle
-                  ? { ...f, status: "in-progress" as FeatureStatus }
-                  : f,
-              ),
-            );
-            break;
-          case "feature_done":
-            setFeatures((prev) =>
-              prev.map((f) =>
-                f.title === event.featureTitle ||
-                f.title === event.featureTitle.replace(" (partial)", "")
-                  ? { ...f, status: "done" as FeatureStatus }
-                  : f,
-              ),
-            );
-            break;
-          case "done":
-            updateStep(3, "done");
-            setTimeout(() => {
-              router.replace(`/wiki/${owner}/${repo}`);
-            }, 500);
-            break;
-          case "error":
-            setError(event.message);
-            break;
+          switch (event.type) {
+            case "status":
+              handleStatusEvent(event.status);
+              break;
+            case "features_list":
+              setFeatures(
+                event.features.map((title) => ({
+                  title,
+                  status: "queued" as FeatureStatus,
+                })),
+              );
+              break;
+            case "feature_started":
+              setFeatures((prev) =>
+                prev.map((f) =>
+                  f.title === event.featureTitle
+                    ? { ...f, status: "in-progress" as FeatureStatus }
+                    : f,
+                ),
+              );
+              break;
+            case "feature_done":
+              setFeatures((prev) =>
+                prev.map((f) =>
+                  f.title === event.featureTitle ||
+                  f.title === event.featureTitle.replace(" (partial)", "")
+                    ? { ...f, status: "done" as FeatureStatus }
+                    : f,
+                ),
+              );
+              break;
+            case "done":
+              updateStep(3, "done");
+              setTimeout(() => {
+                router.replace(`/wiki/${owner}/${repo}`);
+              }, 500);
+              break;
+            case "error":
+              setError(event.message);
+              break;
+          }
         }
       }
-    }
-  }
+    },
+    [owner, repo, router, updateStep, handleStatusEvent],
+  );
 
   useEffect(() => {
     const abortController = new AbortController();
@@ -188,6 +194,8 @@ export default function AnalysisProgress({ owner, repo }: Props) {
 
         // SSE stream
         await handleStreamingResponse(res);
+        // navigate to wiki on completion
+        return router.replace(`/wiki/${owner}/${repo}`);
       } catch (err) {
         if (!abortController.signal.aborted) {
           setError(err instanceof Error ? err.message : "Analysis failed");
@@ -199,7 +207,7 @@ export default function AnalysisProgress({ owner, repo }: Props) {
 
     runAnalysis();
     return () => abortController.abort();
-  }, [owner, repo, router, updateStep]);
+  }, [owner, repo, router, handleStreamingResponse]);
 
   const completedFeatures = features.filter((f) => f.status === "done");
   const activeFeatures = features.filter((f) => f.status !== "done");

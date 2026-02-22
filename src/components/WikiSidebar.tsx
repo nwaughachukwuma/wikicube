@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useCallback } from "react";
+import { usePathname } from "next/navigation";
 import type { Feature } from "@/lib/types";
 import SearchBar from "@/components/SearchBar";
 import { OptimLink } from "./OptimisticLink";
@@ -23,16 +22,7 @@ export default function WikiSidebar({
   onNavigate,
 }: Props) {
   const pathname = usePathname();
-  const router = useRouter();
   const basePath = `/wiki/${owner}/${repo}`;
-
-  /** Optimistic prefetch on hover — reduces perceived latency ~500ms */
-  const prefetchOnHover = useCallback(
-    (path: string) => () => {
-      router.prefetch(path);
-    },
-    [router],
-  );
 
   return (
     <div className="h-full flex flex-col">
