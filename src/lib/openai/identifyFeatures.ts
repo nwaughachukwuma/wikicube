@@ -2,10 +2,9 @@ import { z } from "zod";
 import { zodTextFormat } from "openai/helpers/zod";
 import type { IdentifiedFeature } from "../types";
 import { logger } from "../logger";
-import { getOpenAI } from "./utils";
+import { getOpenAI, MODEL } from "./utils";
 
 const log = logger("openai:identifyFeatures");
-const MODEL = "gpt-5-mini";
 
 /* ─── Zod schemas for structured outputs ─── */
 const IdentifyFeaturesSchema = z.object({

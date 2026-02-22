@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-export const MODEL = "gpt-5-nano";
+export const MODEL = "gpt-5-mini";
 
 let _client: OpenAI | null = null;
 export function getOpenAI() {
