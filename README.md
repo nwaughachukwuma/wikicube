@@ -1,5 +1,7 @@
 # WikiCube — Instant Wiki for Any GitHub Repo
 
+<img width="1510" height="505" alt="Gemini_Generated_Image_7imigd7imigd7imi" src="https://github.com/user-attachments/assets/97bcdb79-59d9-4b88-917e-70a8e43f28c2" />
+
 Paste a GitHub URL and get a polished, AI-generated wiki organized by user-facing features. One click. Zero setup.
 
 > https://wikicube.vercel.app
