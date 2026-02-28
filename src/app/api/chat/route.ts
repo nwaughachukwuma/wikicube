@@ -9,6 +9,7 @@ import {
 } from "@/lib/db";
 import { generateEmbeddings, chatWithWiki } from "@/lib/openai";
 import { getUserServerClient } from "@/lib/supabase/server";
+import { privateWikiGuard } from "@/lib/db.utils";
 
 export const maxDuration = 120;
 
@@ -51,6 +52,9 @@ export async function POST(req: NextRequest) {
       { status: 404 },
     );
   }
+
+  const error = privateWikiGuard(wiki, userId);
+  if (error) return error;
 
   // Load chat history from DB for this session (scoped to this user)
   const history = (await getChatSessionMessages(sessionId, userId)).map(

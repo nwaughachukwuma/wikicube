@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getWikiChatSessions, getChatSessionMessages } from "@/lib/db";
+import {
+  getWikiChatSessions,
+  getChatSessionMessages,
+  getWikiById,
+} from "@/lib/db";
 import { getUserServerClient } from "@/lib/supabase/server";
+import { privateWikiGuard } from "@/lib/db.utils";
 
 /**
  * GET /api/chat/sessions?wikiId=xxx        → list sessions for a wiki (auth required)
@@ -30,6 +35,13 @@ export async function GET(req: NextRequest) {
   }
 
   if (wikiId) {
+    const wiki = await getWikiById(wikiId);
+    if (!wiki) {
+      return NextResponse.json({ error: "Wiki not found" }, { status: 404 });
+    }
+    const error = privateWikiGuard(wiki, userId);
+    if (error) return error;
+
     const sessions = await getWikiChatSessions(wikiId, userId);
     return NextResponse.json(sessions);
   }

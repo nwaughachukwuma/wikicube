@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getWikiById, matchChunks, getFeatures } from "@/lib/db";
 import { generateEmbeddings } from "@/lib/openai";
+import { getUserServerClient } from "@/lib/supabase/server";
+import { privateWikiGuard } from "@/lib/db.utils";
 
 const SearchSchema = z.object({
   wikiId: z.string().nonempty("wikiId must be a non-empty string"),
@@ -25,6 +27,15 @@ export async function POST(req: NextRequest) {
       { error: "Wiki not found or not ready" },
       { status: 404 },
     );
+  }
+
+  if (wiki.visibility === "private") {
+    const supabase = await getUserServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const error = privateWikiGuard(wiki, user?.id);
+    if (error) return error;
   }
 
   // Embed the search query
