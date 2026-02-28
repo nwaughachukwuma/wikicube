@@ -5,6 +5,7 @@ import { parseRepoUrl, GITHUB_URL_RE } from "@/lib/github";
 import { runAnalysisPipeline } from "@/lib/code-analyzer";
 import { getWiki } from "@/lib/db";
 import { extractError } from "@/lib/error";
+import { getUserServerClient } from "@/lib/supabase/server";
 
 const PostSchema = z.object({
   repoUrl: z
@@ -15,16 +16,12 @@ const PostSchema = z.object({
       (url) => url.match(GITHUB_URL_RE),
       "Only GitHub repository URLs are allowed",
     ),
+  /** User's GitHub OAuth access token — required only for private repos */
+  githubToken: z.string().optional(),
 });
 
 export const maxDuration = 300; // 15 minutes for large repos
 
-/**
- *  Notes:
- * - Use a job queue for better reliability and scalability (e.g. BullMQ, Sidekiq)
- * - Async Queue like Google Cloud Tasks or AWS SQS could also work without needing a separate worker process
- * - I'll prefer to move this off Next.js to a proper backend service.
- */
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const parsed = PostSchema.safeParse(body);
@@ -32,8 +29,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "repoUrl is required" }, { status: 400 });
   }
 
-  const { repoUrl } = parsed.data;
+  const { repoUrl, githubToken } = parsed.data;
   const { owner, repo } = parseRepoUrl(repoUrl);
+
+  // If a GitHub token is provided it means the user wants to index a private
+  // repo — require Supabase authentication so we can record indexed_by.
+  let userId: string | undefined;
+  if (githubToken) {
+    const supabase = await getUserServerClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: "Authentication required to index private repositories" },
+        { status: 401 },
+      );
+    }
+    userId = user.id;
+  }
+
   // Check if we already have a completed wiki (bypass cache to avoid stale reads)
   const existing = await getWiki(owner, repo);
   if (existing && existing.status === "done") {
@@ -44,9 +59,6 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // TODO: we can track status here if we wired in a Queue
-  // For now, restart for any other state other than 'done'.
-  // Stream progress via SSE
   const encoder = new TextEncoder();
   const stream = new TransformStream();
   const writer = stream.writable.getWriter();
@@ -59,8 +71,14 @@ export async function POST(req: NextRequest) {
     }
   };
 
+  const pipelineOpts = {
+    githubToken,
+    userId,
+    visibility: githubToken ? ("private" as const) : ("public" as const),
+  };
+
   // Run pipeline in the background (non-blocking for the stream)
-  void runAnalysisPipeline(owner, repo, sendEvent)
+  void runAnalysisPipeline(owner, repo, sendEvent, pipelineOpts)
     .catch(async (err) => {
       await sendEvent({
         type: "error",

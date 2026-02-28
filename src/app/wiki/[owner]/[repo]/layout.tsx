@@ -1,3 +1,4 @@
+import AuthButton from "@/components/AuthButton";
 import WikiShell from "@/components/WikiShell";
 
 export default async function WikiLayout({
@@ -10,7 +11,13 @@ export default async function WikiLayout({
   const { owner, repo } = await params;
   return (
     <WikiShell owner={owner} repo={repo}>
-      {children}
+      <div className="relative">
+        {children}
+
+        <div className="absolute top-5 right-5">
+          <AuthButton />
+        </div>
+      </div>
     </WikiShell>
   );
 }

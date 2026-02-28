@@ -91,3 +91,31 @@ alter table public.chunks enable row level security;
 create policy "Allow public read on wikis" on public.wikis for select using (true);
 create policy "Allow public read on features" on public.features for select using (true);
 create policy "Allow public read on chunks" on public.chunks for select using (true);
+
+-- Auth: add visibility + indexed_by to wikis
+alter table public.wikis
+  add column if not exists visibility text not null default 'public'
+    check (visibility in ('public', 'private')),
+  add column if not exists indexed_by uuid references auth.users(id) on delete set null;
+
+create index if not exists idx_wikis_indexed_by on public.wikis(indexed_by);
+
+-- Wiki chats table (persisted chat messages per session)
+create table if not exists public.wiki_chats (
+  id uuid default gen_random_uuid() primary key,
+  wiki_id uuid not null references public.wikis(id) on delete cascade,
+  session_id text not null,
+  user_id uuid references auth.users(id) on delete set null,
+  role text not null check (role in ('user', 'assistant')),
+  content text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_wiki_chats_wiki_id on public.wiki_chats(wiki_id);
+create index if not exists idx_wiki_chats_session_id on public.wiki_chats(session_id);
+create index if not exists idx_wiki_chats_user_id on public.wiki_chats(user_id);
+
+alter table public.wiki_chats enable row level security;
+-- Users can only see their own chat messages
+create policy "Users read own chats" on public.wiki_chats
+  for select using (user_id = auth.uid());

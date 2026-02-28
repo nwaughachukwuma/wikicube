@@ -3,7 +3,9 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { OptimLink } from "@/components/OptimisticLink";
-import WikiHistoryPanel from "@/components/WikiHistoryPanel";
+import AppHeader from "@/components/AppHeader";
+import { PageLoading } from "@/components/PageLoading";
+import { useUser } from "@/lib/supabase/useUser";
 
 /** Matches owner/repo or github.com/owner/repo */
 const GITHUB_REPO_RE =
@@ -32,6 +34,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const { user, authLoading } = useUser();
 
   const isValidUrl = useMemo(() => {
     if (!url.trim()) return false;
@@ -72,25 +75,11 @@ export default function HomePage() {
     }
   };
 
+  if (authLoading) return <PageLoading />;
+
   return (
     <main className="min-h-screen flex flex-col">
-      {/* Header */}
-      <header className="border-b border-border px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <WikiHistoryPanel />
-          <div className="font-display text-xl uppercase tracking-tight">
-            WikiCube
-          </div>
-        </div>
-        <a
-          href="https://github.com/nwaughachukwuma/wikicube"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-sm text-text-muted hover:text-text transition"
-        >
-          GitHub
-        </a>
-      </header>
+      <AppHeader />
 
       {/* Hero */}
       <section className="flex-1 flex flex-col items-center justify-center px-6 py-20">
@@ -133,6 +122,12 @@ export default function HomePage() {
         </form>
 
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
+
+        <p className="mt-3 text-xs text-text-muted text-center">
+          <OptimLink href="/my-repos" className="underline hover:text-text">
+            Index your private repos
+          </OptimLink>
+        </p>
 
         {/* Example repos */}
         <div className="mt-16 w-full max-w-3xl">

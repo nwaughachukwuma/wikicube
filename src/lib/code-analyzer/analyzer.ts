@@ -1,6 +1,6 @@
 import { updateWikiStatus } from "../db";
 import { logger } from "../logger";
-import type { AnalysisEvent } from "../types";
+import type { AnalysisEvent, PipelineOptions } from "../types";
 import { gatherContext } from "./contextGatherer";
 import { identifyRepoFeatures } from "./featureIdentifier";
 import { generateAllPages } from "./pageGenerator";
@@ -14,6 +14,7 @@ export async function runAnalysisPipeline(
   owner: string,
   repo: string,
   onEvent: (event: AnalysisEvent) => void,
+  opts: PipelineOptions = {},
 ): Promise<string> {
   log.info("pipeline started", { owner, repo });
   const pipelineDone = log.time("pipeline");
@@ -24,6 +25,7 @@ export async function runAnalysisPipeline(
       owner,
       repo,
       onEvent,
+      opts,
     );
 
     // Phase B: Identify user-facing features
@@ -47,6 +49,7 @@ export async function runAnalysisPipeline(
       meta,
       wikiId,
       onEvent,
+      opts.githubToken,
     );
 
     // Phases E+F: Generate overview page, then chunk and embed everything

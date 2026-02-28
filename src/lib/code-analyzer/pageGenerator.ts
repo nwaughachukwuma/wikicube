@@ -31,6 +31,7 @@ export async function generateAllPages(
   meta: RepoMeta,
   wikiId: string,
   onEvent: (event: AnalysisEvent) => void,
+  githubToken?: string,
 ): Promise<{ features: Feature[]; allSourceFiles: Map<string, string> }> {
   const pageGenDone = log.time("generateAllPages");
 
@@ -45,6 +46,7 @@ export async function generateAllPages(
         meta,
         wikiId,
         onEvent,
+        githubToken,
       }),
     5, // max concurrency
   ).then((res) => res.filter((r) => r !== null) as PageGenResult[]);
@@ -80,8 +82,10 @@ async function fetchFilesGeneratePage(params: {
   meta: RepoMeta;
   wikiId: string;
   onEvent: (event: AnalysisEvent) => void;
+  githubToken?: string;
 }): Promise<PageGenResult | null> {
-  const { order, owner, repo, meta, wikiId, onEvent, identified } = params;
+  const { order, owner, repo, meta, wikiId, onEvent, identified, githubToken } =
+    params;
   const allSourceFiles = new Map<string, string>();
 
   onEvent({ type: "feature_started", featureTitle: identified.title });
@@ -94,6 +98,8 @@ async function fetchFilesGeneratePage(params: {
       repo,
       meta.defaultBranch,
       identified.relevantFiles,
+      10,
+      githubToken,
     );
     fetchDone({
       filesToFetch: identified.relevantFiles,
