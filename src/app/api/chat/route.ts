@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   if (error) return error;
 
   // Load chat history from DB for this session (scoped to this user)
-  const history = (await getChatSessionMessages(sessionId, userId)).map(
+  const history = (await getChatSessionMessages(wikiId, sessionId, userId)).map(
     (m) => ({ role: m.role, content: m.content }),
   );
 
@@ -108,6 +108,9 @@ export async function POST(req: NextRequest) {
         if (done) break;
         fullContent += decoder.decode(value, { stream: true });
       }
+      const finalText = decoder.decode();
+      if (finalText) fullContent += finalText;
+
       if (fullContent) {
         await insertChatMessage(
           wikiId,

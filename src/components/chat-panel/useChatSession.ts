@@ -43,10 +43,14 @@ export function useChatSession({ wikiId }: UseChatSessionOptions) {
   const loadSession = useCallback(
     async (sessionId: string): Promise<Message[] | null> => {
       try {
-        const res = await fetch(`/api/chat/sessions?sessionId=${sessionId}`);
+        const res = await fetch(
+          `/api/chat/sessions?wikiId=${wikiId}&sessionId=${sessionId}`,
+        );
         if (!res.ok) return null;
+
         const rows: Array<{ role: "user" | "assistant"; content: string }> =
           await res.json();
+
         sessionIdRef.current = sessionId;
         sessionStorage.setItem(`chat-session-${wikiId}`, sessionId);
         return rows.map((r) => ({ role: r.role, content: r.content }));

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWiki, getFeatures } from "@/lib/db";
 import { getUserServerClient } from "@/lib/supabase/server";
-import { canAccessWiki, privateWikiGuard } from "@/lib/db.utils";
+import { privateWikiGuard } from "@/lib/db.utils";
 
 export async function GET(
   _req: NextRequest,

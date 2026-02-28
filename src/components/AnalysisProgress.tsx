@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { AnalysisEvent, WikiStatus } from "@/lib/types";
-import { useUser } from "@/lib/supabase/useUser";
 import type {
   ProgressStep,
   TrackedFeature,
@@ -21,7 +20,6 @@ interface Props {
 
 export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
   const router = useRouter();
-  const { providerToken } = useUser();
   const [steps, setSteps] = useState<ProgressStep[]>([
     { label: "Fetching repository tree", status: "active" },
     { label: "Identifying user-facing features", status: "pending" },
@@ -163,7 +161,6 @@ export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
           method: "POST",
           body: JSON.stringify({
             repoUrl: `https://github.com/${owner}/${repo}`,
-            ...(providerToken ? { githubToken: providerToken } : {}),
           }),
           headers: { "Content-Type": "application/json" },
           signal: abortController.signal,

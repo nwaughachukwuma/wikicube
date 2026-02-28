@@ -16,8 +16,6 @@ const PostSchema = z.object({
       (url) => url.match(GITHUB_URL_RE),
       "Only GitHub repository URLs are allowed",
     ),
-  /** User's GitHub OAuth access token — required only for private repos */
-  githubToken: z.string().optional(),
 });
 
 export const maxDuration = 300; // 15 minutes for large repos
@@ -29,8 +27,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "repoUrl is required" }, { status: 400 });
   }
 
-  const { repoUrl, githubToken } = parsed.data;
+  const { repoUrl } = parsed.data;
   const { owner, repo } = parseRepoUrl(repoUrl);
+
+  const userClient = await getUserServerClient();
+  const {
+    data: { session },
+  } = await userClient.auth.getSession();
+  const githubToken = session?.provider_token || void 0;
 
   // If a GitHub token is provided it means the user wants to index a private
   // repo — require Supabase authentication so we can record indexed_by.

@@ -48,7 +48,13 @@ export default function MyReposPage() {
 
     // Single server-side call: fetches GitHub repos + wiki check in parallel,
     // with providerToken read from the session cookie, never exposed to client network tab.
-    (fetchWithSWR("/api/my-repos", {}, CACHE_TTL) as Promise<RepoWithWiki[]>)
+    (
+      fetchWithSWR(
+        "/api/my-repos",
+        {},
+        { maxAge: CACHE_TTL, userId: user.id },
+      ) as Promise<RepoWithWiki[]>
+    )
       .then(setRepos)
       .catch((err: Error) => setError(err.message))
       .finally(() => setReposLoading(false));

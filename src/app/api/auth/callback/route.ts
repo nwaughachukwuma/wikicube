@@ -8,12 +8,12 @@ import { getUserServerClient } from "@/lib/supabase/server";
 export async function GET(req: NextRequest) {
   const { searchParams } = req.nextUrl;
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/";
-
   if (code) {
     const supabase = await getUserServerClient();
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  return NextResponse.redirect(new URL(next, req.url));
+  const next = searchParams.get("next");
+  const safeNext = next && next.startsWith("/") ? next : "/";
+  return NextResponse.redirect(new URL(safeNext, req.url));
 }

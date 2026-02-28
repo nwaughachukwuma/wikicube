@@ -272,12 +272,14 @@ export async function insertChatMessage(
 }
 
 export async function getChatSessionMessages(
+  wikiId: string,
   sessionId: string,
   userId?: string,
 ): Promise<WikiChat[]> {
   let query = getServerClient()
     .from("wiki_chats")
     .select("*")
+    .eq("wiki_id", wikiId)
     .eq("session_id", sessionId)
     .order("created_at", { ascending: true });
 

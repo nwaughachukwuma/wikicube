@@ -1,20 +1,32 @@
 const CACHE_NAME = "wikicube-client-cache";
 const MAX_AGE = 600; // seconds
 
+type Params = {
+  maxAge?: number;
+  userId?: string | null;
+};
+
 export async function fetchWithSWR(
   url: string,
   options: RequestInit,
-  maxAge = MAX_AGE,
+  params: Params = {},
 ) {
+  const { maxAge = MAX_AGE, userId } = params;
+  url = userId ? `${url}?uid=${userId}` : url;
+
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(url);
-
   if (cached) {
     const cachedAt = cached.headers.get("x-cached-at");
     const age = cachedAt ? (Date.now() - Number(cachedAt)) / 1000 : Infinity;
     if (age < maxAge) return cached.json();
 
-    fetchAndCache(url, options, cache); // fire and forget
+    // On auth errors (e.g. expired GitHub token → 403)
+    // purge the entry so the *next* load surfaces the error
+    // immediately instead of endlessly serving stale data.
+    fetchAndCache(url, options, cache).catch(
+      async () => await cache.delete(url),
+    );
     return cached.json();
   }
 

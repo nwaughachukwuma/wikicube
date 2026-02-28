@@ -9,7 +9,7 @@ import { privateWikiGuard } from "@/lib/db.utils";
 
 /**
  * GET /api/chat/sessions?wikiId=xxx        → list sessions for a wiki (auth required)
- * GET /api/chat/sessions?sessionId=xxx     → messages for a specific session (auth required)
+ * GET /api/chat/sessions?wikiId=xxx&sessionId=xxx     → messages for a specific session (auth required)
  */
 export async function GET(req: NextRequest) {
   // Require authentication
@@ -29,25 +29,25 @@ export async function GET(req: NextRequest) {
   const wikiId = searchParams.get("wikiId");
   const sessionId = searchParams.get("sessionId");
 
+  if (!wikiId) {
+    return NextResponse.json(
+      { error: "Provide wikiId or sessionId" },
+      { status: 400 },
+    );
+  }
+
   if (sessionId) {
-    const messages = await getChatSessionMessages(sessionId, userId);
+    const messages = await getChatSessionMessages(wikiId, sessionId, userId);
     return NextResponse.json(messages);
   }
 
-  if (wikiId) {
-    const wiki = await getWikiById(wikiId);
-    if (!wiki) {
-      return NextResponse.json({ error: "Wiki not found" }, { status: 404 });
-    }
-    const error = privateWikiGuard(wiki, userId);
-    if (error) return error;
-
-    const sessions = await getWikiChatSessions(wikiId, userId);
-    return NextResponse.json(sessions);
+  const wiki = await getWikiById(wikiId);
+  if (!wiki) {
+    return NextResponse.json({ error: "Wiki not found" }, { status: 404 });
   }
+  const error = privateWikiGuard(wiki, userId);
+  if (error) return error;
 
-  return NextResponse.json(
-    { error: "Provide wikiId or sessionId" },
-    { status: 400 },
-  );
+  const sessions = await getWikiChatSessions(wikiId, userId);
+  return NextResponse.json(sessions);
 }

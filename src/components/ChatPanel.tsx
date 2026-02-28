@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { XIcon, MessageSquareMore } from "lucide-react";
 import { useUser } from "@/lib/supabase/useUser";
-import { getBrowserClient } from "@/lib/supabase/client";
 import { useChatSession } from "./chat-panel/useChatSession";
 import { useChatStream } from "./chat-panel/useChatStream";
 import { ChatHeader } from "./chat-panel/ChatHeader";
@@ -12,6 +11,7 @@ import { ChatSessionsList } from "./chat-panel/ChatSessionsList";
 import { ChatMessages } from "./chat-panel/ChatMessages";
 import { ChatInput } from "./chat-panel/ChatInput";
 import type { ChatPanelProps } from "./chat-panel/types";
+import { signIn } from "./AuthButton";
 
 export default function ChatPanel({ wikiId, pageContext }: ChatPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -38,16 +38,6 @@ export default function ChatPanel({ wikiId, pageContext }: ChatPanelProps) {
     isThinking,
     handleSubmit,
   } = useChatStream({ wikiId, pageContext, getSessionId });
-
-  const signIn = () => {
-    getBrowserClient().auth.signInWithOAuth({
-      provider: "github",
-      options: {
-        scopes: "repo read:user",
-        redirectTo: `${window.location.origin}/api/auth/callback?next=${window.location.pathname}`,
-      },
-    });
-  };
 
   useEffect(() => {
     if (!isOpen || !user) return;

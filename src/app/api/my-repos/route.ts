@@ -38,7 +38,7 @@ export async function GET(): Promise<NextResponse> {
 
   // 1. Fetch all user repos (public + private) from GitHub
   const ghRes = await fetch(
-    "https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner&visibility=all",
+    "https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member&visibility=all",
     {
       headers: {
         Authorization: `Bearer ${providerToken}`,

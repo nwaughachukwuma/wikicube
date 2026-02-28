@@ -6,6 +6,16 @@ import { LogOut, BookMarked } from "lucide-react";
 import { getBrowserClient } from "@/lib/supabase/client";
 import { useUser } from "@/lib/supabase/useUser";
 
+export const signIn = async () => {
+  await getBrowserClient().auth.signInWithOAuth({
+    provider: "github",
+    options: {
+      scopes: "repo read:user",
+      redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(window.location.pathname)}`,
+    },
+  });
+};
+
 export default function AuthButton() {
   const { user, authLoading } = useUser();
   const [open, setOpen] = useState(false);
@@ -20,16 +30,6 @@ export default function AuthButton() {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [open]);
-
-  const signIn = async () => {
-    await getBrowserClient().auth.signInWithOAuth({
-      provider: "github",
-      options: {
-        scopes: "repo read:user",
-        redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(window.location.pathname)}`,
-      },
-    });
-  };
 
   const signOut = async () => {
     setOpen(false);
