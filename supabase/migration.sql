@@ -98,6 +98,15 @@ alter table public.wikis
     check (visibility in ('public', 'private')),
   add column if not exists indexed_by uuid references auth.users(id) on delete set null;
 
+-- Update wiki read policy to enforce visibility:
+-- public wikis are readable by everyone; private wikis only by their owner
+drop policy if exists "Allow public read on wikis" on public.wikis;
+create policy "Allow public read on wikis" on public.wikis
+  for select using (
+    visibility = 'public'
+    or (visibility = 'private' and indexed_by = auth.uid())
+  );
+
 create index if not exists idx_wikis_indexed_by on public.wikis(indexed_by);
 
 -- Wiki chats table (persisted chat messages per session)
