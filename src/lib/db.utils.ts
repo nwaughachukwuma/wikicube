@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { getSupabaseUser } from "./supabase/server";
 import type { Wiki } from "./types";
 
 /**
@@ -23,4 +24,18 @@ export function privateWikiGuard(wiki: Wiki, userId?: string | null) {
       { status: 403 },
     );
   }
+}
+
+export async function authRouteGuard() {
+  const user = await getSupabaseUser();
+  if (!user) {
+    return {
+      user: null,
+      err: NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 },
+      ),
+    };
+  }
+  return { user, err: null };
 }

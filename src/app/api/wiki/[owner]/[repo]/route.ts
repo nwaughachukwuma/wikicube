@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWiki, getFeatures } from "@/lib/db";
-import { getUserServerClient } from "@/lib/supabase/server";
+import { getSupabaseUser } from "@/lib/supabase/server";
 import { privateWikiGuard } from "@/lib/db.utils";
 
 export async function GET(
@@ -15,10 +15,7 @@ export async function GET(
   }
 
   if (wiki.visibility === "private") {
-    const supabase = await getUserServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSupabaseUser();
     const error = privateWikiGuard(wiki, user?.id);
     if (error) return error;
   }

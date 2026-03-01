@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getUserServerClient, getServerClient } from "@/lib/supabase/server";
+import { getServerClient, getSupabaseSession } from "@/lib/supabase/server";
 
 interface GitHubRepo {
   id: number;
@@ -19,11 +19,7 @@ export interface RepoWithWiki extends GitHubRepo {
 
 export async function GET(): Promise<NextResponse> {
   // Read providerToken from the session cookie — never touches the client network
-  const userClient = await getUserServerClient();
-  const {
-    data: { session },
-  } = await userClient.auth.getSession();
-
+  const session = await getSupabaseSession();
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -62,7 +58,9 @@ export async function GET(): Promise<NextResponse> {
 
   // 2. Check wikis for exactly this set of repos — parallel with nothing else to wait on
   const orFilter = allRepos
-    .map(({ owner, name }) => `and(owner.eq."${owner.login}",repo.eq."${name}")`)
+    .map(
+      ({ owner, name }) => `and(owner.eq."${owner.login}",repo.eq."${name}")`,
+    )
     .join(",");
 
   const { data: wikiRows } = await getServerClient()

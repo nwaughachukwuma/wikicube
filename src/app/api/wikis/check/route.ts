@@ -43,8 +43,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     .map(({ owner, repo }) => `and(owner.eq."${owner}",repo.eq."${repo}")`)
     .join(",");
 
-  const db = getServerClient();
-  const { data, error } = await db
+  const { data, error } = await getServerClient()
     .from("wikis")
     .select("owner, repo")
     .eq("status", "done")

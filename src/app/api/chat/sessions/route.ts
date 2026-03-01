@@ -4,31 +4,18 @@ import {
   getChatSessionMessages,
   getWikiById,
 } from "@/lib/db";
-import { getUserServerClient } from "@/lib/supabase/server";
-import { privateWikiGuard } from "@/lib/db.utils";
+import { authRouteGuard, privateWikiGuard } from "@/lib/db.utils";
 
 /**
  * GET /api/chat/sessions?wikiId=xxx        → list sessions for a wiki (auth required)
  * GET /api/chat/sessions?wikiId=xxx&sessionId=xxx     → messages for a specific session (auth required)
  */
 export async function GET(req: NextRequest) {
-  // Require authentication
-  const supabase = await getUserServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json(
-      { error: "Authentication required" },
-      { status: 401 },
-    );
-  }
-  const userId = user.id;
+  const { user, err } = await authRouteGuard();
+  if (err) return err;
 
   const { searchParams } = req.nextUrl;
   const wikiId = searchParams.get("wikiId");
-  const sessionId = searchParams.get("sessionId");
-
   if (!wikiId) {
     return NextResponse.json(
       { error: "Provide wikiId or sessionId" },
@@ -36,8 +23,9 @@ export async function GET(req: NextRequest) {
     );
   }
 
+  const sessionId = searchParams.get("sessionId");
   if (sessionId) {
-    const messages = await getChatSessionMessages(wikiId, sessionId, userId);
+    const messages = await getChatSessionMessages(wikiId, sessionId, user.id);
     return NextResponse.json(messages);
   }
 
@@ -45,9 +33,9 @@ export async function GET(req: NextRequest) {
   if (!wiki) {
     return NextResponse.json({ error: "Wiki not found" }, { status: 404 });
   }
-  const error = privateWikiGuard(wiki, userId);
+  const error = privateWikiGuard(wiki, user.id);
   if (error) return error;
 
-  const sessions = await getWikiChatSessions(wikiId, userId);
+  const sessions = await getWikiChatSessions(wikiId, user.id);
   return NextResponse.json(sessions);
 }
