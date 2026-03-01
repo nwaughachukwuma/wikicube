@@ -37,7 +37,9 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${anton.variable} ${jetbrainsMono.variable}`}
     >
-      <body className="bg-bg text-text antialiased">{children}</body>
+      <body className="bg-bg text-text antialiased" suppressHydrationWarning>
+        {children}
+      </body>
     </html>
   );
 }

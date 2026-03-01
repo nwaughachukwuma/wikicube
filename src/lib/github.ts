@@ -4,11 +4,11 @@ import { logger } from "./logger";
 const log = logger("github");
 const GITHUB_API = "https://api.github.com";
 
-const headers = (): HeadersInit =>
+const headers = (token?: string): HeadersInit =>
   ({
     Accept: "application/vnd.github.v3+json",
     "User-Agent": "wikicube/1.0",
-    Authorization: `Bearer ${process.env.GITHUB_TOKEN}`,
+    Authorization: `Bearer ${token ?? process.env.GITHUB_TOKEN}`,
   }) satisfies HeadersInit;
 
 // Detection
@@ -35,9 +35,10 @@ export function parseRepoUrl(url: string): { owner: string; repo: string } {
 export async function getRepoMeta(
   owner: string,
   repo: string,
+  token?: string,
 ): Promise<RepoMeta> {
   const res = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`, {
-    headers: headers(),
+    headers: headers(token),
   });
   if (!res.ok) {
     throw new Error(`GitHub API error ${res.status}: ${await res.text()}`);
@@ -51,6 +52,7 @@ export async function getRepoMeta(
     description: data.description || "",
     homepage: data.homepage || null,
     topics: data.topics || [],
+    isPrivate: data.private ?? false,
   } satisfies RepoMeta;
 }
 
@@ -59,10 +61,11 @@ export async function getRepoTree(
   owner: string,
   repo: string,
   branch: string,
+  token?: string,
 ): Promise<TreeEntry[]> {
   const res = await fetch(
     `${GITHUB_API}/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
-    { headers: headers() },
+    { headers: headers(token) },
   );
   if (!res.ok) {
     throw new Error(`Failed to fetch tree: ${res.status}`);
@@ -84,15 +87,19 @@ export async function getRepoTree(
   );
 }
 
-/** Fetch raw file content via raw.githubusercontent.com (no API rate limit) */
+/** Fetch raw file content. For private repos pass the user's GitHub token. */
 export async function getFileContent(
   owner: string,
   repo: string,
   branch: string,
   path: string,
+  token?: string,
 ): Promise<string> {
   const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
-  const res = await fetch(url);
+  const res = await fetch(
+    url,
+    token ? { headers: { Authorization: `Bearer ${token}` } } : undefined,
+  );
   if (!res.ok) return ""; // silently skip missing files
   return res.text();
 }
@@ -104,6 +111,7 @@ export async function getMultipleFiles(
   branch: string,
   paths: string[],
   concurrency = 10,
+  token?: string,
 ): Promise<Map<string, string>> {
   const results = new Map<string, string>();
   const queue = [...paths];
@@ -111,7 +119,7 @@ export async function getMultipleFiles(
   async function worker() {
     while (queue.length > 0) {
       const path = queue.shift()!;
-      const content = await getFileContent(owner, repo, branch, path);
+      const content = await getFileContent(owner, repo, branch, path, token);
       if (content) results.set(path, content);
     }
   }
@@ -226,6 +234,7 @@ export async function fetchProjectContext(
   repo: string,
   branch: string,
   treePaths: string[],
+  token?: string,
 ): Promise<{ readme: string; manifests: string }> {
   const readmePath = README_FILES.find((r) =>
     treePaths.some((p) => p.toLowerCase() === r.toLowerCase()),
@@ -237,7 +246,7 @@ export async function fetchProjectContext(
   // Fetch README + all manifests in parallel
   const [readmeContent, ...manifestResults] = await Promise.all(
     [...(readmePath ? [readmePath] : []), ...manifestPaths].map((mp) =>
-      getFileContent(owner, repo, branch, mp),
+      getFileContent(owner, repo, branch, mp, token),
     ),
   );
 

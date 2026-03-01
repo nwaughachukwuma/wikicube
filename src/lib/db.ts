@@ -1,7 +1,14 @@
 import { batchAll } from "./batchOps";
 import { logger } from "./logger";
 import { getServerClient } from "./supabase/server";
-import type { Wiki, Feature, WikiStatus, Chunk } from "./types";
+import type {
+  Wiki,
+  Feature,
+  WikiStatus,
+  Chunk,
+  WikiChat,
+  ChatSession,
+} from "./types";
 
 const log = logger("db");
 
@@ -28,6 +35,7 @@ export async function upsertWiki(
   owner: string,
   repo: string,
   defaultBranch: string,
+  opts: { visibility?: "public" | "private"; indexedBy?: string } = {},
 ): Promise<Wiki> {
   const db = getServerClient();
 
@@ -57,6 +65,8 @@ export async function upsertWiki(
       .update({
         status: "pending" as WikiStatus,
         default_branch: defaultBranch,
+        visibility: opts.visibility ?? existing.visibility ?? "public",
+        indexed_by: opts.indexedBy ?? existing.indexed_by ?? null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", existing.id)
@@ -82,6 +92,8 @@ export async function upsertWiki(
       default_branch: defaultBranch,
       overview: "",
       status: "pending" as WikiStatus,
+      visibility: opts.visibility ?? "public",
+      indexed_by: opts.indexedBy ?? null,
     })
     .select()
     .single();
@@ -236,4 +248,90 @@ export async function matchChunks(
   if (error) throw error;
 
   return data || [];
+}
+
+/* ─── Wiki Chats ─── */
+
+export async function insertChatMessage(
+  wikiId: string,
+  sessionId: string,
+  role: "user" | "assistant",
+  content: string,
+  userId?: string,
+): Promise<void> {
+  const { error } = await getServerClient()
+    .from("wiki_chats")
+    .insert({
+      wiki_id: wikiId,
+      session_id: sessionId,
+      role,
+      content,
+      user_id: userId ?? null,
+    });
+  if (error) throw error;
+}
+
+export async function getChatSessionMessages(
+  wikiId: string,
+  sessionId: string,
+  userId?: string,
+): Promise<WikiChat[]> {
+  let query = getServerClient()
+    .from("wiki_chats")
+    .select("*")
+    .eq("wiki_id", wikiId)
+    .eq("session_id", sessionId)
+    .order("created_at", { ascending: true });
+
+  if (userId) query = query.eq("user_id", userId);
+
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data || []) as WikiChat[];
+}
+
+export async function getWikiChatSessions(
+  wikiId: string,
+  userId: string,
+): Promise<ChatSession[]> {
+  const { data, error } = await getServerClient()
+    .from("wiki_chats")
+    .select("session_id, role, content, created_at")
+    .eq("wiki_id", wikiId)
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  if (!data || data.length === 0) return [];
+
+  // Group by session_id, derive preview + last_activity + count
+  const sessionMap = new Map<
+    string,
+    { preview: string; last_activity: string; message_count: number }
+  >();
+
+  for (const row of data) {
+    const existing = sessionMap.get(row.session_id);
+    if (!existing) {
+      // First message for this session — use as preview if it's a user message
+      sessionMap.set(row.session_id, {
+        preview:
+          row.role === "user" ? row.content.slice(0, 80) : "(session started)",
+        last_activity: row.created_at,
+        message_count: 1,
+      });
+    } else {
+      existing.last_activity = row.created_at;
+      existing.message_count += 1;
+    }
+  }
+
+  // Return most-recent-first
+  return Array.from(sessionMap.entries())
+    .map(([session_id, meta]) => ({ session_id, ...meta }))
+    .sort(
+      (a, b) =>
+        new Date(b.last_activity).getTime() -
+        new Date(a.last_activity).getTime(),
+    );
 }

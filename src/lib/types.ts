@@ -7,8 +7,19 @@ export interface Wiki {
   default_branch: string;
   overview: string;
   status: WikiStatus;
+  visibility: "public" | "private";
+  indexed_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface PipelineOptions {
+  /** GitHub OAuth access token — user's provider_token from Supabase auth */
+  githubToken?: string;
+  /** Supabase user id of the user who triggered indexing (for private wikis) */
+  userId?: string;
+  /** Whether the repo is private */
+  visibility?: "public" | "private";
 }
 
 export type WikiStatus =
@@ -56,6 +67,22 @@ export interface Chunk {
   embedding: number[];
 }
 
+export interface WikiChat {
+  id: string;
+  wiki_id: string;
+  session_id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
+export interface ChatSession {
+  session_id: string;
+  preview: string; // first user message, truncated
+  last_activity: string;
+  message_count: number;
+}
+
 /* ─── LLM response shapes ─── */
 
 export interface IdentifiedFeature {
@@ -80,6 +107,7 @@ export interface RepoMeta {
   description: string;
   homepage: string | null;
   topics: string[];
+  isPrivate: boolean;
 }
 
 export interface TreeEntry {

@@ -6,6 +6,7 @@ import type { Wiki, Feature } from "@/lib/types";
 import WikiSidebar from "@/components/WikiSidebar";
 import ChatPanel from "@/components/ChatPanel";
 import AnalysisProgress from "@/components/AnalysisProgress";
+import { PageLoading } from "./PageLoading";
 
 interface WikiData {
   wiki: Wiki;
@@ -64,13 +65,7 @@ export default function WikiShell({
       .finally(() => setLoading(false));
   }, [owner, repo]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-3 h-3 bg-accent rounded-full animate-pulse" />
-      </div>
-    );
-  }
+  if (loading) return <PageLoading />;
 
   if (needsGeneration) {
     return (

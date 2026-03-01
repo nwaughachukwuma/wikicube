@@ -7,7 +7,7 @@ import {
 } from "../github";
 import { upsertWiki } from "../db";
 import { logger } from "../logger";
-import type { AnalysisEvent, RepoMeta } from "../types";
+import type { AnalysisEvent, PipelineOptions, RepoMeta } from "../types";
 
 const log = logger("context-gatherer");
 
@@ -25,6 +25,7 @@ export async function gatherContext(
   owner: string,
   repo: string,
   onEvent: (event: AnalysisEvent) => void,
+  opts: PipelineOptions = {},
 ): Promise<GatheredContext> {
   onEvent({
     type: "status",
@@ -33,7 +34,7 @@ export async function gatherContext(
   });
 
   const metaDone = log.time("getRepoMeta");
-  const meta = await getRepoMeta(owner, repo);
+  const meta = await getRepoMeta(owner, repo, opts.githubToken);
   metaDone({ defaultBranch: meta.defaultBranch });
 
   onEvent({
@@ -44,8 +45,11 @@ export async function gatherContext(
 
   const treeDone = log.time("upsertWiki+getRepoTree");
   const [wiki, rawTree] = await Promise.all([
-    upsertWiki(owner, repo, meta.defaultBranch),
-    getRepoTree(owner, repo, meta.defaultBranch),
+    upsertWiki(owner, repo, meta.defaultBranch, {
+      visibility: meta.isPrivate ? "private" : "public",
+      indexedBy: meta.isPrivate ? opts.userId : undefined,
+    }),
+    getRepoTree(owner, repo, meta.defaultBranch, opts.githubToken),
   ]);
   treeDone({ rawTreeSize: rawTree.length });
 
@@ -72,6 +76,7 @@ export async function gatherContext(
     repo,
     meta.defaultBranch,
     treePaths,
+    opts.githubToken,
   );
   ctxDone({
     readme,
