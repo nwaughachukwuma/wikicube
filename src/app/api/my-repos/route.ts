@@ -62,7 +62,7 @@ export async function GET(): Promise<NextResponse> {
 
   // 2. Check wikis for exactly this set of repos — parallel with nothing else to wait on
   const orFilter = allRepos
-    .map(({ owner, name }) => `and(owner.eq.${owner.login},repo.eq.${name})`)
+    .map(({ owner, name }) => `and(owner.eq."${owner.login}",repo.eq."${name}")`)
     .join(",");
 
   const { data: wikiRows } = await getServerClient()

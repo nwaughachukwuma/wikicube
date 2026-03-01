@@ -125,7 +125,7 @@ export default function HomePage() {
 
         <p className="mt-3 text-xs text-text-muted text-center">
           <OptimLink href="/my-repos" className="underline hover:text-text">
-            Index your private repos
+            Index your own repos
           </OptimLink>
         </p>
 
