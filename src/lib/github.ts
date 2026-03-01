@@ -111,11 +111,12 @@ export async function getMultipleFiles(
   repo: string,
   branch: string,
   paths: string[],
-  concurrency = 10,
   token?: string,
 ): Promise<Map<string, string>> {
   const results = new Map<string, string>();
   const queue = [...paths];
+
+  const concurrency = Math.min(10, paths.length);
 
   async function worker() {
     while (queue.length > 0) {
@@ -125,10 +126,7 @@ export async function getMultipleFiles(
     }
   }
 
-  const workers = Array.from(
-    { length: Math.min(concurrency, paths.length) },
-    worker,
-  );
+  const workers = Array.from({ length: concurrency }, worker);
   await Promise.all(workers);
   return results;
 }
@@ -261,7 +259,7 @@ export async function fetchProjectContext(
   const results = await batchAll(
     pathsToFetch,
     async (path) => getFileContent(owner, repo, branch, path, token),
-    10,
+    20,
   );
 
   const readmeResult = readmePath ? results[0] : { content: "", path: "" };

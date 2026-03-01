@@ -65,6 +65,23 @@ export default function WikiShell({
       .finally(() => setLoading(false));
   }, [owner, repo]);
 
+  // Poll for search_ready when wiki is done but search index isn't built yet
+  useEffect(() => {
+    if (!data || data.wiki.search_ready) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/wiki/${owner}/${repo}`);
+        if (!res.ok) return;
+        const json = await res.json();
+        if (json.wiki?.search_ready) {
+          setData(json);
+          clearInterval(interval);
+        }
+      } catch {}
+    }, 5_000);
+    return () => clearInterval(interval);
+  }, [data, owner, repo]);
+
   if (loading) return <PageLoading />;
 
   if (needsGeneration) {
@@ -137,6 +154,7 @@ export default function WikiShell({
           repo={repo}
           wikiId={data.wiki.id}
           features={data.features}
+          searchReady={data.wiki.search_ready}
           onNavigate={() => setSidebarOpen(false)}
         />
       </aside>
@@ -153,7 +171,11 @@ export default function WikiShell({
       <main className="flex-1 min-w-0">{children}</main>
 
       {/* Chat panel — pass current page context */}
-      <ChatPanel wikiId={data.wiki.id} pageContext={pageContext} />
+      <ChatPanel
+        wikiId={data.wiki.id}
+        pageContext={pageContext}
+        searchReady={data.wiki.search_ready}
+      />
     </div>
   );
 }

@@ -14,4 +14,6 @@ export interface ChatPanelProps {
   wikiId: string;
   /** Current page title + summary passed as extra context to the model */
   pageContext?: string;
+  /** Whether the search/embedding index is ready */
+  searchReady?: boolean;
 }

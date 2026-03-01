@@ -155,6 +155,7 @@ export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
     const abortController = new AbortController();
 
     async function runAnalysis() {
+      if (running) return;
       setRunning(true);
       try {
         const res = await fetch("/api/analyze", {

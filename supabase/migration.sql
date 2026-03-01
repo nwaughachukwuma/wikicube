@@ -119,3 +119,13 @@ alter table public.wiki_chats enable row level security;
 -- Users can only see their own chat messages
 create policy "Users read own chats" on public.wiki_chats
   for select using (user_id = auth.uid());
+
+-- Track whether search/embedding index is ready
+alter table public.wikis
+  add column if not exists search_ready boolean not null default false;
+
+-- Backfill: any wiki that already has chunks embedded is search-ready
+update public.wikis
+  set search_ready = true
+  where status = 'done'
+    and exists (select 1 from public.chunks c where c.wiki_id = wikis.id);

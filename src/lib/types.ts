@@ -9,6 +9,7 @@ export interface Wiki {
   status: WikiStatus;
   visibility: "public" | "private";
   indexed_by: string | null;
+  search_ready: boolean;
   created_at: string;
   updated_at: string;
 }

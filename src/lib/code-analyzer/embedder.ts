@@ -1,5 +1,5 @@
 import { generateOverview, generateEmbeddings } from "../openai";
-import { updateWikiStatus, insertChunks } from "../db";
+import { updateWikiStatus, insertChunks, markSearchReady } from "../db";
 import { chunkCodeFile, chunkWikiContent, chunkOverview } from "../chunker";
 import { logger } from "../logger";
 import type { AnalysisEvent, Feature } from "../types";
@@ -147,4 +147,8 @@ export async function embedWikiAndCode(params: {
   const insertDone = log.time("insertChunks");
   await insertChunks(chunkRecords);
   insertDone({ records: chunkRecords.length });
+
+  // Mark search as ready so the UI can enable search/chat
+  await markSearchReady(wikiId);
+  log.info("search index ready", { wikiId });
 }

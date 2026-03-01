@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import type { AnalysisEvent } from "@/lib/types";
-import { parseRepoUrl, GITHUB_URL_RE } from "@/lib/github";
+import { parseRepoUrl, GITHUB_REPO_RE } from "@/lib/github";
 import { runAnalysisPipeline } from "@/lib/code-analyzer";
 import { getWiki } from "@/lib/db";
 import { extractError } from "@/lib/error";
@@ -12,9 +12,8 @@ const PostSchema = z.object({
   repoUrl: z
     .string()
     .nonempty("repoUrl is required")
-    .url("Invalid repository URL")
     .refine(
-      (url) => url.match(GITHUB_URL_RE),
+      (url) => url.match(GITHUB_REPO_RE),
       "Only GitHub repository URLs are allowed",
     ),
 });
@@ -28,9 +27,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "repoUrl is required" }, { status: 400 });
   }
 
-  const { repoUrl } = parsed.data;
-  const { owner, repo } = parseRepoUrl(repoUrl);
-
+  const { owner, repo } = parseRepoUrl(parsed.data.repoUrl);
   const session = await getSupabaseSession();
   const githubToken = session?.provider_token || void 0;
   // If a GitHub token is provided it means the user wants to index a personal/private repo

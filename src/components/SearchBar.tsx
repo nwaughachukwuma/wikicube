@@ -23,6 +23,7 @@ interface Props {
   owner: string;
   repo: string;
   features?: FeatureItem[];
+  searchReady?: boolean;
   onNavigate?: () => void;
 }
 
@@ -31,6 +32,7 @@ export default function SearchBar({
   owner,
   repo,
   features = [],
+  searchReady,
   onNavigate,
 }: Props) {
   const router = useRouter();
@@ -148,6 +150,12 @@ export default function SearchBar({
 
   return (
     <div className="relative">
+      {!searchReady && (
+        <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-text-muted">
+          <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
+          Search indexing in progress…
+        </div>
+      )}
       <div className="flex items-center gap-2 border border-border px-2.5 py-1.5 bg-card">
         <svg
           className="w-3.5 h-3.5 text-text-muted shrink-0"

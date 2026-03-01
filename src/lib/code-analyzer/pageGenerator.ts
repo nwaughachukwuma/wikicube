@@ -102,7 +102,6 @@ async function fetchFilesAndGeneratePage(params: {
       repo,
       meta.defaultBranch,
       identified.relevantFiles,
-      10,
       githubToken,
     );
     fetchDone({

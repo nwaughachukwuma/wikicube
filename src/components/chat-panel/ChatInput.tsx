@@ -42,7 +42,7 @@ export function ChatInput({
       <button
         type="submit"
         disabled={isStreaming || !value.trim()}
-        className="px-3 py-2 bg-text text-bg text-sm font-display uppercase
+        className="px-3 py-2 w-11 bg-text text-bg text-sm font-display uppercase
                    hover:bg-accent hover:text-text transition
                    disabled:opacity-50 disabled:cursor-not-allowed"
       >

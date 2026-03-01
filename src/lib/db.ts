@@ -1,6 +1,7 @@
 import { batchAll } from "./batchOps";
 import { logger } from "./logger";
 import { getServerClient } from "./supabase/server";
+import pRetry from "p-retry";
 import type {
   Wiki,
   Feature,
@@ -67,6 +68,7 @@ export async function upsertWiki(
         default_branch: defaultBranch,
         visibility: opts.visibility ?? existing.visibility ?? "public",
         indexed_by: opts.indexedBy ?? existing.indexed_by ?? null,
+        search_ready: false,
         updated_at: new Date().toISOString(),
       })
       .eq("id", existing.id)
@@ -124,6 +126,22 @@ export async function updateWikiStatus(
     .eq("id", wikiId);
 
   if (error) throw error;
+}
+
+export async function markSearchReady(wikiId: string): Promise<void> {
+  await pRetry(
+    async () => {
+      const { error } = await getServerClient()
+        .from("wikis")
+        .update({
+          search_ready: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", wikiId);
+      if (error) throw error;
+    },
+    { retries: 3, minTimeout: 2_000 },
+  );
 }
 
 export async function getWiki(
@@ -207,21 +225,21 @@ export async function insertChunks(
     batches: batches.length,
   });
 
-  const results = await batchAll(
+  await batchAll(
     batches,
     async (batch) => {
-      try {
-        return db.from("chunks").insert(stripNullBytes(batch));
-      } catch (error) {
-        return { error };
-      }
+      return pRetry(
+        async () => {
+          const { error } = await db
+            .from("chunks")
+            .insert(stripNullBytes(batch));
+          if (error) throw error;
+        },
+        { retries: 3, minTimeout: 2_000 },
+      );
     },
-    5,
+    5, // concurrency
   );
-
-  for (const { error } of results) {
-    if (error) throw error;
-  }
 }
 
 type MatchChunksResult = {
