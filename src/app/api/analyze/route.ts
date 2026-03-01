@@ -5,7 +5,8 @@ import { parseRepoUrl, GITHUB_URL_RE } from "@/lib/github";
 import { runAnalysisPipeline } from "@/lib/code-analyzer";
 import { getWiki } from "@/lib/db";
 import { extractError } from "@/lib/error";
-import { getUserServerClient } from "@/lib/supabase/server";
+import { getSupabaseSession } from "@/lib/supabase/server";
+import { authRouteGuard } from "@/lib/db.utils";
 
 const PostSchema = z.object({
   repoUrl: z
@@ -30,26 +31,14 @@ export async function POST(req: NextRequest) {
   const { repoUrl } = parsed.data;
   const { owner, repo } = parseRepoUrl(repoUrl);
 
-  const userClient = await getUserServerClient();
-  const {
-    data: { session },
-  } = await userClient.auth.getSession();
+  const session = await getSupabaseSession();
   const githubToken = session?.provider_token || void 0;
-
   // If a GitHub token is provided it means the user wants to index a private
   // repo — require Supabase authentication so we can record indexed_by.
   let userId: string | undefined;
   if (githubToken) {
-    const supabase = await getUserServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json(
-        { error: "Authentication required to index private repositories" },
-        { status: 401 },
-      );
-    }
+    const { user, err } = await authRouteGuard();
+    if (err) return err;
     userId = user.id;
   }
 

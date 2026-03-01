@@ -37,3 +37,19 @@ export async function getUserServerClient() {
     },
   );
 }
+
+export async function getSupabaseSession() {
+  const supabase = await getUserServerClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  return session;
+}
+
+export async function getSupabaseUser() {
+  const supabase = await getUserServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user;
+}

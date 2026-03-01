@@ -8,8 +8,7 @@ import {
   getChatSessionMessages,
 } from "@/lib/db";
 import { generateEmbeddings, chatWithWiki } from "@/lib/openai";
-import { getUserServerClient } from "@/lib/supabase/server";
-import { privateWikiGuard } from "@/lib/db.utils";
+import { privateWikiGuard, authRouteGuard } from "@/lib/db.utils";
 
 export const maxDuration = 120;
 
@@ -21,18 +20,8 @@ const ChatSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  // Require authentication for chat
-  const supabase = await getUserServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json(
-      { error: "Authentication required to use chat" },
-      { status: 401 },
-    );
-  }
-  const userId = user.id;
+  const { user, err } = await authRouteGuard();
+  if (err) return err;
 
   const parsed = ChatSchema.safeParse(await req.json());
   if (!parsed.success) {
@@ -41,7 +30,6 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-
   const { wikiId, sessionId, question, pageContext } = parsed.data;
 
   // Verify wiki exists
@@ -53,16 +41,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const error = privateWikiGuard(wiki, userId);
+  const error = privateWikiGuard(wiki, user.id);
   if (error) return error;
 
   // Load chat history from DB for this session (scoped to this user)
-  const history = (await getChatSessionMessages(wikiId, sessionId, userId)).map(
-    (m) => ({ role: m.role, content: m.content }),
-  );
+  const history = (
+    await getChatSessionMessages(wikiId, sessionId, user.id)
+  ).map((m) => ({ role: m.role, content: m.content }));
 
   // Persist user message
-  await insertChatMessage(wikiId, sessionId, "user", question, userId);
+  await insertChatMessage(wikiId, sessionId, "user", question, user.id);
 
   // Build context chunks
   const contextChunks: string[] = [];
@@ -117,7 +105,7 @@ export async function POST(req: NextRequest) {
           sessionId,
           "assistant",
           fullContent,
-          userId,
+          user.id,
         );
       }
     } catch {

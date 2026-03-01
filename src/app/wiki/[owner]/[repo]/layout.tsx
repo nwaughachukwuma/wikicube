@@ -1,9 +1,17 @@
+/**
+ * When a wiki is private, then every GitHub user who has access to the GitHib repo
+ * should be able to see the wiki in WikiCube. For now, we're restricting access to
+ * the user who indexed the wiki.
+ *
+ * TODO: We'll change this in the future.
+ */
+
 import { redirect } from "next/navigation";
 import AuthButton from "@/components/AuthButton";
 import WikiShell from "@/components/WikiShell";
 import { getWiki } from "@/lib/db";
 import { canAccessWiki } from "@/lib/db.utils";
-import { getUserServerClient } from "@/lib/supabase/server";
+import { getSupabaseUser } from "@/lib/supabase/server";
 
 export default async function WikiLayout({
   params,
@@ -15,10 +23,7 @@ export default async function WikiLayout({
   const { owner, repo } = await params;
   const wiki = await getWiki(owner, repo);
   if (wiki?.visibility === "private") {
-    const supabase = await getUserServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSupabaseUser();
     if (!canAccessWiki(wiki, user?.id)) {
       redirect("/");
     }
