@@ -40,7 +40,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   // Build a PostgREST `or` filter: or(and(owner.eq.x,repo.eq.y),...)
   const orFilter = repos
-    .map(({ owner, repo }) => `and(owner.eq.${owner},repo.eq.${repo})`)
+    .map(({ owner, repo }) => `and(owner.eq."${owner}",repo.eq."${repo}")`)
     .join(",");
 
   const db = getServerClient();
