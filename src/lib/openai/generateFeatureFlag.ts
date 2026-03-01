@@ -34,29 +34,34 @@ const GeneratedPageSchema = z.object({
   ),
 });
 
-/** Truncate file content intelligently — keep signatures and structure */
-// function truncateFile(content: string, maxLines = 300): string {
-//   const lines = content.split("\n");
-//   if (lines.length <= maxLines) return content;
+/** Truncate file content intelligently — keep head, tail, and signatures from middle */
+function truncateFile(content: string, maxLines = 1024): string {
+  const lines = content.split("\n");
+  if (lines.length <= maxLines) return content;
 
-//   // Take first 100 lines, last 30 lines, and extract signatures from middle
-//   const head = lines.slice(0, 100);
-//   const tail = lines.slice(-30);
-//   const middle = lines.slice(100, -30);
+  const headSize = Math.floor(maxLines * 0.6); // ~60% head
+  const tailSize = Math.floor(maxLines * 0.15); // ~15% tail
+  const sigBudget = maxLines - headSize - tailSize; // ~25% signatures
 
-//   // Extract function/class/export signatures from middle
-//   const sigPatterns =
-//     /^(export |public |private |protected |async |def |fn |func |class |interface |type |const |let |var |function |module |impl |struct |enum )/;
-//   const signatures = middle.filter((line) => sigPatterns.test(line.trim()));
+  const head = lines.slice(0, headSize);
+  const tail = lines.slice(-tailSize);
+  const middle = lines.slice(headSize, -tailSize);
 
-//   return [
-//     ...head,
-//     `\n// ... ${middle.length} lines omitted — key signatures below ...\n`,
-//     ...signatures.slice(0, 50),
-//     "\n// ... end of middle section ...\n",
-//     ...tail,
-//   ].join("\n");
-// }
+  // Extract function/class/export signatures from middle
+  const sigPatterns =
+    /^(export |public |private |protected |async |def |fn |func |class |interface |type |const |let |var |function |module |impl |struct |enum )/;
+  const signatures = middle
+    .filter((line) => sigPatterns.test(line.trim()))
+    .slice(0, sigBudget);
+
+  return [
+    ...head,
+    `\n// ... ${middle.length} lines omitted — key signatures below ...\n`,
+    ...signatures,
+    "\n// ... end of middle section ...\n",
+    ...tail,
+  ].join("\n");
+}
 
 export async function generateFeaturePage(
   repoName: string,
@@ -68,12 +73,9 @@ export async function generateFeaturePage(
 ): Promise<GeneratedPage> {
   const openai = getOpenAI();
 
-  // Build file context string with truncation
+  // Build file context string with truncation for large files
   const fileContext = Array.from(fileContents.entries())
-    .map(([path, content]) => {
-      // const truncated = truncateFile(content);
-      return `--- ${path} ---\n${content}`;
-    })
+    .map(([path, content]) => `--- ${path} ---\n${truncateFile(content)}`)
     .join("\n\n");
 
   const systemPrompt = `You are a senior technical writer creating wiki documentation for a GitHub repository.

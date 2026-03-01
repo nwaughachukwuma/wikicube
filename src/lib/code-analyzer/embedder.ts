@@ -7,31 +7,22 @@ import type { AnalysisEvent, Feature } from "../types";
 const log = logger("embedder");
 
 /**
- * Phase E: Generate the repository overview page, then persist it and
- * kick off Phase F (chunking + embedding) in one call.
+ * Phase E: Generate the repository overview page and persist it.
+ * Returns the overview text so the caller can mark the wiki as "done"
+ * before kicking off the non-blocking embedding phase.
  */
-export async function generateOverviewAndEmbed(params: {
+export async function generateOverviewPage(params: {
   wikiId: string;
   owner: string;
   repo: string;
   description: string;
   readme: string;
   features: Feature[];
-  sourceFiles: Map<string, string>;
   onEvent: (event: AnalysisEvent) => void;
-}): Promise<void> {
-  const {
-    wikiId,
-    owner,
-    repo,
-    description,
-    readme,
-    features,
-    sourceFiles,
-    onEvent,
-  } = params;
+}): Promise<string> {
+  const { wikiId, owner, repo, description, readme, features, onEvent } =
+    params;
 
-  // Phase E: overview
   onEvent({
     type: "status",
     status: "generating_pages",
@@ -47,26 +38,18 @@ export async function generateOverviewAndEmbed(params: {
   );
 
   await updateWikiStatus(wikiId, "embedding", overview);
-
   overviewDone({ overviewLength: overview.length });
 
-  // Phase F: chunk + embed
-  await embedWikiAndCode({
-    wikiId,
-    features,
-    sourceFiles,
-    overview,
-    onEvent,
-  });
+  return overview;
 }
 
 /**
  * Phase F: Chunk wiki pages and source files, generate embeddings, and
  * persist all chunk records for semantic search.
- *
- * TODO: rewrite this function to ensure order consistency all across
+ * Designed to run as a fire-and-forget background task after the wiki
+ * is already marked "done" so users can start reading immediately.
  */
-async function embedWikiAndCode(params: {
+export async function embedWikiAndCode(params: {
   wikiId: string;
   features: Feature[];
   sourceFiles: Map<string, string>;

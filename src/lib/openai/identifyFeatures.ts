@@ -53,14 +53,21 @@ export async function identifyFeatures(
     ]
   }`;
 
+  // Cap inputs to avoid blowing the context window.
+  // gpt-5-mini has 400k tokens; these limits keep total prompt well under ~50k tokens
+  // while capturing enough signal for accurate feature identification.
+  const cappedReadme = readme.slice(0, 12_000);
+  const cappedManifests = manifests.slice(0, 6_000);
+  const cappedTree = treeString.slice(0, 8_000);
+
   const userPrompt = `Repository: ${repo}
   Description: ${repoDescription || "Not provided"}
 
-  ${manifests ? `Project manifests:\n${manifests}\n` : ""}
-  ${readme ? `README:\n${readme}\n` : "No README found."}
+  ${cappedManifests ? `Project manifests:\n${cappedManifests}\n` : ""}
+  ${cappedReadme ? `README:\n${cappedReadme}\n` : "No README found."}
 
   File tree:
-  ${treeString}`;
+  ${cappedTree}`;
 
   const done = log.time("identifyFeatures");
   const res = await openai.responses.parse({

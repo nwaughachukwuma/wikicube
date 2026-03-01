@@ -241,21 +241,46 @@ export async function fetchProjectContext(
   const readmePath = README_FILES.find((r) => treePathSet.has(r.toLowerCase()));
   const manifestPaths = MANIFEST_FILES.filter((m) =>
     treePathSet.has(m.toLowerCase()),
-  ); //.slice(0, 3);
+  );
 
-  // Fetch README + all manifests in parallel
-  const [readmeResult, ...manifestResults] = await batchAll(
-    [...(readmePath ? [readmePath] : []), ...manifestPaths],
+  // Detect top-level docs (e.g. docs/*.md) for richer feature context
+  const docPaths = treePaths
+    .filter(
+      (p) =>
+        /^docs\/[^/]+\.mdx?$/i.test(p) &&
+        !README_FILES.some((r) => r.toLowerCase() === p.toLowerCase()),
+    )
+    .slice(0, 5);
+
+  // Fetch README + manifests + docs in parallel
+  const pathsToFetch = [
+    ...(readmePath ? [readmePath] : []),
+    ...manifestPaths,
+    ...docPaths,
+  ];
+  const results = await batchAll(
+    pathsToFetch,
     async (path) => getFileContent(owner, repo, branch, path, token),
     10,
   );
 
-  const manifestContents = manifestResults
+  const readmeResult = readmePath ? results[0] : { content: "", path: "" };
+  const manifestStart = readmePath ? 1 : 0;
+  const manifestEnd = manifestStart + manifestPaths.length;
+
+  const manifestContents = results
+    .slice(manifestStart, manifestEnd)
     .filter((res): res is { content: string; path: string } => !!res.content)
-    .map((v) => `--- ${v.path} ---\n${v.content}`); //.slice(0, 2000)}`;
+    .map((v) => `--- ${v.path} ---\n${v.content}`);
+
+  // Append docs content to manifests (they provide additional project context)
+  const docsContents = results
+    .slice(manifestEnd)
+    .filter((res): res is { content: string; path: string } => !!res.content)
+    .map((v) => `--- ${v.path} ---\n${v.content.slice(0, 2000)}`);
 
   return {
-    readme: readmeResult.content, //.slice(0, 8000),
-    manifests: manifestContents.join("\n\n"),
+    readme: readmeResult.content,
+    manifests: [...manifestContents, ...docsContents].join("\n\n"),
   };
 }
