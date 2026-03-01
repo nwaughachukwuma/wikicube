@@ -26,13 +26,13 @@ export function privateWikiGuard(wiki: Wiki, userId?: string | null) {
   }
 }
 
-export async function authRouteGuard() {
+export async function authRouteGuard(customError?: string) {
   const user = await getSupabaseUser();
   if (!user) {
     return {
       user: null,
       err: NextResponse.json(
-        { error: "Authentication required" },
+        { error: customError || "Authentication required" },
         { status: 401 },
       ),
     };

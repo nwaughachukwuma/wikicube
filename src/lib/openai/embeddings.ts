@@ -37,8 +37,6 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
     retries: 3,
     onFailedAttempt: (ctx) => log.warn("Embedding batch failed", ctx),
   });
-
   const results = await batchAll(batches, (b) => retryable(b), 5);
-
   return results.flat();
 }

@@ -6,7 +6,7 @@ import { getOpenAI, MODEL } from "./utils";
 const log = logger("openai:overview");
 
 export async function generateOverview(
-  repoName: string,
+  repo: string,
   repoDescription: string,
   readme: string,
   features: Array<{ title: string; summary: string }>,
@@ -17,16 +17,16 @@ export async function generateOverview(
     .map((f, i) => `${i + 1}. **${f.title}**: ${f.summary}`)
     .join("\n");
 
-  const done = log.time("generateOverview");
+  const genOverviewDone = log.time("generateOverview");
   const res = await openai.chat.completions.create({
     model: MODEL,
     messages: [
       {
         role: "system",
-        content: `You are a senior technical writer. Generate a concise overview page for a GitHub repository wiki.
+        content: `You are a senior technical writer. Generate a concise wiki overview page for a GitHub repository.
         Include:
-        1. A clear description of what the project does (from a user's perspective)
-        2. Key capabilities and use cases
+        1. A clear description of what the project does (from a user-facing perspective)
+        2. Key capabilities, functionalities and use cases
         3. Architecture overview (if discernible) — use a mermaid diagram if helpful
         4. A summary of all features listed below
 
@@ -34,7 +34,7 @@ export async function generateOverview(
       },
       {
         role: "user",
-        content: `Repository: ${repoName}
+        content: `Repository: ${repo}
         Description: ${repoDescription || "Not provided in repo metadata"}
         ${readme ? `\nREADME excerpt:\n${readme}` : ""} // .slice(0, 3000)
 
@@ -46,6 +46,10 @@ export async function generateOverview(
 
   const content =
     res.choices[0]?.message?.content || "# Overview\n\nNo overview generated.";
-  done({ model: MODEL, length: content.length });
+
+  genOverviewDone({
+    model: MODEL,
+    length: content.length,
+  });
   return content;
 }

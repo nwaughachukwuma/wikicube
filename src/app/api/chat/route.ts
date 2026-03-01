@@ -71,6 +71,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // TODO: revise
   // Fallback: inject feature summaries if semantic search returned nothing
   if (contextChunks.length <= (pageContext ? 1 : 0)) {
     const features = await getFeatures(wikiId);

@@ -21,7 +21,7 @@ const IdentifyFeaturesSchema = z.object({
 /* ─── Phase B: Identify features from file tree ─── */
 
 export async function identifyFeatures(
-  repoName: string,
+  repo: string,
   treeString: string,
   readme: string,
   manifests: string,
@@ -31,29 +31,29 @@ export async function identifyFeatures(
 
   const systemPrompt = `You are a senior technical writer analyzing a GitHub repository to create user-facing documentation.
 
-Given a repository's file tree, README, and metadata, identify ALL high-level user-facing features and subsystems.
+  Given a repository's README, file tree, and metadata, identify ALL high-level user-facing features and subsystems.
 
-IMPORTANT:
-- Think about what the software DOES for users, not how it's technically organized
-- BAD examples: "Utils", "API layer", "Frontend", "Backend", "Config", "Types"
-- GOOD examples: "User Authentication", "Real-time Notifications", "Data Export", "Search & Filtering", "Onboarding", "Payment Processing""
-- Be exhaustive — identify every meaningful feature, not just the obvious ones
-- For each feature, list ALL specific file paths that implement it (routes, components, services, models, middleware, tests, configs)
-- A file can belong to multiple features if relevant
+  IMPORTANT:
+  - Think about what the software DOES for users, not how it's technically organized
+  - BAD examples: "Utils", "API layer", "Frontend", "Backend", "Config", "Types"
+  - GOOD examples: "User Authentication", "Real-time Notifications", "Data Export", "Search & Filtering", "Onboarding", "Payment Processing", "Installation & Setup", etc."
+  - Be exhaustive and complete — identify every meaningful feature, not just the obvious ones
+  - For each feature, list ALL specific and relevant file paths (using the file tree) that implement it (routes, components, services, models, middleware, configs)
+  - A file can belong to multiple features if relevant
 
-Return ONLY valid JSON with this exact structure:
-{
-  "features": [
-    {
-      "id": "kebab-case-id",
-      "title": "Human Readable Title",
-      "summary": "2-3 sentence description of what this feature does for users",
-      "relevantFiles": ["path/to/file1.ts", "path/to/file2.py"]
-    }
-  ]
-}`;
+  Return ONLY valid JSON with this exact structure:
+  {
+    "features": [
+      {
+        "id": "kebab-case-id",
+        "title": "Human Readable Title",
+        "summary": "2-3 sentence description of what this feature does for users",
+        "relevantFiles": ["path/to/file1.ts", "path/to/file2.py"]
+      }
+    ]
+  }`;
 
-  const userPrompt = `Repository: ${repoName}
+  const userPrompt = `Repository: ${repo}
   Description: ${repoDescription || "Not provided"}
 
   ${manifests ? `Project manifests:\n${manifests}\n` : ""}
@@ -77,11 +77,9 @@ Return ONLY valid JSON with this exact structure:
   if (!res.output_parsed) {
     throw new Error("No response from OpenAI for feature identification");
   }
-
   done({
     featureCount: res.output_parsed.features.length,
     model: MODEL,
   });
-
   return res.output_parsed.features as IdentifiedFeature[];
 }

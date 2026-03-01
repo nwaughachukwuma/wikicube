@@ -44,9 +44,9 @@ export async function identifyRepoFeatures(
     throw new Error("No features identified in repository");
   }
 
-  // Cap to MAX_FEATURES for faster generation
+  // Cap to MAX_FEATURES for faster generation.
+  // TODO: remove the cap or process progressively in batches
   const capped = identifiedFeatures.slice(0, MAX_FEATURES);
-
   // Emit the full list so the UI can show all features at once
   onEvent({
     type: "features_list",

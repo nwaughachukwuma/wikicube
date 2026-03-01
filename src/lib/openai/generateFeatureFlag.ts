@@ -78,37 +78,37 @@ export async function generateFeaturePage(
 
   const systemPrompt = `You are a senior technical writer creating wiki documentation for a GitHub repository.
 
-Generate a comprehensive wiki page for the "${feature.title}" feature of ${repoName}.
+  Generate a comprehensive wiki page for the "${feature.title}" feature of ${repoName}.
 
-Structure your response as:
-1. **Overview** — What this feature does for users (2-3 paragraphs)
-2. **How It Works** — User-facing explanation of the feature's behavior
-3. **Technical Details** — Architecture, key modules, data flow, algorithms
-4. **Configuration & Setup** — Any config files, env vars, or setup needed
-5. **Key Entry Points** — Main functions/classes/routes that developers should know
+  Structure your response as:
+  1. **Overview** — What this feature does for users (2-3 paragraphs)
+  2. **How It Works** — User-facing explanation of the feature's behavior
+  3. **Technical Details** — Architecture, key modules, data flow, algorithms
+  4. **Configuration & Setup** — Any config files, env vars, or setup needed
+  5. **Key Entry Points** — Main functions/classes/routes that developers should know
 
-CRITICAL RULES for citations:
-- Every technical claim MUST reference specific code with inline citations
-- Use this exact format: [filename#L42](https://github.com/${owner}/${repo}/blob/${branch}/filename#L42)
-- Reference actual line numbers from the provided source code
-- Be accurate — only cite lines that actually contain the referenced code
+  CRITICAL RULES for citations:
+  - Every technical claim MUST reference specific code with inline citations
+  - Use this exact format: [filename#L42](https://github.com/${owner}/${repo}/blob/${branch}/filename#L42)
+  - Reference actual line numbers from the provided source code
+  - Be accurate — only cite lines that actually contain the referenced code
 
-Return ONLY valid JSON:
-{
-  "markdownContent": "full markdown content with inline citations",
-  "entryPoints": [
-    { "file": "path/to/file.ts", "line": 42, "symbol": "functionName", "githubUrl": "full github url" }
-  ],
-  "citations": [
-    { "file": "path/to/file.ts", "startLine": 42, "endLine": 50, "githubUrl": "full github url" }
-  ]
-}`;
+  Return ONLY valid JSON:
+  {
+    "markdownContent": "full markdown content with inline citations",
+    "entryPoints": [
+      { "file": "path/to/file.ts", "line": 42, "symbol": "functionName", "githubUrl": "full github url" }
+    ],
+    "citations": [
+      { "file": "path/to/file.ts", "startLine": 42, "endLine": 50, "githubUrl": "full github url" }
+    ]
+  }`;
 
   const userPrompt = `Feature: ${feature.title}
-Summary: ${feature.summary}
+  Summary: ${feature.summary}
 
-Source files:
-${fileContext}`;
+  Source files:
+  ${fileContext}`;
 
   const done = log.time(`generateFeaturePage:${feature.title}`);
   const res = await openai.responses.parse({
@@ -120,10 +120,11 @@ ${fileContext}`;
     text: { format: zodTextFormat(GeneratedPageSchema, "wiki_page") },
   });
 
-  if (!res.output_parsed)
+  if (!res.output_parsed) {
     throw new Error(`No response for feature: ${feature.title}`);
-  done({ feature: feature.title, model: MODEL });
+  }
 
+  done({ feature: feature.title, model: MODEL });
   const {
     markdownContent,
     entryPoints: rawEPs,

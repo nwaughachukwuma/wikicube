@@ -7,7 +7,7 @@ import { generateAllPages } from "./pageGenerator";
 import { generateOverviewAndEmbed } from "./embedder";
 import { extractError } from "../error";
 
-const log = logger("analyzer");
+const log = logger("repo:analyzer");
 
 /** Run the full analysis pipeline with SSE progress reporting */
 export async function runAnalysisPipeline(
@@ -18,15 +18,10 @@ export async function runAnalysisPipeline(
 ): Promise<string> {
   log.info("pipeline started", { owner, repo });
   const pipelineDone = log.time("pipeline");
-
   try {
     // Phase A: Gather repo context (metadata, tree, README, manifests)
-    const { meta, wikiId, treeString, readme, manifests } = await gatherContext(
-      owner,
-      repo,
-      onEvent,
-      opts,
-    );
+    const contextResult = await gatherContext(owner, repo, onEvent, opts);
+    const { meta, wikiId, treeString, readme, manifests } = contextResult;
 
     // Phase B: Identify user-facing features
     const identifiedFeatures = await identifyRepoFeatures(
@@ -42,7 +37,7 @@ export async function runAnalysisPipeline(
 
     // Phases C+D: Fetch source files and generate wiki pages (concurrent)
     await updateWikiStatus(wikiId, "generating_pages");
-    const { features, allSourceFiles } = await generateAllPages(
+    const { features, sourceFiles } = await generateAllPages(
       identifiedFeatures,
       owner,
       repo,
@@ -60,13 +55,17 @@ export async function runAnalysisPipeline(
       description: meta.description,
       readme,
       features,
-      allSourceFiles,
+      sourceFiles,
       onEvent,
     });
 
     // Done
     await updateWikiStatus(wikiId, "done");
-    pipelineDone({ wikiId, featureCount: features.length });
+    pipelineDone({
+      wikiId,
+      featureCount: features.length,
+    });
+
     onEvent({ type: "done", wikiId });
 
     return wikiId;

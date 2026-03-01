@@ -16,7 +16,7 @@ const slugger = new GithubSlugger();
 
 export interface PageGenResult {
   feature: Feature;
-  allSourceFiles: Map<string, string>;
+  sourceFiles: Map<string, string>;
 }
 
 /**
@@ -32,13 +32,13 @@ export async function generateAllPages(
   wikiId: string,
   onEvent: (event: AnalysisEvent) => void,
   githubToken?: string,
-): Promise<{ features: Feature[]; allSourceFiles: Map<string, string> }> {
+): Promise<{ features: Feature[]; sourceFiles: Map<string, string> }> {
   const pageGenDone = log.time("generateAllPages");
 
   const results = await batchAll(
     identifiedFeatures,
     async (identified, order) =>
-      fetchFilesGeneratePage({
+      fetchFilesAndGeneratePage({
         identified,
         order,
         owner,
@@ -54,27 +54,29 @@ export async function generateAllPages(
   const features = results.map((r) => r.feature);
 
   // Merge per-feature source file maps into one deduplicated map
-  const allSourceFiles = results
-    .map((r) => r.allSourceFiles)
+  const sourceFiles = results
+    .map((r) => r.sourceFiles)
     .reduce((acc, sfiles) => {
-      for (const [path, content] of sfiles) acc.set(path, content);
+      for (const [path, content] of sfiles) {
+        acc.set(path, content);
+      }
       return acc;
     }, new Map<string, string>());
 
   pageGenDone({
     featuresCount: features.length,
     totalIdentified: identifiedFeatures.length,
-    sourceFiles: allSourceFiles.size,
+    sourceFiles: sourceFiles.size,
   });
 
-  return { features, allSourceFiles };
+  return { features, sourceFiles };
 }
 
 /**
- * Fetch source files and generate + persist the wiki page for a single feature.
+ * Fetch source files and generate + persist the wiki feature page.
  * Returns null on failure so the pipeline can continue with other features.
  */
-async function fetchFilesGeneratePage(params: {
+async function fetchFilesAndGeneratePage(params: {
   identified: IdentifiedFeature;
   order: number;
   owner: string;
@@ -86,12 +88,14 @@ async function fetchFilesGeneratePage(params: {
 }): Promise<PageGenResult | null> {
   const { order, owner, repo, meta, wikiId, onEvent, identified, githubToken } =
     params;
-  const allSourceFiles = new Map<string, string>();
+  const sourceFiles = new Map<string, string>();
+  onEvent({
+    type: "feature_started",
+    featureTitle: identified.title,
+  });
 
-  onEvent({ type: "feature_started", featureTitle: identified.title });
-
+  // Fetch all files relevant to this feature
   try {
-    // Fetch all files relevant to this feature
     const fetchDone = log.time(`fetchFiles:${identified.title}`);
     const fileContents = await getMultipleFiles(
       owner,
@@ -110,7 +114,7 @@ async function fetchFilesGeneratePage(params: {
 
     // Save raw files for later code embedding
     for (const [path, content] of fileContents) {
-      allSourceFiles.set(path, content);
+      sourceFiles.set(path, content);
     }
 
     // Generate wiki page markdown + metadata via LLM
@@ -123,7 +127,10 @@ async function fetchFilesGeneratePage(params: {
       identified,
       fileContents,
     );
-    genDone({ entryPoints: page.entryPoints, citations: page.citations });
+    genDone({
+      entryPoints: page.entryPoints,
+      citations: page.citations,
+    });
 
     // Persist to DB
     const slug = identified.id || slugger.slug(identified.title);
@@ -138,8 +145,12 @@ async function fetchFilesGeneratePage(params: {
       sort_order: order,
     });
 
-    onEvent({ type: "feature_done", featureTitle: identified.title });
-    return { feature, allSourceFiles };
+    onEvent({
+      type: "feature_done",
+      featureTitle: identified.title,
+    });
+
+    return { feature, sourceFiles };
   } catch (err) {
     log.error(`feature generation failed: ${identified.title}`, {
       error: err instanceof Error ? err.message : String(err),

@@ -90,6 +90,7 @@ export default function WikiShell({
     }
     const featureSlug = pathname.replace(`${basePath}/`, "");
     const feature = data.features.find((f) => f.slug === featureSlug);
+    // TODO: review
     if (feature) {
       return [
         `Currently viewing feature: ${feature.title}`,
