@@ -34,7 +34,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
-  const { user, authLoading } = useUser();
+  const { authLoading } = useUser();
 
   const isValidUrl = useMemo(() => {
     if (!url.trim()) return false;

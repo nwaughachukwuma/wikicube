@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getWikiById, matchChunks, getFeatures } from "@/lib/db";
 import { generateEmbeddings } from "@/lib/openai";
-import { getUserServerClient } from "@/lib/supabase/server";
+import { getSupabaseUser } from "@/lib/supabase/server";
 import { privateWikiGuard } from "@/lib/db.utils";
 
 const SearchSchema = z.object({
@@ -20,7 +20,6 @@ export async function POST(req: NextRequest) {
   }
 
   const { wikiId, query } = parsed.data;
-
   const wiki = await getWikiById(wikiId);
   if (!wiki || wiki.status !== "done") {
     return NextResponse.json(
@@ -30,10 +29,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (wiki.visibility === "private") {
-    const supabase = await getUserServerClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getSupabaseUser();
     const error = privateWikiGuard(wiki, user?.id);
     if (error) return error;
   }
