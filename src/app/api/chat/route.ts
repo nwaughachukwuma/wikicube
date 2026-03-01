@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
   // Build context chunks
   const contextChunks: string[] = [];
   if (wiki.overview) {
-    contextChunks.push(`[Wiki Overview]\n${wiki.overview.slice(0, 2000)}`);
+    contextChunks.push(`[Wiki Overview]\n${wiki.overview}`); //.slice(0, 2000)}`);
   }
   if (pageContext) {
     contextChunks.push(`[Current Page Context]\n${pageContext}`);
@@ -64,29 +64,31 @@ export async function POST(req: NextRequest) {
   // Semantic search
   const embeddings = await generateEmbeddings([question]);
   if (embeddings.length && embeddings[0].length) {
-    const chunks = await matchChunks(wikiId, embeddings[0], 8, 0.5);
+    const chunks = await matchChunks(wikiId, embeddings[0], {
+      matchCount: 8,
+      matchThreshold: 0.5,
+    });
+
     for (const c of chunks) {
       const prefix = c.source_file ? `[Source: ${c.source_file}]\n` : "";
       contextChunks.push(`${prefix}${c.content}`);
     }
   }
 
-  // TODO: revise
   // Fallback: inject feature summaries if semantic search returned nothing
   if (contextChunks.length <= (pageContext ? 1 : 0)) {
     const features = await getFeatures(wikiId);
-    for (const f of features.slice(0, 15)) {
+    // .slice(0, 15)
+    for (const f of features) {
       contextChunks.push(
-        `[Feature: ${f.title}]\nSummary: ${f.summary}\n${f.markdown_content.slice(0, 500)}`,
+        `[Feature: ${f.title}]\nSummary: ${f.summary}\n${f.markdown_content}`, //.slice(0, 500)}`,
       );
     }
   }
 
   const stream = await chatWithWiki(question, contextChunks, history);
-
   // Tee the stream: one branch to client, one to collect + persist to DB
   const [clientStream, saveStream] = stream.tee();
-
   void (async () => {
     const reader = saveStream.getReader();
     const decoder = new TextDecoder();
@@ -109,15 +111,14 @@ export async function POST(req: NextRequest) {
           user.id,
         );
       }
-    } catch {
-      // Non-fatal: don't interrupt the client stream
-    }
+    } catch {}
   })();
 
   return new Response(clientStream, {
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
       "Cache-Control": "no-cache",
+      Connection: "keep-alive",
     },
   });
 }

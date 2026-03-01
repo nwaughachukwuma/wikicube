@@ -224,20 +224,23 @@ export async function insertChunks(
   }
 }
 
+type MatchChunksResult = {
+  content: string;
+  source_type: string;
+  source_file: string | null;
+  feature_id: string | null;
+  similarity: number;
+};
+
 export async function matchChunks(
   wikiId: string,
   queryEmbedding: number[],
-  matchCount = 8,
-  matchThreshold = 0.7,
-): Promise<
-  Array<{
-    content: string;
-    source_type: string;
-    source_file: string | null;
-    feature_id: string | null;
-    similarity: number;
-  }>
-> {
+  params: {
+    matchCount?: number;
+    matchThreshold?: number;
+  } = {},
+): Promise<MatchChunksResult[]> {
+  const { matchCount = 8, matchThreshold = 0.7 } = params;
   const { data, error } = await getServerClient().rpc("match_chunks", {
     query_embedding: queryEmbedding,
     p_wiki_id: wikiId,

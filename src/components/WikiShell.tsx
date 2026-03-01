@@ -85,7 +85,7 @@ export default function WikiShell({
     if (pathname === basePath || pathname === `${basePath}/`) {
       return [
         `Currently viewing: Overview page for ${owner}/${repo}`,
-        data.wiki.overview ? `\n${data.wiki.overview.slice(0, 2000)}` : "",
+        data.wiki.overview ? `\n${data.wiki.overview}` : "", // .slice(0, 2000)
       ].join("");
     }
     const featureSlug = pathname.replace(`${basePath}/`, "");
@@ -96,7 +96,7 @@ export default function WikiShell({
         `Currently viewing feature: ${feature.title}`,
         `\nSummary: ${feature.summary}`,
         feature.markdown_content
-          ? `\n${feature.markdown_content.slice(0, 3000)}`
+          ? `\n${feature.markdown_content}` //.slice(0, 3000)}`
           : "",
       ].join("");
     }
