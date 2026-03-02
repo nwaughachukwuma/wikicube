@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import AppHeader from "@/components/AppHeader";
-import { getBrowserClient } from "@/lib/supabase/client";
 import { useUser } from "@/lib/supabase/useUser";
 import {
   Lock,
@@ -17,6 +16,7 @@ import { fetchWithSWR } from "@/lib/cache.client";
 import { OptimLink } from "@/components/OptimisticLink";
 import type { RepoWithWiki } from "@/app/api/my-repos/route";
 import { dayAgo } from "@/lib/timing";
+import { signIn } from "@/components/AuthButton";
 
 const PAGE_SIZE = 10;
 const CACHE_TTL = 600;
@@ -28,17 +28,6 @@ export default function MyReposPage() {
   const [reposLoading, setReposLoading] = useState(false);
   const [error, setError] = useState("");
   const [page, setPage] = useState(1);
-
-  const signIn = async () => {
-    const supabase = getBrowserClient();
-    await supabase.auth.signInWithOAuth({
-      provider: "github",
-      options: {
-        scopes: "repo read:user",
-        redirectTo: `${window.location.origin}/api/auth/callback?next=/my-repos`,
-      },
-    });
-  };
 
   useEffect(() => {
     if (!user) return;
