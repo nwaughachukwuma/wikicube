@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
+import { MenuIcon, XIcon } from "lucide-react";
 import WikiSidebar from "@/components/WikiSidebar";
 import ChatPanel from "@/components/ChatPanel";
-import AnalysisProgress from "@/components/AnalysisProgress";
+import GenerateWiki from "@/components/GenerateWiki";
 import { PageLoading } from "./PageLoading";
 import { WikiData, wikiStore } from "@/lib/stores/wikiStore";
 import { useMounted } from "@/lib/hooks/mounted";
@@ -77,7 +78,7 @@ export default function WikiShell({
     return <PageLoading />;
   } else if (!wiki) {
     return (
-      <AnalysisProgress
+      <GenerateWiki
         owner={owner}
         repo={repo}
         onComplete={handleAnalysisComplete}
@@ -93,19 +94,11 @@ export default function WikiShell({
         className="fixed top-4 left-4 z-50 md:hidden p-2 bg-card border border-border"
         aria-label="Toggle sidebar"
       >
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d={sidebarOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
-          />
-        </svg>
+        {sidebarOpen ? (
+          <XIcon className="w-5 h-5" />
+        ) : (
+          <MenuIcon className="w-5 h-5" />
+        )}
       </button>
 
       {/* Sidebar */}
