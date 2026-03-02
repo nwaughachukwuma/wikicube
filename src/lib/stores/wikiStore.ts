@@ -12,21 +12,15 @@ interface FileStore {
   loading: boolean;
   getWikiData: (owner: string, repo: string) => Promise<WikiData | void>;
   pollWikiData: (owner: string, repo: string) => () => void;
-  refetch: (owner: string, repo: string) => boolean;
 }
 
 export const wikiStore = create<FileStore>((set, get) => ({
   data: null,
   loading: false,
-  refetch: (owner, repo) => {
-    const { data } = get();
-    return !data || data.wiki.owner !== owner || data.wiki.repo !== repo;
-  },
   getWikiData: async (owner, repo) => {
-    if (!get().refetch(owner, repo)) return;
     set({ loading: true });
     return fetchWithSWR<WikiData>(
-      `${location.origin}/api/wiki/${owner}/${repo}`,
+      `/api/wiki/${owner}/${repo}`,
       {},
       { maxAge: 86_400, userId: null },
     )

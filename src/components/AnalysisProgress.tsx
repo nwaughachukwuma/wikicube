@@ -11,11 +11,12 @@ import type {
 import { ErrorPanel } from "./analysis-progress/ErrorPanel";
 import { ProgressSteps } from "./analysis-progress/ProgressSteps";
 import { FeatureProgress } from "./analysis-progress/FeatureProgress";
+import { useMounted } from "@/lib/hooks/mounted";
 
 interface Props {
   owner: string;
   repo: string;
-  onComplete?: () => void;
+  onComplete: () => void;
 }
 
 export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
@@ -30,6 +31,7 @@ export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
   const [error, setError] = useState("");
   const [running, setRunning] = useState(false);
   const activeRef = useRef<HTMLDivElement>(null);
+  const { mounted } = useMounted();
 
   // Auto-scroll to the first in-progress item
   useEffect(() => {
@@ -133,13 +135,7 @@ export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
               break;
             case "done":
               updateStep(3, "done");
-              setTimeout(() => {
-                if (onComplete) {
-                  onComplete();
-                } else {
-                  router.replace(`/wiki/${owner}/${repo}`);
-                }
-              }, 500);
+              onComplete();
               break;
             case "error":
               setError(event.message);
@@ -155,7 +151,7 @@ export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
     const abortController = new AbortController();
 
     async function runAnalysis() {
-      if (running) return;
+      if (running || !mounted) return;
       setRunning(true);
       try {
         const res = await fetch("/api/analyze", {
@@ -177,11 +173,7 @@ export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
         if (contentType.includes("application/json")) {
           const data = await res.json();
           if (data.status === "done" || data.cached) {
-            if (onComplete) {
-              onComplete();
-            } else {
-              window.location.href = `/wiki/${owner}/${repo}`;
-            }
+            onComplete();
             return;
           }
         }
@@ -199,7 +191,15 @@ export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
 
     runAnalysis();
     return () => abortController.abort();
-  }, [owner, repo, router, handleStreamingResponse, onComplete]);
+  }, [
+    owner,
+    repo,
+    router,
+    mounted,
+    setRunning,
+    handleStreamingResponse,
+    onComplete,
+  ]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6">
@@ -213,14 +213,14 @@ export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
 
         {error ? (
           <ErrorPanel error={error} />
-        ) : (
+        ) : running ? (
           <div className="w-full flex flex-col items-center">
             <ProgressSteps steps={steps} />
             {features.length > 0 && (
               <FeatureProgress features={features} activeRef={activeRef} />
             )}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

@@ -3,79 +3,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { PanelLeft, X, BookOpen } from "lucide-react";
 import { OptimLink } from "@/components/OptimisticLink";
-
-interface WikiEntry {
-  id: string;
-  owner: string;
-  repo: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-interface TimeGroup {
-  label: string;
-  wikis: WikiEntry[];
-}
-
-function segmentByTime(wikis: WikiEntry[]): TimeGroup[] {
-  const now = new Date();
-
-  const startOfToday = new Date(now);
-  startOfToday.setHours(0, 0, 0, 0);
-
-  const startOfYesterday = new Date(startOfToday);
-  startOfYesterday.setDate(startOfYesterday.getDate() - 1);
-
-  // Start of this week (Monday)
-  const startOfThisWeek = new Date(startOfToday);
-  const dayOfWeek = startOfToday.getDay();
-  const diffToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  startOfThisWeek.setDate(startOfThisWeek.getDate() - diffToMonday);
-
-  const startOfLastWeek = new Date(startOfThisWeek);
-  startOfLastWeek.setDate(startOfLastWeek.getDate() - 7);
-
-  // Start of this month
-  const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  // Start of last month
-  const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-
-  const buckets: Record<string, WikiEntry[]> = {
-    Today: [],
-    Yesterday: [],
-    "This Week": [],
-    "Last Week": [],
-    "This Month": [],
-    "Last Month": [],
-    Older: [],
-  };
-
-  for (const wiki of wikis) {
-    const d = new Date(wiki.updated_at);
-
-    if (d >= startOfToday) {
-      buckets["Today"].push(wiki);
-    } else if (d >= startOfYesterday) {
-      buckets["Yesterday"].push(wiki);
-    } else if (d >= startOfThisWeek) {
-      buckets["This Week"].push(wiki);
-    } else if (d >= startOfLastWeek) {
-      buckets["Last Week"].push(wiki);
-    } else if (d >= startOfThisMonth) {
-      buckets["This Month"].push(wiki);
-    } else if (d >= startOfLastMonth) {
-      buckets["Last Month"].push(wiki);
-    } else {
-      buckets["Older"].push(wiki);
-    }
-  }
-
-  return Object.entries(buckets)
-    .filter(([, items]) => items.length > 0)
-    .map(([label, items]) => ({ label, wikis: items }));
-}
+import { fetchWithSWR } from "@/lib/cache.client";
+import { segmentByTime } from "@/lib/timing";
+import type { WikiEntry } from "@/lib/types";
 
 export default function WikiHistoryPanel() {
   const [open, setOpen] = useState(false);
@@ -85,18 +15,10 @@ export default function WikiHistoryPanel() {
   // Prefetch on mount
   useEffect(() => {
     let cancelled = false;
-
-    fetch("/api/wikis")
-      .then((r) => r.json())
-      .then((data: WikiEntry[]) => {
-        if (!cancelled) setWikis(data);
-      })
-      .catch(() => {
-        if (!cancelled) setWikis([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    fetchWithSWR<WikiEntry[]>("/api/wikis", {}, { maxAge: 300 })
+      .then((data) => !cancelled && setWikis(data))
+      .catch(() => !cancelled && setWikis([]))
+      .finally(() => !cancelled && setLoading(false));
 
     return () => {
       cancelled = true;

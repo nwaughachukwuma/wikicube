@@ -14,6 +14,15 @@ export interface Wiki {
   updated_at: string;
 }
 
+export interface WikiEntry {
+  id: string;
+  owner: string;
+  repo: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PipelineOptions {
   /** GitHub OAuth access token — user's provider_token from Supabase auth */
   githubToken?: string;

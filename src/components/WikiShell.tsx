@@ -8,42 +8,40 @@ import AnalysisProgress from "@/components/AnalysisProgress";
 import { PageLoading } from "./PageLoading";
 import { WikiData, wikiStore } from "@/lib/stores/wikiStore";
 import { useMounted } from "@/lib/hooks/mounted";
+import type { Wiki } from "@/lib/types";
 
 export default function WikiShell({
   owner,
   repo,
+  wiki,
   children,
 }: {
   owner: string;
   repo: string;
+  wiki: Wiki | null;
   children: React.ReactNode;
 }) {
-  const [loading, setLoading] = useState(true);
-  const [needsGeneration, setNeedsGeneration] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const { getWikiData, data, pollWikiData } = wikiStore();
+  const { getWikiData, data, pollWikiData, loading } = wikiStore();
   const { mounted } = useMounted();
 
   const basePath = `/wiki/${owner}/${repo}`;
 
   useEffect(() => {
-    getWikiData(owner, repo)
-      .then((res) => !res && setNeedsGeneration(true))
-      .catch((err) => {
-        console.error("Failed to fetch wiki data", err);
-        setNeedsGeneration(true);
-      })
-      .finally(() => setLoading(false));
-  }, [owner, repo, getWikiData]);
+    if (!wiki) return;
+    getWikiData(owner, repo).catch((err) => {
+      console.warn("Failed to fetch wiki data", err);
+    });
+  }, [owner, repo, wiki, getWikiData]);
 
   const handleAnalysisComplete = useCallback(() => {
-    setNeedsGeneration(false);
-    setLoading(true);
-    getWikiData(owner, repo)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [owner, repo, getWikiData]);
+    // do some necessary cleanup or state updates here if needed
+    setTimeout(() => {
+      location.href = `/wiki/${owner}/${repo}`;
+      location.reload();
+    }, 1000);
+  }, [owner, repo]);
 
   // Poll for search_ready when wiki is done but search index isn't built yet
   useEffect(() => {
@@ -77,7 +75,7 @@ export default function WikiShell({
 
   if (loading || !mounted) {
     return <PageLoading />;
-  } else if (needsGeneration) {
+  } else if (!wiki) {
     return (
       <AnalysisProgress
         owner={owner}

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
@@ -9,12 +8,7 @@ import { wikiStore } from "@/lib/stores/wikiStore";
 export default function WikiOverviewPage() {
   const params = useParams<{ owner: string; repo: string }>();
   const { owner, repo } = params;
-  const { getWikiData, data, loading } = wikiStore();
-
-  useEffect(() => {
-    getWikiData(owner, repo).catch(console.error);
-  }, [owner, repo, getWikiData]);
-
+  const { data, loading } = wikiStore();
   const wiki = data?.wiki;
   const features = data?.features || [];
 
