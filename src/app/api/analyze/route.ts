@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import type { AnalysisEvent } from "@/lib/types";
-import { parseRepoUrl, GITHUB_URL_RE } from "@/lib/github";
+import { parseRepoUrl, GITHUB_REPO_RE } from "@/lib/github";
 import { runAnalysisPipeline } from "@/lib/code-analyzer";
 import { getWiki } from "@/lib/db";
 import { extractError } from "@/lib/error";
@@ -12,14 +12,13 @@ const PostSchema = z.object({
   repoUrl: z
     .string()
     .nonempty("repoUrl is required")
-    .url("Invalid repository URL")
     .refine(
-      (url) => url.match(GITHUB_URL_RE),
+      (url) => url.match(GITHUB_REPO_RE),
       "Only GitHub repository URLs are allowed",
     ),
 });
 
-export const maxDuration = 300; // 15 minutes for large repos
+export const maxDuration = 300; // 5 minutes for large repos
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -28,21 +27,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "repoUrl is required" }, { status: 400 });
   }
 
-  const { repoUrl } = parsed.data;
-  const { owner, repo } = parseRepoUrl(repoUrl);
-
+  const { owner, repo } = parseRepoUrl(parsed.data.repoUrl);
   const session = await getSupabaseSession();
   const githubToken = session?.provider_token || void 0;
-  // If a GitHub token is provided it means the user wants to index a private
-  // repo — require Supabase authentication so we can record indexed_by.
+  // If a GitHub token is provided it means the user wants to index a personal/private repo
+  // — require Supabase authentication so we can record indexed_by.
   let userId: string | undefined;
   if (githubToken) {
-    const { user, err } = await authRouteGuard();
+    const { user, err } = await authRouteGuard("Re-authenticate to continue");
     if (err) return err;
     userId = user.id;
   }
 
-  // Check if we already have a completed wiki (bypass cache to avoid stale reads)
+  // Check if we already have a completed wiki
   const existing = await getWiki(owner, repo);
   if (existing && existing.status === "done") {
     return NextResponse.json({
@@ -55,13 +52,10 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   const stream = new TransformStream();
   const writer = stream.writable.getWriter();
-
-  const sendEvent = async (event: AnalysisEvent) => {
+  const sendEvent = async (evt: AnalysisEvent) => {
     try {
-      await writer.write(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
-    } catch {
-      // Client disconnected
-    }
+      await writer.write(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`));
+    } catch {}
   };
 
   const pipelineOpts = {
@@ -75,7 +69,7 @@ export async function POST(req: NextRequest) {
     .catch(async (err) => {
       await sendEvent({
         type: "error",
-        message: extractError(err, "Pipeline failed"),
+        message: extractError(err, "Repo analysis pipeline failed"),
       });
     })
     .finally(() => writer.close());

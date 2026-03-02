@@ -2,105 +2,89 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import type { Wiki, Feature } from "@/lib/types";
+import { MenuIcon, XIcon } from "lucide-react";
 import WikiSidebar from "@/components/WikiSidebar";
 import ChatPanel from "@/components/ChatPanel";
-import AnalysisProgress from "@/components/AnalysisProgress";
+import GenerateWiki from "@/components/GenerateWiki";
 import { PageLoading } from "./PageLoading";
-
-interface WikiData {
-  wiki: Wiki;
-  features: Feature[];
-}
+import { WikiData, wikiStore } from "@/lib/stores/wikiStore";
+import { useMounted } from "@/lib/hooks/mounted";
+import type { Wiki } from "@/lib/types";
 
 export default function WikiShell({
   owner,
   repo,
+  wiki,
   children,
 }: {
   owner: string;
   repo: string;
+  wiki: Wiki | null;
   children: React.ReactNode;
 }) {
-  const [data, setData] = useState<WikiData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [needsGeneration, setNeedsGeneration] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const { getWikiData, data, pollWikiData, loading } = wikiStore();
+  const { mounted } = useMounted();
+
+  const basePath = `/wiki/${owner}/${repo}`;
 
   useEffect(() => {
-    async function fetchWiki() {
-      try {
-        const res = await fetch(`/api/wiki/${owner}/${repo}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json.wiki?.status === "done") {
-            setData(json);
-            setLoading(false);
-            return;
-          }
-        }
-        // Wiki doesn't exist or not done — need to generate
-        setNeedsGeneration(true);
-        setLoading(false);
-      } catch {
-        setNeedsGeneration(true);
-        setLoading(false);
-      }
-    }
-    fetchWiki();
-  }, [owner, repo]);
+    if (!wiki) return;
+    getWikiData(owner, repo).catch((err) => {
+      console.warn("Failed to fetch wiki data", err);
+    });
+  }, [owner, repo, wiki, getWikiData]);
 
   const handleAnalysisComplete = useCallback(() => {
-    setNeedsGeneration(false);
-    setLoading(true);
-    fetch(`/api/wiki/${owner}/${repo}`)
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((json) => {
-        if (json.wiki?.status === "done") {
-          setData(json);
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    // do some necessary cleanup or state updates here if needed
+    setTimeout(() => {
+      location.href = `/wiki/${owner}/${repo}`;
+      location.reload();
+    }, 1000);
   }, [owner, repo]);
 
-  if (loading) return <PageLoading />;
+  // Poll for search_ready when wiki is done but search index isn't built yet
+  useEffect(() => {
+    if (!data || data.wiki.search_ready) return;
+    const unsubscribe = pollWikiData(owner, repo);
+    return () => unsubscribe();
+  }, [data, owner, repo, pollWikiData]);
 
-  if (needsGeneration) {
-    return (
-      <AnalysisProgress
-        owner={owner}
-        repo={repo}
-        onComplete={handleAnalysisComplete}
-      />
-    );
-  }
-
-  if (!data) return null;
-
-  // Derive current page context from pathname + features list
-  const basePath = `/wiki/${owner}/${repo}`;
-  const pageContext = (() => {
+  function getPageContext(data: WikiData | null) {
+    if (!data) return undefined;
     if (pathname === basePath || pathname === `${basePath}/`) {
       return [
         `Currently viewing: Overview page for ${owner}/${repo}`,
-        data.wiki.overview ? `\n${data.wiki.overview.slice(0, 2000)}` : "",
+        data.wiki.overview ? `\n${data.wiki.overview}` : "", // .slice(0, 2000)
       ].join("");
     }
     const featureSlug = pathname.replace(`${basePath}/`, "");
     const feature = data.features.find((f) => f.slug === featureSlug);
+    // TODO: review
     if (feature) {
       return [
         `Currently viewing feature: ${feature.title}`,
         `\nSummary: ${feature.summary}`,
         feature.markdown_content
-          ? `\n${feature.markdown_content.slice(0, 3000)}`
+          ? `\n${feature.markdown_content}` //.slice(0, 3000)}`
           : "",
       ].join("");
     }
     return undefined;
-  })();
+  }
+
+  if (loading || !mounted) {
+    return <PageLoading />;
+  } else if (!wiki) {
+    return (
+      <GenerateWiki
+        owner={owner}
+        repo={repo}
+        onComplete={handleAnalysisComplete}
+      />
+    );
+  } else if (!data) return null;
 
   return (
     <div className="min-h-screen flex">
@@ -110,19 +94,11 @@ export default function WikiShell({
         className="fixed top-4 left-4 z-50 md:hidden p-2 bg-card border border-border"
         aria-label="Toggle sidebar"
       >
-        <svg
-          className="w-5 h-5"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d={sidebarOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}
-          />
-        </svg>
+        {sidebarOpen ? (
+          <XIcon className="w-5 h-5" />
+        ) : (
+          <MenuIcon className="w-5 h-5" />
+        )}
       </button>
 
       {/* Sidebar */}
@@ -136,6 +112,7 @@ export default function WikiShell({
           repo={repo}
           wikiId={data.wiki.id}
           features={data.features}
+          searchReady={data.wiki.search_ready}
           onNavigate={() => setSidebarOpen(false)}
         />
       </aside>
@@ -152,7 +129,11 @@ export default function WikiShell({
       <main className="flex-1 min-w-0">{children}</main>
 
       {/* Chat panel — pass current page context */}
-      <ChatPanel wikiId={data.wiki.id} pageContext={pageContext} />
+      <ChatPanel
+        wikiId={data.wiki.id}
+        pageContext={getPageContext(data)}
+        searchReady={data.wiki.search_ready}
+      />
     </div>
   );
 }

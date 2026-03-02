@@ -28,8 +28,9 @@ export default async function WikiLayout({
       redirect("/");
     }
   }
+
   return (
-    <WikiShell owner={owner} repo={repo}>
+    <WikiShell owner={owner} repo={repo} wiki={wiki}>
       <div className="relative">
         {children}
 

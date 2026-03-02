@@ -299,7 +299,6 @@ export function chunkWikiContent(
 export function chunkOverview(overview: string): string[] {
   const sections = overview.split(/(?=^## )/m);
   const chunks: string[] = [];
-
   for (const section of sections) {
     if (!section.trim()) continue;
     chunks.push(...splitByTokenLimit(section.trim()));

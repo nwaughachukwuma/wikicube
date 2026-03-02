@@ -9,6 +9,16 @@ export interface Wiki {
   status: WikiStatus;
   visibility: "public" | "private";
   indexed_by: string | null;
+  search_ready: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WikiEntry {
+  id: string;
+  owner: string;
+  repo: string;
+  status: string;
   created_at: string;
   updated_at: string;
 }

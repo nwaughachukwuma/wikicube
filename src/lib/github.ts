@@ -1,5 +1,6 @@
 import type { RepoMeta, TreeEntry } from "./types";
 import { logger } from "./logger";
+import { batchAll } from "./batchOps";
 
 const log = logger("github");
 const GITHUB_API = "https://api.github.com";
@@ -15,7 +16,7 @@ const headers = (token?: string): HeadersInit =>
 export const GITHUB_URL_RE =
   /^https?:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(\/.*)?$/;
 
-// Extraction:
+// Extraction
 export const GITHUB_REPO_RE =
   /(?:github\.com\/)?([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/;
 
@@ -94,14 +95,14 @@ export async function getFileContent(
   branch: string,
   path: string,
   token?: string,
-): Promise<string> {
+) {
   const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
   const res = await fetch(
     url,
     token ? { headers: { Authorization: `Bearer ${token}` } } : undefined,
   );
-  if (!res.ok) return ""; // silently skip missing files
-  return res.text();
+  const content = res.ok ? await res.text() : ""; // silently skip missing files
+  return { content, path };
 }
 
 /** Fetch multiple files with concurrency limit */
@@ -110,24 +111,22 @@ export async function getMultipleFiles(
   repo: string,
   branch: string,
   paths: string[],
-  concurrency = 10,
   token?: string,
 ): Promise<Map<string, string>> {
   const results = new Map<string, string>();
   const queue = [...paths];
 
+  const concurrency = Math.min(10, paths.length);
+
   async function worker() {
     while (queue.length > 0) {
       const path = queue.shift()!;
-      const content = await getFileContent(owner, repo, branch, path, token);
-      if (content) results.set(path, content);
+      const res = await getFileContent(owner, repo, branch, path, token);
+      if (res.content) results.set(path, res.content);
     }
   }
 
-  const workers = Array.from(
-    { length: Math.min(concurrency, paths.length) },
-    worker,
-  );
+  const workers = Array.from({ length: concurrency }, worker);
   await Promise.all(workers);
   return results;
 }
@@ -175,9 +174,9 @@ const IGNORED_PATTERNS = [
   /^\.idea\//,
   /^\.vscode\//,
   /^\.husky\//,
-  /^\.github\/workflows\//,
   /^test(s)?\/fixtures?\//,
   /^__tests__\/snapshots?\//,
+  /^\.github\/workflows\//,
   /^migrations?\//,
 ];
 
@@ -236,29 +235,50 @@ export async function fetchProjectContext(
   treePaths: string[],
   token?: string,
 ): Promise<{ readme: string; manifests: string }> {
-  const readmePath = README_FILES.find((r) =>
-    treePaths.some((p) => p.toLowerCase() === r.toLowerCase()),
-  );
+  const treePathSet = new Set(treePaths.map((p) => p.toLowerCase()));
+  const readmePath = README_FILES.find((r) => treePathSet.has(r.toLowerCase()));
   const manifestPaths = MANIFEST_FILES.filter((m) =>
-    treePaths.some((p) => p === m),
-  ); //.slice(0, 3);
-
-  // Fetch README + all manifests in parallel
-  const [readmeContent, ...manifestResults] = await Promise.all(
-    [...(readmePath ? [readmePath] : []), ...manifestPaths].map((mp) =>
-      getFileContent(owner, repo, branch, mp, token),
-    ),
+    treePathSet.has(m.toLowerCase()),
   );
 
-  const manifestContents = manifestResults
-    .map((content, i) => {
-      if (!content) return null;
-      return `--- ${manifestPaths[i]} ---\n${content}`; //.slice(0, 2000)}`;
-    })
-    .filter((v): v is string => !!v);
+  // Detect top-level docs (e.g. docs/*.md) for richer feature context
+  const docPaths = treePaths
+    .filter(
+      (p) =>
+        /^docs\/[^/]+\.mdx?$/i.test(p) &&
+        !README_FILES.some((r) => r.toLowerCase() === p.toLowerCase()),
+    )
+    .slice(0, 5);
+
+  // Fetch README + manifests + docs in parallel
+  const pathsToFetch = [
+    ...(readmePath ? [readmePath] : []),
+    ...manifestPaths,
+    ...docPaths,
+  ];
+  const results = await batchAll(
+    pathsToFetch,
+    async (path) => getFileContent(owner, repo, branch, path, token),
+    20,
+  );
+
+  const readmeResult = readmePath ? results[0] : { content: "", path: "" };
+  const manifestStart = readmePath ? 1 : 0;
+  const manifestEnd = manifestStart + manifestPaths.length;
+
+  const manifestContents = results
+    .slice(manifestStart, manifestEnd)
+    .filter((res): res is { content: string; path: string } => !!res.content)
+    .map((v) => `--- ${v.path} ---\n${v.content}`);
+
+  // Append docs content to manifests (they provide additional project context)
+  const docsContents = results
+    .slice(manifestEnd)
+    .filter((res): res is { content: string; path: string } => !!res.content)
+    .map((v) => `--- ${v.path} ---\n${v.content.slice(0, 2000)}`);
 
   return {
-    readme: readmeContent, //.slice(0, 8000),
-    manifests: manifestContents.join("\n\n"),
+    readme: readmeResult.content,
+    manifests: [...manifestContents, ...docsContents].join("\n\n"),
   };
 }

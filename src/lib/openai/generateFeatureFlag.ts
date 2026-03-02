@@ -34,29 +34,34 @@ const GeneratedPageSchema = z.object({
   ),
 });
 
-/** Truncate file content intelligently — keep signatures and structure */
-// function truncateFile(content: string, maxLines = 300): string {
-//   const lines = content.split("\n");
-//   if (lines.length <= maxLines) return content;
+/** Truncate file content intelligently — keep head, tail, and signatures from middle */
+function truncateFile(content: string, maxLines = 1024): string {
+  const lines = content.split("\n");
+  if (lines.length <= maxLines) return content;
 
-//   // Take first 100 lines, last 30 lines, and extract signatures from middle
-//   const head = lines.slice(0, 100);
-//   const tail = lines.slice(-30);
-//   const middle = lines.slice(100, -30);
+  const headSize = Math.floor(maxLines * 0.6); // ~60% head
+  const tailSize = Math.floor(maxLines * 0.15); // ~15% tail
+  const sigBudget = maxLines - headSize - tailSize; // ~25% signatures
 
-//   // Extract function/class/export signatures from middle
-//   const sigPatterns =
-//     /^(export |public |private |protected |async |def |fn |func |class |interface |type |const |let |var |function |module |impl |struct |enum )/;
-//   const signatures = middle.filter((line) => sigPatterns.test(line.trim()));
+  const head = lines.slice(0, headSize);
+  const tail = lines.slice(-tailSize);
+  const middle = lines.slice(headSize, -tailSize);
 
-//   return [
-//     ...head,
-//     `\n// ... ${middle.length} lines omitted — key signatures below ...\n`,
-//     ...signatures.slice(0, 50),
-//     "\n// ... end of middle section ...\n",
-//     ...tail,
-//   ].join("\n");
-// }
+  // Extract function/class/export signatures from middle
+  const sigPatterns =
+    /^(export |public |private |protected |async |def |fn |func |class |interface |type |const |let |var |function |module |impl |struct |enum )/;
+  const signatures = middle
+    .filter((line) => sigPatterns.test(line.trim()))
+    .slice(0, sigBudget);
+
+  return [
+    ...head,
+    `\n// ... ${middle.length} lines omitted — key signatures below ...\n`,
+    ...signatures,
+    "\n// ... end of middle section ...\n",
+    ...tail,
+  ].join("\n");
+}
 
 export async function generateFeaturePage(
   repoName: string,
@@ -68,47 +73,44 @@ export async function generateFeaturePage(
 ): Promise<GeneratedPage> {
   const openai = getOpenAI();
 
-  // Build file context string with truncation
+  // Build file context string with truncation for large files
   const fileContext = Array.from(fileContents.entries())
-    .map(([path, content]) => {
-      // const truncated = truncateFile(content);
-      return `--- ${path} ---\n${content}`;
-    })
+    .map(([path, content]) => `--- ${path} ---\n${truncateFile(content)}`)
     .join("\n\n");
 
   const systemPrompt = `You are a senior technical writer creating wiki documentation for a GitHub repository.
 
-Generate a comprehensive wiki page for the "${feature.title}" feature of ${repoName}.
+  Generate a comprehensive wiki page for the "${feature.title}" feature of ${repoName}.
 
-Structure your response as:
-1. **Overview** — What this feature does for users (2-3 paragraphs)
-2. **How It Works** — User-facing explanation of the feature's behavior
-3. **Technical Details** — Architecture, key modules, data flow, algorithms
-4. **Configuration & Setup** — Any config files, env vars, or setup needed
-5. **Key Entry Points** — Main functions/classes/routes that developers should know
+  Structure your response as:
+  1. **Overview** — What this feature does for users (2-3 paragraphs)
+  2. **How It Works** — User-facing explanation of the feature's behavior
+  3. **Technical Details** — Architecture, key modules, data flow, algorithms
+  4. **Configuration & Setup** — Any config files, env vars, or setup needed
+  5. **Key Entry Points** — Main functions/classes/routes that developers should know
 
-CRITICAL RULES for citations:
-- Every technical claim MUST reference specific code with inline citations
-- Use this exact format: [filename#L42](https://github.com/${owner}/${repo}/blob/${branch}/filename#L42)
-- Reference actual line numbers from the provided source code
-- Be accurate — only cite lines that actually contain the referenced code
+  CRITICAL RULES for citations:
+  - Every technical claim MUST reference specific code with inline citations
+  - Use this exact format: [filename#L42](https://github.com/${owner}/${repo}/blob/${branch}/filename#L42)
+  - Reference actual line numbers from the provided source code
+  - Be accurate — only cite lines that actually contain the referenced code
 
-Return ONLY valid JSON:
-{
-  "markdownContent": "full markdown content with inline citations",
-  "entryPoints": [
-    { "file": "path/to/file.ts", "line": 42, "symbol": "functionName", "githubUrl": "full github url" }
-  ],
-  "citations": [
-    { "file": "path/to/file.ts", "startLine": 42, "endLine": 50, "githubUrl": "full github url" }
-  ]
-}`;
+  Return ONLY valid JSON:
+  {
+    "markdownContent": "full markdown content with inline citations",
+    "entryPoints": [
+      { "file": "path/to/file.ts", "line": 42, "symbol": "functionName", "githubUrl": "full github url" }
+    ],
+    "citations": [
+      { "file": "path/to/file.ts", "startLine": 42, "endLine": 50, "githubUrl": "full github url" }
+    ]
+  }`;
 
   const userPrompt = `Feature: ${feature.title}
-Summary: ${feature.summary}
+  Summary: ${feature.summary}
 
-Source files:
-${fileContext}`;
+  Source files:
+  ${fileContext}`;
 
   const done = log.time(`generateFeaturePage:${feature.title}`);
   const res = await openai.responses.parse({
@@ -120,10 +122,11 @@ ${fileContext}`;
     text: { format: zodTextFormat(GeneratedPageSchema, "wiki_page") },
   });
 
-  if (!res.output_parsed)
+  if (!res.output_parsed) {
     throw new Error(`No response for feature: ${feature.title}`);
-  done({ feature: feature.title, model: MODEL });
+  }
 
+  done({ feature: feature.title, model: MODEL });
   const {
     markdownContent,
     entryPoints: rawEPs,

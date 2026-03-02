@@ -12,6 +12,7 @@ interface Props {
   repo: string;
   wikiId: string;
   features: Feature[];
+  searchReady?: boolean;
   onNavigate?: () => void;
 }
 
@@ -20,6 +21,7 @@ export default function WikiSidebar({
   repo,
   wikiId,
   features,
+  searchReady,
   onNavigate,
 }: Props) {
   const pathname = usePathname();
@@ -54,6 +56,7 @@ export default function WikiSidebar({
           owner={owner}
           repo={repo}
           features={features.map((f) => ({ title: f.title, slug: f.slug }))}
+          searchReady={searchReady}
           onNavigate={onNavigate}
         />
       </div>

@@ -9,7 +9,7 @@ import { upsertWiki } from "../db";
 import { logger } from "../logger";
 import type { AnalysisEvent, PipelineOptions, RepoMeta } from "../types";
 
-const log = logger("context-gatherer");
+const log = logger("repo:gather-context");
 
 export interface GatheredContext {
   meta: RepoMeta;
@@ -43,34 +43,31 @@ export async function gatherContext(
     message: "Fetching file tree...",
   });
 
-  const treeDone = log.time("upsertWiki+getRepoTree");
+  const upsertAndTreeDone = log.time("upsertWiki:+:getRepoTree");
   const [wiki, rawTree] = await Promise.all([
     upsertWiki(owner, repo, meta.defaultBranch, {
       visibility: meta.isPrivate ? "private" : "public",
-      indexedBy: meta.isPrivate ? opts.userId : undefined,
+      indexedBy: opts.userId || undefined,
     }),
     getRepoTree(owner, repo, meta.defaultBranch, opts.githubToken),
   ]);
-  treeDone({ rawTreeSize: rawTree.length });
+
+  upsertAndTreeDone({
+    wikiId: wiki.id,
+    rawTreeSize: rawTree.length,
+  });
 
   const wikiId = wiki.id;
   const tree = filterTree(rawTree);
-  const treeString = formatTreeString(tree);
-  const treePaths = tree.map((e) => e.path);
-
-  log.info("tree filtered", {
-    wikiId,
-    rawFiles: rawTree,
-    filteredFiles: tree,
-  });
-
+  log.info("tree filtered", { wikiId, rawFiles: rawTree, filteredFiles: tree });
   onEvent({
     type: "status",
     status: "fetching_tree",
     message: "Fetching README and manifests...",
   });
 
-  const ctxDone = log.time("fetchProjectContext");
+  const fetchCtxDone = log.time("fetchProjectContext");
+  const treePaths = tree.map((e) => e.path);
   const { readme, manifests } = await fetchProjectContext(
     owner,
     repo,
@@ -78,7 +75,7 @@ export async function gatherContext(
     treePaths,
     opts.githubToken,
   );
-  ctxDone({
+  fetchCtxDone({
     readme,
     readmeLength: readme.length,
     manifests,
@@ -88,7 +85,7 @@ export async function gatherContext(
   return {
     meta,
     wikiId,
-    treeString,
+    treeString: formatTreeString(tree),
     treePaths,
     readme,
     manifests,

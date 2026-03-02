@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Fuse from "fuse.js";
+import { SearchIcon } from "lucide-react";
 
 interface SearchResult {
   content: string;
@@ -23,6 +24,7 @@ interface Props {
   owner: string;
   repo: string;
   features?: FeatureItem[];
+  searchReady?: boolean;
   onNavigate?: () => void;
 }
 
@@ -31,6 +33,7 @@ export default function SearchBar({
   owner,
   repo,
   features = [],
+  searchReady,
   onNavigate,
 }: Props) {
   const router = useRouter();
@@ -148,20 +151,14 @@ export default function SearchBar({
 
   return (
     <div className="relative">
+      {!searchReady && (
+        <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-text-muted">
+          <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
+          Search indexing in progress…
+        </div>
+      )}
       <div className="flex items-center gap-2 border border-border px-2.5 py-1.5 bg-card">
-        <svg
-          className="w-3.5 h-3.5 text-text-muted shrink-0"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-          />
-        </svg>
+        <SearchIcon className="w-3.5 h-3.5 text-text-muted shrink-0" />
         <input
           type="text"
           value={query}
@@ -208,9 +205,9 @@ export default function SearchBar({
                 </span>
               </div>
               {result.content && (
-                <div className="text-[11px] text-text-muted mt-0.5 line-clamp-2">
-                  {result.content}
-                </div>
+                <section className="text-[11px] text-text-muted mt-0.5 line-clamp-2">
+                  {result.content.slice(0, 72)}
+                </section>
               )}
             </button>
           ))}

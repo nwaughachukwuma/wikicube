@@ -1,5 +1,5 @@
 import { generateOverview, generateEmbeddings } from "../openai";
-import { updateWikiStatus, insertChunks } from "../db";
+import { updateWikiStatus, insertChunks, markSearchReady } from "../db";
 import { chunkCodeFile, chunkWikiContent, chunkOverview } from "../chunker";
 import { logger } from "../logger";
 import type { AnalysisEvent, Feature } from "../types";
@@ -7,31 +7,22 @@ import type { AnalysisEvent, Feature } from "../types";
 const log = logger("embedder");
 
 /**
- * Phase E: Generate the repository overview page, then persist it and
- * kick off Phase F (chunking + embedding) in one call.
+ * Phase E: Generate the repository overview page and persist it.
+ * Returns the overview text so the caller can mark the wiki as "done"
+ * before kicking off the non-blocking embedding phase.
  */
-export async function generateOverviewAndEmbed(params: {
+export async function generateOverviewPage(params: {
   wikiId: string;
   owner: string;
   repo: string;
   description: string;
   readme: string;
   features: Feature[];
-  allSourceFiles: Map<string, string>;
   onEvent: (event: AnalysisEvent) => void;
-}): Promise<void> {
-  const {
-    wikiId,
-    owner,
-    repo,
-    description,
-    readme,
-    features,
-    allSourceFiles,
-    onEvent,
-  } = params;
+}): Promise<string> {
+  const { wikiId, owner, repo, description, readme, features, onEvent } =
+    params;
 
-  // Phase E: overview
   onEvent({
     type: "status",
     status: "generating_pages",
@@ -45,31 +36,27 @@ export async function generateOverviewAndEmbed(params: {
     readme,
     features.map((f) => ({ title: f.title, summary: f.summary })),
   );
+
   await updateWikiStatus(wikiId, "embedding", overview);
   overviewDone({ overviewLength: overview.length });
 
-  // Phase F: chunk + embed
-  await embedWikiAndCode({
-    wikiId,
-    features,
-    allSourceFiles,
-    overview,
-    onEvent,
-  });
+  return overview;
 }
 
 /**
  * Phase F: Chunk wiki pages and source files, generate embeddings, and
  * persist all chunk records for semantic search.
+ * Designed to run as a fire-and-forget background task after the wiki
+ * is already marked "done" so users can start reading immediately.
  */
-async function embedWikiAndCode(params: {
+export async function embedWikiAndCode(params: {
   wikiId: string;
   features: Feature[];
-  allSourceFiles: Map<string, string>;
+  sourceFiles: Map<string, string>;
   overview: string;
   onEvent: (event: AnalysisEvent) => void;
 }): Promise<void> {
-  const { wikiId, features, allSourceFiles, overview, onEvent } = params;
+  const { wikiId, features, sourceFiles, overview, onEvent } = params;
   log.info("starting embedding phase", { wikiId });
 
   onEvent({
@@ -78,7 +65,6 @@ async function embedWikiAndCode(params: {
     message: "Creating search index...",
   });
 
-  const allChunkTexts: string[] = [];
   const chunkMeta: Array<{
     feature_id: string | null;
     source_type: "wiki" | "code";
@@ -86,6 +72,7 @@ async function embedWikiAndCode(params: {
   }> = [];
 
   // 1. Chunk overview at section boundaries
+  const allChunkTexts: string[] = [];
   for (const text of chunkOverview(overview)) {
     allChunkTexts.push(text);
     chunkMeta.push({
@@ -112,8 +99,8 @@ async function embedWikiAndCode(params: {
   }
 
   // 3. Chunk source code at function/class/module boundaries.
-  //    Each chunk includes file path + import context for call-graph awareness.
-  for (const [filePath, content] of allSourceFiles) {
+  // Each chunk includes file path + import context for call-graph awareness.
+  for (const [filePath, content] of sourceFiles) {
     for (const cc of chunkCodeFile(filePath, content)) {
       allChunkTexts.push(cc.content);
       chunkMeta.push({
@@ -128,23 +115,27 @@ async function embedWikiAndCode(params: {
     totalChunks: allChunkTexts.length,
     wikiChunks: chunkMeta.filter((c) => c.source_type === "wiki").length,
     codeChunks: chunkMeta.filter((c) => c.source_type === "code").length,
-    sourceFiles: allSourceFiles.size,
+    sourceFiles: sourceFiles.size,
   });
 
   onEvent({
     type: "status",
     status: "embedding",
-    message: `Embedding ${allChunkTexts.length} chunks (${allSourceFiles.size} source files + wiki)...`,
+    message: `Embedding ${allChunkTexts.length} chunks (${sourceFiles.size} file references + wiki)...`,
   });
 
   if (allChunkTexts.length === 0) return;
 
   // Generate embeddings (current cap: first 100 chunks)
   const embedDone = log.time("generateEmbeddings");
-  const embeddings = await generateEmbeddings(allChunkTexts.slice(0, 100));
-  embedDone({ chunks: allChunkTexts.length });
+  const embeddings = await generateEmbeddings(allChunkTexts); //.slice(0, 100));
+  embedDone({
+    chunks: allChunkTexts.length,
+    embeddings: embeddings.length,
+  });
 
-  const chunkRecords = allChunkTexts.slice(0, 100).map((text, i) => ({
+  //.slice(0, 100)
+  const chunkRecords = allChunkTexts.map((text, i) => ({
     wiki_id: wikiId,
     feature_id: chunkMeta[i].feature_id,
     content: text,
@@ -156,4 +147,8 @@ async function embedWikiAndCode(params: {
   const insertDone = log.time("insertChunks");
   await insertChunks(chunkRecords);
   insertDone({ records: chunkRecords.length });
+
+  // Mark search as ready so the UI can enable search/chat
+  await markSearchReady(wikiId);
+  log.info("search index ready", { wikiId });
 }

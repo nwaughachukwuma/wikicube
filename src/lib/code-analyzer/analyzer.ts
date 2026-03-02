@@ -4,10 +4,10 @@ import type { AnalysisEvent, PipelineOptions } from "../types";
 import { gatherContext } from "./contextGatherer";
 import { identifyRepoFeatures } from "./featureIdentifier";
 import { generateAllPages } from "./pageGenerator";
-import { generateOverviewAndEmbed } from "./embedder";
+import { generateOverviewPage, embedWikiAndCode } from "./embedder";
 import { extractError } from "../error";
 
-const log = logger("analyzer");
+const log = logger("repo:analyzer");
 
 /** Run the full analysis pipeline with SSE progress reporting */
 export async function runAnalysisPipeline(
@@ -18,18 +18,14 @@ export async function runAnalysisPipeline(
 ): Promise<string> {
   log.info("pipeline started", { owner, repo });
   const pipelineDone = log.time("pipeline");
-
   try {
     // Phase A: Gather repo context (metadata, tree, README, manifests)
-    const { meta, wikiId, treeString, readme, manifests } = await gatherContext(
-      owner,
-      repo,
-      onEvent,
-      opts,
-    );
+    const contextResult = await gatherContext(owner, repo, onEvent, opts);
+    const { meta, wikiId, treeString, treePaths, readme, manifests } =
+      contextResult;
 
     // Phase B: Identify user-facing features
-    const identifiedFeatures = await identifyRepoFeatures(
+    const identifiedFeatures = await identifyRepoFeatures({
       owner,
       repo,
       wikiId,
@@ -38,11 +34,12 @@ export async function runAnalysisPipeline(
       manifests,
       meta,
       onEvent,
-    );
+      treePaths,
+    });
 
     // Phases C+D: Fetch source files and generate wiki pages (concurrent)
     await updateWikiStatus(wikiId, "generating_pages");
-    const { features, allSourceFiles } = await generateAllPages(
+    const { features, sourceFiles } = await generateAllPages(
       identifiedFeatures,
       owner,
       repo,
@@ -52,22 +49,40 @@ export async function runAnalysisPipeline(
       opts.githubToken,
     );
 
-    // Phases E+F: Generate overview page, then chunk and embed everything
-    await generateOverviewAndEmbed({
+    // Phase E: Generate overview page (blocking — we need the content persisted)
+    const overview = await generateOverviewPage({
       wikiId,
       owner,
       repo,
       description: meta.description,
       readme,
       features,
-      allSourceFiles,
       onEvent,
     });
 
-    // Done
+    // Mark wiki as "done" so the user can start reading immediately
     await updateWikiStatus(wikiId, "done");
-    pipelineDone({ wikiId, featureCount: features.length });
+    pipelineDone({
+      wikiId,
+      featureCount: features.length,
+    });
+
     onEvent({ type: "done", wikiId });
+
+    // Phase F: Chunk + embed in background (fire-and-forget).
+    // Search/chat will return empty results until this completes — acceptable for v1.
+    void embedWikiAndCode({
+      wikiId,
+      features,
+      sourceFiles,
+      overview,
+      onEvent,
+    }).catch((err) =>
+      log.error("background embedding failed", {
+        wikiId,
+        error: extractError(err),
+      }),
+    );
 
     return wikiId;
   } catch (err) {
