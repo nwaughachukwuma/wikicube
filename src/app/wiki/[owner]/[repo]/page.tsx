@@ -1,30 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
-import type { Wiki, Feature } from "@/lib/types";
+import { wikiStore } from "@/lib/stores/wikiStore";
 
 export default function WikiOverviewPage() {
   const params = useParams<{ owner: string; repo: string }>();
   const { owner, repo } = params;
-  const [wiki, setWiki] = useState<Wiki | null>(null);
-  const [features, setFeatures] = useState<Feature[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { getWikiData, data, loading } = wikiStore();
 
   useEffect(() => {
-    async function load() {
-      const res = await fetch(`/api/wiki/${owner}/${repo}`);
-      if (res.ok) {
-        const data = await res.json();
-        setWiki(data.wiki);
-        setFeatures(data.features);
-      }
-      setLoading(false);
-    }
-    load();
-  }, [owner, repo]);
+    getWikiData(owner, repo).catch(console.error);
+  }, [owner, repo, getWikiData]);
+
+  const wiki = data?.wiki;
+  const features = data?.features || [];
 
   if (loading) {
     return (

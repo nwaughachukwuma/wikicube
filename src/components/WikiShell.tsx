@@ -2,16 +2,12 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { usePathname } from "next/navigation";
-import type { Wiki, Feature } from "@/lib/types";
 import WikiSidebar from "@/components/WikiSidebar";
 import ChatPanel from "@/components/ChatPanel";
 import AnalysisProgress from "@/components/AnalysisProgress";
 import { PageLoading } from "./PageLoading";
-
-interface WikiData {
-  wiki: Wiki;
-  features: Feature[];
-}
+import { WikiData, wikiStore } from "@/lib/stores/wikiStore";
+import { useMounted } from "@/lib/hooks/mounted";
 
 export default function WikiShell({
   owner,
@@ -22,83 +18,42 @@ export default function WikiShell({
   repo: string;
   children: React.ReactNode;
 }) {
-  const [data, setData] = useState<WikiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [needsGeneration, setNeedsGeneration] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
+  const { getWikiData, data, pollWikiData } = wikiStore();
+  const { mounted } = useMounted();
+
+  const basePath = `/wiki/${owner}/${repo}`;
 
   useEffect(() => {
-    async function fetchWiki() {
-      try {
-        const res = await fetch(`/api/wiki/${owner}/${repo}`);
-        if (res.ok) {
-          const json = await res.json();
-          if (json.wiki?.status === "done") {
-            setData(json);
-            setLoading(false);
-            return;
-          }
-        }
-        // Wiki doesn't exist or not done — need to generate
+    getWikiData(owner, repo)
+      .then((res) => !res && setNeedsGeneration(true))
+      .catch((err) => {
+        console.error("Failed to fetch wiki data", err);
         setNeedsGeneration(true);
-        setLoading(false);
-      } catch {
-        setNeedsGeneration(true);
-        setLoading(false);
-      }
-    }
-    fetchWiki();
-  }, [owner, repo]);
+      })
+      .finally(() => setLoading(false));
+  }, [owner, repo, getWikiData]);
 
   const handleAnalysisComplete = useCallback(() => {
     setNeedsGeneration(false);
     setLoading(true);
-    fetch(`/api/wiki/${owner}/${repo}`)
-      .then((res) => (res.ok ? res.json() : Promise.reject()))
-      .then((json) => {
-        if (json.wiki?.status === "done") {
-          setData(json);
-        }
-      })
+    getWikiData(owner, repo)
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [owner, repo]);
+  }, [owner, repo, getWikiData]);
 
   // Poll for search_ready when wiki is done but search index isn't built yet
   useEffect(() => {
     if (!data || data.wiki.search_ready) return;
-    const interval = setInterval(async () => {
-      try {
-        const res = await fetch(`/api/wiki/${owner}/${repo}`);
-        if (!res.ok) return;
-        const json = await res.json();
-        if (json.wiki?.search_ready) {
-          setData(json);
-          clearInterval(interval);
-        }
-      } catch {}
-    }, 5_000);
-    return () => clearInterval(interval);
-  }, [data, owner, repo]);
+    const unsubscribe = pollWikiData(owner, repo);
+    return () => unsubscribe();
+  }, [data, owner, repo, pollWikiData]);
 
-  if (loading) return <PageLoading />;
-
-  if (needsGeneration) {
-    return (
-      <AnalysisProgress
-        owner={owner}
-        repo={repo}
-        onComplete={handleAnalysisComplete}
-      />
-    );
-  }
-
-  if (!data) return null;
-
-  // Derive current page context from pathname + features list
-  const basePath = `/wiki/${owner}/${repo}`;
-  const pageContext = (() => {
+  function getPageContext(data: WikiData | null) {
+    if (!data) return undefined;
     if (pathname === basePath || pathname === `${basePath}/`) {
       return [
         `Currently viewing: Overview page for ${owner}/${repo}`,
@@ -118,7 +73,19 @@ export default function WikiShell({
       ].join("");
     }
     return undefined;
-  })();
+  }
+
+  if (loading || !mounted) {
+    return <PageLoading />;
+  } else if (needsGeneration) {
+    return (
+      <AnalysisProgress
+        owner={owner}
+        repo={repo}
+        onComplete={handleAnalysisComplete}
+      />
+    );
+  } else if (!data) return null;
 
   return (
     <div className="min-h-screen flex">
@@ -173,7 +140,7 @@ export default function WikiShell({
       {/* Chat panel — pass current page context */}
       <ChatPanel
         wikiId={data.wiki.id}
-        pageContext={pageContext}
+        pageContext={getPageContext(data)}
         searchReady={data.wiki.search_ready}
       />
     </div>

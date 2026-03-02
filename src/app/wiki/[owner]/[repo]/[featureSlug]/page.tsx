@@ -5,6 +5,8 @@ import { useParams } from "next/navigation";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TableOfContents from "@/components/TableOfContents";
 import type { Feature } from "@/lib/types";
+import { wikiStore } from "@/lib/stores/wikiStore";
+import { useMounted } from "@/lib/hooks/mounted";
 
 export default function FeaturePage() {
   const params = useParams<{
@@ -14,24 +16,16 @@ export default function FeaturePage() {
   }>();
   const { owner, repo, featureSlug } = params;
   const [feature, setFeature] = useState<Feature | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { mounted } = useMounted();
+  const { loading, data } = wikiStore();
 
   useEffect(() => {
-    async function load() {
-      const res = await fetch(`/api/wiki/${owner}/${repo}`);
-      if (res.ok) {
-        const data = await res.json();
-        const features = data.features as Feature[];
-        const found = features.find((f) => f.slug === featureSlug);
-
-        if (found) setFeature(found);
-      }
-      setLoading(false);
-    }
-    load();
+    if (!data) return;
+    const found = data.features.find((f) => f.slug === featureSlug);
+    if (found) setFeature(found);
   }, [owner, repo, featureSlug]);
 
-  if (loading) {
+  if (loading || !mounted) {
     return (
       <div className="p-8 animate-pulse">
         <div className="h-8 bg-bg-alt w-64 mb-4" />

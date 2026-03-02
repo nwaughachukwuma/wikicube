@@ -6,7 +6,7 @@ type Params = {
   userId?: string | null;
 };
 
-export async function fetchWithSWR(
+export async function fetchWithSWR<T>(
   url: string,
   options: RequestInit,
   params: Params = {},
@@ -19,7 +19,7 @@ export async function fetchWithSWR(
   if (cached) {
     const cachedAt = cached.headers.get("x-cached-at");
     const age = cachedAt ? (Date.now() - Number(cachedAt)) / 1000 : Infinity;
-    if (age < maxAge) return cached.json();
+    if (age < maxAge) return cached.json() as T;
 
     // On auth errors (e.g. expired GitHub token → 403)
     // purge the entry so the *next* load surfaces the error
@@ -27,16 +27,20 @@ export async function fetchWithSWR(
     fetchAndCache(url, options, cache).catch(
       async () => await cache.delete(url),
     );
-    return cached.json();
+    return cached.json() as T;
   }
 
-  return fetchAndCache(url, options, cache);
+  return fetchAndCache<T>(url, options, cache);
 }
 
-async function fetchAndCache(url: string, options: RequestInit, cache: Cache) {
+async function fetchAndCache<T>(
+  url: string,
+  options: RequestInit,
+  cache: Cache,
+) {
   const res = await fetch(url, options);
   if (!res.ok) {
-    let message = `Request failed: ${res.status}`;
+    let message = `Request failed: ${res.statusText}`;
     try {
       const body = await res.json();
       if (body?.error) message = body.error;
@@ -52,5 +56,5 @@ async function fetchAndCache(url: string, options: RequestInit, cache: Cache) {
     },
   });
   await cache.put(url, syntheticResponse);
-  return data;
+  return data as T;
 }
