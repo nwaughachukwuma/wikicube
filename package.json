@@ -34,13 +34,13 @@
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.0.0",
+    "@eslint/eslintrc": "^3.3.5",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "eslint": "^9.0.0",
-    "eslint-config-next": "^15.1.0",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^15.5.12",
     "openai": "^4.77.0",
     "postcss": "^8.4.49",
     "supabase": "^2.76.15",
