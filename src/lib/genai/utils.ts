@@ -1,6 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 import type { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { makeRetriable, type Options } from "p-retry";
 
 export const MODEL = "gemini-3.1-flash-lite-preview";
 export const EMBEDDING_MODEL = "gemini-embedding-001";
@@ -51,3 +52,9 @@ export function parseStructuredJson<TSchema extends z.ZodTypeAny>(
 ): z.infer<TSchema> {
   return schema.parse(parseJsonResponse<unknown>(text, source));
 }
+
+export const retryGenerateContent = (opt: Options) =>
+  makeRetriable(getGemini().models.generateContent, {
+    retries: opt.retries,
+    onFailedAttempt: opt.onFailedAttempt,
+  });

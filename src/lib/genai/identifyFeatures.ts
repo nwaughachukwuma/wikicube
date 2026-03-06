@@ -2,9 +2,9 @@ import { z } from "zod";
 import type { IdentifiedFeature } from "../types";
 import { logger } from "../logger";
 import {
-  getGemini,
   MODEL,
   parseStructuredJson,
+  retryGenerateContent,
   toGeminiJsonSchema,
 } from "./utils";
 
@@ -20,6 +20,16 @@ const IdentifyFeaturesSchema = z.object({
       relevantFiles: z.array(z.string()),
     }),
   ),
+});
+
+const retryable = retryGenerateContent({
+  retries: 3,
+  onFailedAttempt(ctx) {
+    log.warn(
+      `Identify features ${ctx.attemptNumber} failed.` +
+        `There are ${ctx.retriesLeft} retries left. Error: ${ctx.error}`,
+    );
+  },
 });
 
 /* ─── Phase B: Identify features from file tree ─── */
@@ -72,7 +82,7 @@ export async function identifyFeatures(
   ${cappedTree}`;
 
   const done = log.time("identifyFeatures");
-  const res = await getGemini().models.generateContent({
+  const res = await retryable({
     model: MODEL,
     contents: userPrompt,
     config: {

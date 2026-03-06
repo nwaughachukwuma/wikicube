@@ -1,9 +1,19 @@
 /* ─── Phase E: Generate overview page ─── */
 
 import { logger } from "../logger";
-import { getGemini, MODEL } from "./utils";
+import { MODEL, retryGenerateContent } from "./utils";
 
 const log = logger("gemini:overview");
+
+const retryable = retryGenerateContent({
+  retries: 3,
+  onFailedAttempt(ctx) {
+    log.warn(
+      `Generate overview ${ctx.attemptNumber} failed.` +
+        `There are ${ctx.retriesLeft} retries left. Error: ${ctx.error}`,
+    );
+  },
+});
 
 export async function generateOverview(
   repo: string,
@@ -16,7 +26,7 @@ export async function generateOverview(
     .join("\n");
 
   const genOverviewDone = log.time("generateOverview");
-  const res = await getGemini().models.generateContent({
+  const res = await retryable({
     model: MODEL,
     contents: `Repository: ${repo}
         Description: ${repoDescription || "Not provided in repo metadata"}

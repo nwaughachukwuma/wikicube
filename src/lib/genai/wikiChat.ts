@@ -2,6 +2,10 @@
 
 import type { Content } from "@google/genai";
 import { getGemini, MODEL } from "./utils";
+import { makeRetriable } from "p-retry";
+import { logger } from "../logger";
+
+const log = logger("gemini:chatWithWiki");
 
 export async function chatWithWiki(
   question: string,
@@ -28,9 +32,17 @@ ${context}`,
     })),
   });
 
-  const res = await chat.sendMessageStream({
-    message: question,
+  const retryChat = makeRetriable(chat.sendMessageStream, {
+    retries: 3,
+    onFailedAttempt(ctx) {
+      log.warn(
+        `Chat with Wiki sendMessageStream ${ctx.attemptNumber} failed.` +
+        `There are ${ctx.retriesLeft} retries left. Error: ${ctx.error}`,
+      );
+    },
   });
+
+  const res = await retryChat({ message: question });
 
   const encoder = new TextEncoder();
   return new ReadableStream({

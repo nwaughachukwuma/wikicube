@@ -11,11 +11,21 @@ import {
 
 const log = logger("gemini:embeddings");
 
+const retryable = makeRetriable(getGemini().models.embedContent, {
+  retries: 3,
+  onFailedAttempt: (ctx) => {
+    log.warn(
+      `Embedding features ${ctx.attemptNumber} failed.` +
+        `There are ${ctx.retriesLeft} retries left. Error: ${ctx.error}`,
+    );
+  },
+});
+
 async function getEmbeddings(
   batch: string[],
   taskType: TaskType = "RETRIEVAL_DOCUMENT",
 ) {
-  const res = await getGemini().models.embedContent({
+  const res = await retryable({
     model: EMBEDDING_MODEL,
     contents: batch,
     config: {
@@ -51,10 +61,6 @@ export async function generateEmbeddings(
     batchSize: BATCH_SIZE,
   });
 
-  const retryable = makeRetriable(getEmbeddings, {
-    retries: 3,
-    onFailedAttempt: (ctx) => log.warn("Embedding batch failed", ctx),
-  });
-  const results = await batchAll(batches, (b) => retryable(b, taskType), 5);
+  const results = await batchAll(batches, (b) => getEmbeddings(b, taskType), 5);
   return results.flat();
 }

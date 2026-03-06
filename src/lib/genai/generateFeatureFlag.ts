@@ -2,9 +2,9 @@
 
 import { z } from "zod";
 import {
-  getGemini,
   MODEL,
   parseStructuredJson,
+  retryGenerateContent,
   toGeminiJsonSchema,
 } from "./utils";
 import type {
@@ -67,6 +67,16 @@ function truncateFile(content: string, maxLines = 1024): string {
   ].join("\n");
 }
 
+const retryable = retryGenerateContent({
+  retries: 3,
+  onFailedAttempt(ctx) {
+    log.warn(
+      `Generate feature page ${ctx.attemptNumber} failed.` +
+      `There are ${ctx.retriesLeft} retries left. Error: ${ctx.error}`,
+    );
+  },
+});
+
 export async function generateFeaturePage(
   repoName: string,
   owner: string,
@@ -115,7 +125,7 @@ export async function generateFeaturePage(
   ${fileContext}`;
 
   const done = log.time(`generateFeaturePage:${feature.title}`);
-  const res = await getGemini().models.generateContent({
+  const res = await retryable({
     model: MODEL,
     contents: userPrompt,
     config: {
