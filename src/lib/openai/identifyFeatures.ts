@@ -1,10 +1,9 @@
 import { z } from "zod";
-import { zodTextFormat } from "openai/helpers/zod";
 import type { IdentifiedFeature } from "../types";
 import { logger } from "../logger";
-import { getOpenAI, MODEL } from "./utils";
+import { getGemini, MODEL, parseJsonResponse } from "./utils";
 
-const log = logger("openai:identifyFeatures");
+const log = logger("gemini:identifyFeatures");
 
 /* ─── Zod schemas for structured outputs ─── */
 const IdentifyFeaturesSchema = z.object({
@@ -18,6 +17,29 @@ const IdentifyFeaturesSchema = z.object({
   ),
 });
 
+const IdentifyFeaturesResponseSchema = {
+  type: "object",
+  properties: {
+    features: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          title: { type: "string" },
+          summary: { type: "string" },
+          relevantFiles: {
+            type: "array",
+            items: { type: "string" },
+          },
+        },
+        required: ["id", "title", "summary", "relevantFiles"],
+      },
+    },
+  },
+  required: ["features"],
+} as const;
+
 /* ─── Phase B: Identify features from file tree ─── */
 
 export async function identifyFeatures(
@@ -27,7 +49,7 @@ export async function identifyFeatures(
   manifests: string,
   repoDescription: string,
 ): Promise<IdentifiedFeature[]> {
-  const openai = getOpenAI();
+  const gemini = getGemini();
 
   const systemPrompt = `You are a senior technical writer analyzing a GitHub repository to create user-facing documentation.
 
@@ -54,7 +76,7 @@ export async function identifyFeatures(
   }`;
 
   // Cap inputs to avoid blowing the context window.
-  // gpt-5-mini has 400k tokens; these limits keep total prompt well under ~50k tokens
+  // These limits keep the prompt bounded while preserving enough signal
   // while capturing enough signal for accurate feature identification.
   const cappedReadme = readme.slice(0, 12_000);
   const cappedManifests = manifests.slice(0, 6_000);
@@ -70,23 +92,23 @@ export async function identifyFeatures(
   ${cappedTree}`;
 
   const done = log.time("identifyFeatures");
-  const res = await openai.responses.parse({
+  const res = await gemini.models.generateContent({
     model: MODEL,
-    input: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    text: {
-      format: zodTextFormat(IdentifyFeaturesSchema, "features_response"),
+    contents: userPrompt,
+    config: {
+      systemInstruction: systemPrompt,
+      responseMimeType: "application/json",
+      responseJsonSchema: IdentifyFeaturesResponseSchema,
     },
   });
 
-  if (!res.output_parsed) {
-    throw new Error("No response from OpenAI for feature identification");
-  }
+  const parsed = IdentifyFeaturesSchema.parse(
+    parseJsonResponse<unknown>(res.text, "feature identification"),
+  );
+
   done({
-    featureCount: res.output_parsed.features.length,
+    featureCount: parsed.features.length,
     model: MODEL,
   });
-  return res.output_parsed.features as IdentifiedFeature[];
+  return parsed.features as IdentifiedFeature[];
 }

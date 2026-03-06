@@ -2,17 +2,24 @@
 import { batchAll } from "../batchOps";
 import { makeRetriable } from "p-retry";
 import { logger } from "../logger";
-import { getOpenAI } from "./utils";
+import {
+  EMBEDDING_DIMENSIONS,
+  EMBEDDING_MODEL,
+  getGemini,
+} from "./utils";
 
-const log = logger("openai:embeddings");
+const log = logger("gemini:embeddings");
 
 async function getEmbeddings(batch: string[]) {
-  const res = await getOpenAI().embeddings.create({
-    model: "text-embedding-3-small",
-    input: batch,
-    dimensions: 1536,
+  const res = await getGemini().models.embedContent({
+    model: EMBEDDING_MODEL,
+    contents: batch,
+    config: {
+      outputDimensionality: EMBEDDING_DIMENSIONS,
+    },
   });
-  return res.data.map((d) => d.embedding);
+
+  return (res.embeddings ?? []).map((item) => item.values ?? []);
 }
 
 const BATCH_SIZE = 7;

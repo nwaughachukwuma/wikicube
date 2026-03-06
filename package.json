@@ -11,6 +11,7 @@
     "pregenerate": "npx tsx scripts/pregenerate.ts"
   },
   "dependencies": {
+    "@google/genai": "^1.44.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
     "dotenv": "^17.3.1",

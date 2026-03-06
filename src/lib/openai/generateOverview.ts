@@ -1,9 +1,9 @@
 /* ─── Phase E: Generate overview page ─── */
 
 import { logger } from "../logger";
-import { getOpenAI, MODEL } from "./utils";
+import { getGemini, MODEL } from "./utils";
 
-const log = logger("openai:overview");
+const log = logger("gemini:overview");
 
 export async function generateOverview(
   repo: string,
@@ -11,19 +11,23 @@ export async function generateOverview(
   readme: string,
   features: Array<{ title: string; summary: string }>,
 ): Promise<string> {
-  const openai = getOpenAI();
+  const gemini = getGemini();
 
   const featureList = features
     .map((f, i) => `${i + 1}. **${f.title}**: ${f.summary}`)
     .join("\n");
 
   const genOverviewDone = log.time("generateOverview");
-  const res = await openai.chat.completions.create({
+  const res = await gemini.models.generateContent({
     model: MODEL,
-    messages: [
-      {
-        role: "system",
-        content: `You are a senior technical writer. Generate a concise wiki overview page for a GitHub repository.
+    contents: `Repository: ${repo}
+        Description: ${repoDescription || "Not provided in repo metadata"}
+        ${readme ? `\nREADME excerpt:\n${readme}` : ""} // .slice(0, 3000)
+
+        Features identified:
+        ${featureList}`,
+    config: {
+      systemInstruction: `You are a senior technical writer. Generate a concise wiki overview page for a GitHub repository.
         Include:
         1. A clear description of what the project does (from a user-facing perspective)
         2. Key capabilities, functionalities and use cases
@@ -31,21 +35,10 @@ export async function generateOverview(
         4. A summary of all features listed below
 
         Write in markdown. Be concise but thorough. Do NOT wrap in a JSON object — return raw markdown only.`,
-      },
-      {
-        role: "user",
-        content: `Repository: ${repo}
-        Description: ${repoDescription || "Not provided in repo metadata"}
-        ${readme ? `\nREADME excerpt:\n${readme}` : ""} // .slice(0, 3000)
-
-        Features identified:
-        ${featureList}`,
-      },
-    ],
+    },
   });
 
-  const content =
-    res.choices[0]?.message?.content || "# Overview\n\nNo overview generated.";
+  const content = res.text || "# Overview\n\nNo overview generated.";
 
   genOverviewDone({
     model: MODEL,

@@ -1,8 +1,7 @@
 /* ─── Phase D: Generate wiki page per feature ─── */
 
 import { z } from "zod";
-import { zodTextFormat } from "openai/helpers/zod";
-import { getOpenAI, MODEL } from "./utils";
+import { getGemini, MODEL, parseJsonResponse } from "./utils";
 import type {
   Citation,
   EntryPoint,
@@ -12,7 +11,7 @@ import type {
 import { logger } from "../logger";
 import { buildGitHubUrl } from "../github";
 
-const log = logger("openai:featureFlag");
+const log = logger("gemini:featureFlag");
 
 const GeneratedPageSchema = z.object({
   markdownContent: z.string(),
@@ -33,6 +32,40 @@ const GeneratedPageSchema = z.object({
     }),
   ),
 });
+
+const GeneratedPageResponseSchema = {
+  type: "object",
+  properties: {
+    markdownContent: { type: "string" },
+    entryPoints: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          file: { type: "string" },
+          line: { type: "number" },
+          symbol: { type: "string" },
+          githubUrl: { type: "string" },
+        },
+        required: ["file", "line", "symbol", "githubUrl"],
+      },
+    },
+    citations: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          file: { type: "string" },
+          startLine: { type: "number" },
+          endLine: { type: "number" },
+          githubUrl: { type: "string" },
+        },
+        required: ["file", "startLine", "endLine", "githubUrl"],
+      },
+    },
+  },
+  required: ["markdownContent", "entryPoints", "citations"],
+} as const;
 
 /** Truncate file content intelligently — keep head, tail, and signatures from middle */
 function truncateFile(content: string, maxLines = 1024): string {
@@ -71,7 +104,7 @@ export async function generateFeaturePage(
   feature: IdentifiedFeature,
   fileContents: Map<string, string>,
 ): Promise<GeneratedPage> {
-  const openai = getOpenAI();
+  const gemini = getGemini();
 
   // Build file context string with truncation for large files
   const fileContext = Array.from(fileContents.entries())
@@ -113,25 +146,26 @@ export async function generateFeaturePage(
   ${fileContext}`;
 
   const done = log.time(`generateFeaturePage:${feature.title}`);
-  const res = await openai.responses.parse({
+  const res = await gemini.models.generateContent({
     model: MODEL,
-    input: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    text: { format: zodTextFormat(GeneratedPageSchema, "wiki_page") },
+    contents: userPrompt,
+    config: {
+      systemInstruction: systemPrompt,
+      responseMimeType: "application/json",
+      responseJsonSchema: GeneratedPageResponseSchema,
+    },
   });
 
-  if (!res.output_parsed) {
-    throw new Error(`No response for feature: ${feature.title}`);
-  }
+  const parsed = GeneratedPageSchema.parse(
+    parseJsonResponse<unknown>(res.text, `feature page ${feature.title}`),
+  );
 
   done({ feature: feature.title, model: MODEL });
   const {
     markdownContent,
     entryPoints: rawEPs,
     citations: rawCitations,
-  } = res.output_parsed;
+  } = parsed;
 
   // Back-fill githubUrls if the model omitted them
   const entryPoints: EntryPoint[] = rawEPs.map((ep) => ({
