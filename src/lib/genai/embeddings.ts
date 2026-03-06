@@ -24,7 +24,10 @@ async function getEmbeddings(
     },
   });
 
-  return (res.embeddings ?? []).map((item) => item.values ?? []);
+  if (!res.embeddings) {
+    throw new Error("No embeddings returned from Gemini");
+  }
+  return res.embeddings.map((d) => d.values ?? []);
 }
 
 const BATCH_SIZE = 7;
