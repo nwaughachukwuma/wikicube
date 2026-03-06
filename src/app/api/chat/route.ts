@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Semantic search
-  const embeddings = await generateEmbeddings([question]);
+  const embeddings = await generateEmbeddings([question], "QUESTION_ANSWERING");
   if (embeddings.length && embeddings[0].length) {
     const chunks = await matchChunks(wikiId, embeddings[0], {
       matchCount: 8,

@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Embed the search query
-  const embeddings = await generateEmbeddings([query]);
+  const embeddings = await generateEmbeddings([query], 'RETRIEVAL_QUERY');
   if (!embeddings.length || !embeddings[0]?.length) {
     return NextResponse.json(
       { error: "Failed to generate query embedding" },

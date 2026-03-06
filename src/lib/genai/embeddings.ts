@@ -34,7 +34,10 @@ const BATCH_SIZE = 7;
 /**
  * Embed texts in batches. The per-input limit is 8191 tokens
  */
-export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
+export async function generateEmbeddings(
+  texts: string[],
+  taskType: TaskType = "RETRIEVAL_DOCUMENT",
+): Promise<number[][]> {
   if (texts.length === 0) return [];
 
   const batches: string[][] = [];
@@ -52,6 +55,6 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
     retries: 3,
     onFailedAttempt: (ctx) => log.warn("Embedding batch failed", ctx),
   });
-  const results = await batchAll(batches, (b) => retryable(b), 5);
+  const results = await batchAll(batches, (b) => retryable(b, taskType), 5);
   return results.flat();
 }
