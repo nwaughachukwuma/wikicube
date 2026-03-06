@@ -14,7 +14,7 @@ interface FileStore {
   pollWikiData: (owner: string, repo: string) => () => void;
 }
 
-export const wikiStore = create<FileStore>((set, get) => ({
+export const wikiStore = create<FileStore>((set) => ({
   data: null,
   loading: false,
   getWikiData: async (owner, repo) => {
