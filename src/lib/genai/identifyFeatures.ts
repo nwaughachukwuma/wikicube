@@ -1,7 +1,12 @@
 import { z } from "zod";
 import type { IdentifiedFeature } from "../types";
 import { logger } from "../logger";
-import { getGemini, MODEL, parseJsonResponse } from "./utils";
+import {
+  getGemini,
+  MODEL,
+  parseStructuredJson,
+  toGeminiJsonSchema,
+} from "./utils";
 
 const log = logger("gemini:identifyFeatures");
 
@@ -16,29 +21,6 @@ const IdentifyFeaturesSchema = z.object({
     }),
   ),
 });
-
-const IdentifyFeaturesResponseSchema = {
-  type: "object",
-  properties: {
-    features: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-          summary: { type: "string" },
-          relevantFiles: {
-            type: "array",
-            items: { type: "string" },
-          },
-        },
-        required: ["id", "title", "summary", "relevantFiles"],
-      },
-    },
-  },
-  required: ["features"],
-} as const;
 
 /* ─── Phase B: Identify features from file tree ─── */
 
@@ -96,12 +78,14 @@ export async function identifyFeatures(
     config: {
       systemInstruction: systemPrompt,
       responseMimeType: "application/json",
-      responseJsonSchema: IdentifyFeaturesResponseSchema,
+      responseJsonSchema: toGeminiJsonSchema(IdentifyFeaturesSchema),
     },
   });
 
-  const parsed = IdentifyFeaturesSchema.parse(
-    parseJsonResponse<unknown>(res.text, "feature identification"),
+  const parsed = parseStructuredJson(
+    IdentifyFeaturesSchema,
+    res.text,
+    "feature identification",
   );
 
   done({

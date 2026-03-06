@@ -1,7 +1,12 @@
 /* ─── Phase D: Generate wiki page per feature ─── */
 
 import { z } from "zod";
-import { getGemini, MODEL, parseJsonResponse } from "./utils";
+import {
+  getGemini,
+  MODEL,
+  parseStructuredJson,
+  toGeminiJsonSchema,
+} from "./utils";
 import type {
   Citation,
   EntryPoint,
@@ -32,40 +37,6 @@ const GeneratedPageSchema = z.object({
     }),
   ),
 });
-
-const GeneratedPageResponseSchema = {
-  type: "object",
-  properties: {
-    markdownContent: { type: "string" },
-    entryPoints: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          file: { type: "string" },
-          line: { type: "number" },
-          symbol: { type: "string" },
-          githubUrl: { type: "string" },
-        },
-        required: ["file", "line", "symbol", "githubUrl"],
-      },
-    },
-    citations: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          file: { type: "string" },
-          startLine: { type: "number" },
-          endLine: { type: "number" },
-          githubUrl: { type: "string" },
-        },
-        required: ["file", "startLine", "endLine", "githubUrl"],
-      },
-    },
-  },
-  required: ["markdownContent", "entryPoints", "citations"],
-} as const;
 
 /** Truncate file content intelligently — keep head, tail, and signatures from middle */
 function truncateFile(content: string, maxLines = 1024): string {
@@ -150,12 +121,14 @@ export async function generateFeaturePage(
     config: {
       systemInstruction: systemPrompt,
       responseMimeType: "application/json",
-      responseJsonSchema: GeneratedPageResponseSchema,
+      responseJsonSchema: toGeminiJsonSchema(GeneratedPageSchema),
     },
   });
 
-  const parsed = GeneratedPageSchema.parse(
-    parseJsonResponse<unknown>(res.text, `feature page ${feature.title}`),
+  const parsed = parseStructuredJson(
+    GeneratedPageSchema,
+    res.text,
+    `feature page ${feature.title}`,
   );
 
   done({ feature: feature.title, model: MODEL });

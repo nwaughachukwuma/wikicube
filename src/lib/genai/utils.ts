@@ -1,4 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
+import type { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 
 export const MODEL = "gemini-3.1-flash-lite-preview";
 export const EMBEDDING_MODEL = "gemini-embedding-001";
@@ -31,4 +33,21 @@ export function parseJsonResponse<T>(
     : trimmed;
 
   return JSON.parse(normalized) as T;
+}
+
+export function toGeminiJsonSchema(schema: z.ZodTypeAny) {
+  const jsonSchema = zodToJsonSchema(schema, {
+    $refStrategy: "none",
+  }) as Record<string, unknown>;
+
+  delete jsonSchema.$schema;
+  return jsonSchema;
+}
+
+export function parseStructuredJson<TSchema extends z.ZodTypeAny>(
+  schema: TSchema,
+  text: string | undefined,
+  source: string,
+): z.infer<TSchema> {
+  return schema.parse(parseJsonResponse<unknown>(text, source));
 }

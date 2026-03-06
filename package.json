@@ -29,6 +29,7 @@
     "shiki": "^1.24.0",
     "tiktoken": "^1.0.22",
     "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.25.1",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
