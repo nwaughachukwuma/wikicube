@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Anton, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -39,6 +40,7 @@ export default function RootLayout({
     >
       <body className="bg-bg text-text antialiased" suppressHydrationWarning>
         {children}
+        <Analytics />
       </body>
     </html>
   );

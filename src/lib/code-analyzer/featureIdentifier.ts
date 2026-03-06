@@ -1,4 +1,4 @@
-import { identifyFeatures } from "../openai";
+import { identifyFeatures } from "../genai";
 import { updateWikiStatus } from "../db";
 import { logger } from "../logger";
 import type { AnalysisEvent, IdentifiedFeature, RepoMeta } from "../types";

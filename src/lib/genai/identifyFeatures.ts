@@ -49,8 +49,6 @@ export async function identifyFeatures(
   manifests: string,
   repoDescription: string,
 ): Promise<IdentifiedFeature[]> {
-  const gemini = getGemini();
-
   const systemPrompt = `You are a senior technical writer analyzing a GitHub repository to create user-facing documentation.
 
   Given a repository's README, file tree, and metadata, identify ALL high-level user-facing features and subsystems.
@@ -92,7 +90,7 @@ export async function identifyFeatures(
   ${cappedTree}`;
 
   const done = log.time("identifyFeatures");
-  const res = await gemini.models.generateContent({
+  const res = await getGemini().models.generateContent({
     model: MODEL,
     contents: userPrompt,
     config: {

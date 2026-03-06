@@ -1,4 +1,4 @@
-import { generateOverview, generateEmbeddings } from "../openai";
+import { generateOverview, generateEmbeddings } from "../genai";
 import { updateWikiStatus, insertChunks, markSearchReady } from "../db";
 import { chunkCodeFile, chunkWikiContent, chunkOverview } from "../chunker";
 import { logger } from "../logger";

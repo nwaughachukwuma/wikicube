@@ -104,8 +104,6 @@ export async function generateFeaturePage(
   feature: IdentifiedFeature,
   fileContents: Map<string, string>,
 ): Promise<GeneratedPage> {
-  const gemini = getGemini();
-
   // Build file context string with truncation for large files
   const fileContext = Array.from(fileContents.entries())
     .map(([path, content]) => `--- ${path} ---\n${truncateFile(content)}`)
@@ -146,7 +144,7 @@ export async function generateFeaturePage(
   ${fileContext}`;
 
   const done = log.time(`generateFeaturePage:${feature.title}`);
-  const res = await gemini.models.generateContent({
+  const res = await getGemini().models.generateContent({
     model: MODEL,
     contents: userPrompt,
     config: {

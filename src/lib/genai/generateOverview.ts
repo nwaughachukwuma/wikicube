@@ -11,14 +11,12 @@ export async function generateOverview(
   readme: string,
   features: Array<{ title: string; summary: string }>,
 ): Promise<string> {
-  const gemini = getGemini();
-
   const featureList = features
     .map((f, i) => `${i + 1}. **${f.title}**: ${f.summary}`)
     .join("\n");
 
   const genOverviewDone = log.time("generateOverview");
-  const res = await gemini.models.generateContent({
+  const res = await getGemini().models.generateContent({
     model: MODEL,
     contents: `Repository: ${repo}
         Description: ${repoDescription || "Not provided in repo metadata"}

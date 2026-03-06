@@ -6,16 +6,21 @@ import {
   EMBEDDING_DIMENSIONS,
   EMBEDDING_MODEL,
   getGemini,
+  type TaskType,
 } from "./utils";
 
 const log = logger("gemini:embeddings");
 
-async function getEmbeddings(batch: string[]) {
+async function getEmbeddings(
+  batch: string[],
+  taskType: TaskType = "RETRIEVAL_DOCUMENT",
+) {
   const res = await getGemini().models.embedContent({
     model: EMBEDDING_MODEL,
     contents: batch,
     config: {
       outputDimensionality: EMBEDDING_DIMENSIONS,
+      taskType,
     },
   });
 

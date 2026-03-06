@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getWikiById, matchChunks, getFeatures } from "@/lib/db";
-import { generateEmbeddings } from "@/lib/openai";
+import { generateEmbeddings } from "@/lib/genai";
 import { getSupabaseUser } from "@/lib/supabase/server";
 import { privateWikiGuard } from "@/lib/db.utils";
 

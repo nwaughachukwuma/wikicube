@@ -8,11 +8,9 @@ export async function chatWithWiki(
   contextChunks: string[],
   history: Array<{ role: "user" | "assistant"; content: string }>,
 ): Promise<ReadableStream<Uint8Array>> {
-  const gemini = getGemini();
-
   const context = contextChunks.join("\n\n---\n\n");
 
-  const chat = gemini.chats.create({
+  const chat = getGemini().chats.create({
     model: MODEL,
     config: {
       systemInstruction: `You are a helpful assistant answering questions about a codebase wiki.
