@@ -1,7 +1,7 @@
 /* ─── RAG: Chat with wiki ─── */
 
 import type { Content } from "@google/genai";
-import { getGemini, MODEL } from "./utils";
+import { getGemini, MODELS } from "./utils";
 import { makeRetriable } from "p-retry";
 import { logger } from "../logger";
 
@@ -15,7 +15,7 @@ export async function chatWithWiki(
   const context = contextChunks.join("\n\n---\n\n");
 
   const chat = getGemini().chats.create({
-    model: MODEL,
+    model: MODELS["g31flash-lite"],
     config: {
       systemInstruction: `You are a helpful assistant answering questions about a codebase wiki.
 

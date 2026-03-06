@@ -3,7 +3,11 @@ import type { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { makeRetriable, type Options } from "p-retry";
 
-export const MODEL = "gemini-3.1-flash-lite-preview";
+export const MODELS = {
+  "g31flash-lite": "gemini-3.1-flash-lite-preview",
+  g3flash: "gemini-3-flash-preview",
+} as const;
+
 export const EMBEDDING_MODEL = "gemini-embedding-001";
 export const EMBEDDING_DIMENSIONS = 1536;
 

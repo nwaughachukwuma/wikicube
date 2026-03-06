@@ -3,4 +3,4 @@ export * from "./embeddings";
 export * from "./wikiChat";
 export * from "./generateOverview";
 export * from "./identifyFeatures";
-export * from "./generateFeatureFlag";
+export * from "./generateFeature";

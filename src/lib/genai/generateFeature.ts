@@ -2,7 +2,7 @@
 
 import { z } from "zod";
 import {
-  MODEL,
+  MODELS,
   parseStructuredJson,
   retryGenerateContent,
   toGeminiJsonSchema,
@@ -72,7 +72,7 @@ const retryable = retryGenerateContent({
   onFailedAttempt(ctx) {
     log.warn(
       `Generate feature page ${ctx.attemptNumber} failed.` +
-      `There are ${ctx.retriesLeft} retries left. Error: ${ctx.error}`,
+        `There are ${ctx.retriesLeft} retries left. Error: ${ctx.error}`,
     );
   },
 });
@@ -126,7 +126,7 @@ export async function generateFeaturePage(
 
   const done = log.time(`generateFeaturePage:${feature.title}`);
   const res = await retryable({
-    model: MODEL,
+    model: MODELS["g31flash-lite"],
     contents: userPrompt,
     config: {
       systemInstruction: systemPrompt,
@@ -141,7 +141,11 @@ export async function generateFeaturePage(
     `feature page ${feature.title}`,
   );
 
-  done({ feature: feature.title, model: MODEL });
+  done({
+    feature: feature.title,
+    model: MODELS["g31flash-lite"],
+  });
+
   const {
     markdownContent,
     entryPoints: rawEPs,

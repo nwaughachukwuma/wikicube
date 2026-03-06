@@ -144,7 +144,7 @@ export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
         }
       }
     },
-    [owner, repo, router, updateStep, handleStatusEvent, onComplete],
+    [updateStep, handleStatusEvent, onComplete],
   );
 
   useEffect(() => {

@@ -2,7 +2,7 @@ import { z } from "zod";
 import type { IdentifiedFeature } from "../types";
 import { logger } from "../logger";
 import {
-  MODEL,
+  MODELS,
   parseStructuredJson,
   retryGenerateContent,
   toGeminiJsonSchema,
@@ -83,7 +83,7 @@ export async function identifyFeatures(
 
   const done = log.time("identifyFeatures");
   const res = await retryable({
-    model: MODEL,
+    model: MODELS["g3flash"],
     contents: userPrompt,
     config: {
       systemInstruction: systemPrompt,
@@ -100,7 +100,7 @@ export async function identifyFeatures(
 
   done({
     featureCount: parsed.features.length,
-    model: MODEL,
+    model: MODELS["g3flash"],
   });
   return parsed.features as IdentifiedFeature[];
 }

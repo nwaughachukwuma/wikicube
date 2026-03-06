@@ -23,7 +23,7 @@ export default function FeaturePage() {
     if (!data) return;
     const found = data.features.find((f) => f.slug === featureSlug);
     if (found) setFeature(found);
-  }, [owner, repo, featureSlug]);
+  }, [owner, repo, data, featureSlug]);
 
   if (loading || !mounted) {
     return (

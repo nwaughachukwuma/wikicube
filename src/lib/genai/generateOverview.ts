@@ -1,7 +1,7 @@
 /* ─── Phase E: Generate overview page ─── */
 
 import { logger } from "../logger";
-import { MODEL, retryGenerateContent } from "./utils";
+import { MODELS, retryGenerateContent } from "./utils";
 
 const log = logger("gemini:overview");
 
@@ -27,7 +27,7 @@ export async function generateOverview(
 
   const genOverviewDone = log.time("generateOverview");
   const res = await retryable({
-    model: MODEL,
+    model: MODELS["g31flash-lite"],
     contents: `Repository: ${repo}
         Description: ${repoDescription || "Not provided in repo metadata"}
         ${readme ? `\nREADME excerpt:\n${readme}` : ""} // .slice(0, 3000)
@@ -49,7 +49,7 @@ export async function generateOverview(
   const content = res.text || "# Overview\n\nNo overview generated.";
 
   genOverviewDone({
-    model: MODEL,
+    model: MODELS["g31flash-lite"],
     length: content.length,
   });
   return content;
