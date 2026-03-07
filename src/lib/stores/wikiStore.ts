@@ -40,7 +40,7 @@ export const wikiStore = create<FileStore>((set) => ({
           return null;
         })
         .then((data) => {
-          if (data?.wiki?.search_ready) {
+          if (data?.wiki.search_ready || data?.wiki.search_error) {
             set({ data });
             clearInterval(interval);
           }

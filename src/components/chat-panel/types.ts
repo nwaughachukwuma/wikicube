@@ -1,3 +1,5 @@
+import type { Wiki } from "@/lib/types";
+
 export interface Message {
   role: "user" | "assistant";
   content: string;
@@ -11,9 +13,7 @@ export interface ChatSession {
 }
 
 export interface ChatPanelProps {
-  wikiId: string;
+  wiki: Wiki;
   /** Current page title + summary passed as extra context to the model */
   pageContext?: string;
-  /** Whether the search/embedding index is ready */
-  searchReady?: boolean;
 }

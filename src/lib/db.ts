@@ -1,7 +1,6 @@
 import { batchAll } from "./batchOps";
 import { logger } from "./logger";
 import { getServerClient } from "./supabase/server";
-import pRetry from "p-retry";
 import type {
   Wiki,
   Feature,
@@ -10,6 +9,7 @@ import type {
   WikiChat,
   ChatSession,
 } from "./types";
+import { withRetry } from "./db.utils";
 
 const log = logger("db");
 
@@ -69,6 +69,7 @@ export async function upsertWiki(
         visibility: opts.visibility ?? existing.visibility ?? "public",
         indexed_by: opts.indexedBy ?? existing.indexed_by ?? null,
         search_ready: false,
+        search_error: null,
         updated_at: new Date().toISOString(),
       })
       .eq("id", existing.id)
@@ -120,28 +121,46 @@ export async function updateWikiStatus(
     updates.overview = stripNullBytes(overview);
   }
 
-  const { error } = await getServerClient()
-    .from("wikis")
-    .update(stripNullBytes(updates))
-    .eq("id", wikiId);
+  await withRetry("update wiki status", async () => {
+    const { error } = await getServerClient()
+      .from("wikis")
+      .update(stripNullBytes(updates))
+      .eq("id", wikiId);
 
-  if (error) throw error;
+    if (error) throw error;
+  });
 }
 
 export async function markSearchReady(wikiId: string): Promise<void> {
-  await pRetry(
-    async () => {
-      const { error } = await getServerClient()
-        .from("wikis")
-        .update({
-          search_ready: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", wikiId);
-      if (error) throw error;
-    },
-    { retries: 3, minTimeout: 2_000 },
-  );
+  await withRetry("mark search ready", async () => {
+    const { error } = await getServerClient()
+      .from("wikis")
+      .update({
+        search_ready: true,
+        search_error: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", wikiId);
+    if (error) throw error;
+  });
+}
+
+export async function markSearchFailed(
+  wikiId: string,
+  errorMessage: string,
+): Promise<void> {
+  await withRetry("mark search failed", async () => {
+    const { error } = await getServerClient()
+      .from("wikis")
+      .update({
+        search_ready: false,
+        search_error: stripNullBytes(errorMessage),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", wikiId);
+
+    if (error) throw error;
+  });
 }
 
 export async function getWiki(
@@ -227,15 +246,15 @@ export async function insertChunks(
 
   await batchAll(
     batches,
-    async (batch) => {
-      return pRetry(
+    async (batch, index) => {
+      return withRetry(
+        `insert chunk batch ${index + 1}/${batches.length}`,
         async () => {
           const { error } = await db
             .from("chunks")
             .insert(stripNullBytes(batch));
           if (error) throw error;
         },
-        { retries: 3, minTimeout: 2_000 },
       );
     },
     5, // concurrency

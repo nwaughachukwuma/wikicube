@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getSupabaseUser } from "./supabase/server";
 import type { Wiki } from "./types";
+import pRetry from "p-retry";
+import { ensureError, extractError } from "./error";
+import { logger } from "./logger";
 
 /**
  * Enforce access control for private wikis
@@ -38,4 +41,38 @@ export async function authRouteGuard(customError?: string) {
     };
   }
   return { user, err: null };
+}
+
+const DB_RETRY_OPTIONS = {
+  retries: 3,
+  minTimeout: 2_000,
+  factor: 2,
+  randomize: true,
+} as const;
+
+const log = logger("db:utils");
+
+export async function withRetry<T>(
+  operation: string,
+  run: () => Promise<T>,
+): Promise<T> {
+  return pRetry(
+    async () => {
+      try {
+        return await run();
+      } catch (error) {
+        throw ensureError(error, `${operation} failed`);
+      }
+    },
+    {
+      ...DB_RETRY_OPTIONS,
+      onFailedAttempt(ctx) {
+        log.warn(`${operation} failed`, {
+          attemptNumber: ctx.attemptNumber,
+          retriesLeft: ctx.retriesLeft,
+          error: extractError(ctx.error),
+        });
+      },
+    },
+  );
 }

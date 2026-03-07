@@ -124,9 +124,14 @@ export async function embedWikiAndCode(params: {
     message: `Embedding ${allChunkTexts.length} chunks (${sourceFiles.size} file references + wiki)...`,
   });
 
-  if (allChunkTexts.length === 0) return;
+  if (allChunkTexts.length === 0) {
+    await markSearchReady(wikiId);
+    log.warn("No chunks generated; marking search ready without embeddings", {
+      wikiId,
+    });
+    return;
+  }
 
-  // Generate embeddings (current cap: first 100 chunks)
   const embedDone = log.time("generateEmbeddings");
   const embeddings = await generateEmbeddings(allChunkTexts); //.slice(0, 100));
   embedDone({
@@ -148,7 +153,5 @@ export async function embedWikiAndCode(params: {
   await insertChunks(chunkRecords);
   insertDone({ records: chunkRecords.length });
 
-  // Mark search as ready so the UI can enable search/chat
   await markSearchReady(wikiId);
-  log.info("search index ready", { wikiId });
 }

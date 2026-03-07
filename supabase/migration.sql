@@ -129,3 +129,7 @@ update public.wikis
   set search_ready = true
   where status = 'done'
     and exists (select 1 from public.chunks c where c.wiki_id = wikis.id);
+
+-- Track whether embedding errored
+alter table public.wikis
+  add column if not exists search_error text default null;

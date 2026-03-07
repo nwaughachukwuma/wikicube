@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Fuse from "fuse.js";
 import { SearchIcon } from "lucide-react";
+import type { Wiki, Feature } from "@/lib/types";
 
 interface SearchResult {
   content: string;
@@ -14,26 +15,19 @@ interface SearchResult {
   featureSlug: string | null;
 }
 
-interface FeatureItem {
-  title: string;
-  slug: string;
-}
-
 interface Props {
-  wikiId: string;
   owner: string;
   repo: string;
-  features?: FeatureItem[];
-  searchReady?: boolean;
+  wiki: Wiki;
+  features?: Feature[];
   onNavigate?: () => void;
 }
 
 export default function SearchBar({
-  wikiId,
   owner,
   repo,
+  wiki,
   features = [],
-  searchReady,
   onNavigate,
 }: Props) {
   const router = useRouter();
@@ -42,11 +36,21 @@ export default function SearchBar({
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  const wikiId = wiki.id;
+  const searchReady = wiki.search_ready;
+  const searchError = wiki.search_error;
+
   // Fuse.js fuzzy matcher on feature titles
   const fuse = useMemo(
     () =>
       new Fuse(features, {
-        keys: ["title"],
+        keys: [
+          "title",
+          "summary",
+          "markdown_content",
+          "entry_points.file",
+          "citations.file",
+        ],
         threshold: 0.4,
         includeScore: true,
       }),
@@ -151,12 +155,17 @@ export default function SearchBar({
 
   return (
     <div className="relative">
-      {!searchReady && (
+      {searchError ? (
+        <div className="mb-1.5 text-[10px] text-text-muted">
+          Semantic search is unavailable right now. Feature title search still
+          works.
+        </div>
+      ) : !searchReady ? (
         <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-text-muted">
           <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
           Search indexing in progress…
         </div>
-      )}
+      ) : null}
       <div className="flex items-center gap-2 border border-border px-2.5 py-1.5 bg-card">
         <SearchIcon className="w-3.5 h-3.5 text-text-muted shrink-0" />
         <input
