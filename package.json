@@ -7,18 +7,20 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "pregenerate": "npx tsx scripts/pregenerate.ts"
+    "lint": "eslint .",
+    "pregenerate": "npx tsx scripts/pregenerate.ts",
+    "test": "vitest run"
   },
   "dependencies": {
+    "@google/genai": "^1.44.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
+    "@vercel/analytics": "^1.6.1",
     "dotenv": "^17.3.1",
     "fuse.js": "^7.0.0",
     "github-slugger": "^2.0.0",
     "lucide-react": "^0.575.0",
     "next": "^15.1.0",
-    "openai": "^4.77.0",
     "p-retry": "^7.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -26,21 +28,26 @@
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.0",
     "shiki": "^1.24.0",
+    "throttle-debounce": "^5.0.2",
     "tiktoken": "^1.0.22",
     "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.25.1",
     "zustand": "^5.0.11"
   },
   "devDependencies": {
-    "@eslint/eslintrc": "^3.0.0",
+    "@eslint/eslintrc": "^3.3.5",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "eslint": "^9.0.0",
-    "eslint-config-next": "^15.1.0",
+    "@types/throttle-debounce": "^5.0.2",
+    "eslint": "^9.39.4",
+    "eslint-config-next": "^15.5.12",
+    "openai": "^4.77.0",
     "postcss": "^8.4.49",
     "supabase": "^2.76.15",
     "tailwindcss": "^4.0.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "vitest": "^4.0.18"
   }
 }

@@ -1,8 +1,12 @@
 /* ─── Phase D: Generate wiki page per feature ─── */
 
 import { z } from "zod";
-import { zodTextFormat } from "openai/helpers/zod";
-import { getOpenAI, MODEL } from "./utils";
+import {
+  MODELS,
+  parseStructuredJson,
+  retryGenerateContent,
+  toGeminiJsonSchema,
+} from "./utils";
 import type {
   Citation,
   EntryPoint,
@@ -12,7 +16,7 @@ import type {
 import { logger } from "../logger";
 import { buildGitHubUrl } from "../github";
 
-const log = logger("openai:featureFlag");
+const log = logger("gemini:featureFlag");
 
 const GeneratedPageSchema = z.object({
   markdownContent: z.string(),
@@ -63,6 +67,16 @@ function truncateFile(content: string, maxLines = 1024): string {
   ].join("\n");
 }
 
+const retryable = retryGenerateContent({
+  retries: 3,
+  onFailedAttempt(ctx) {
+    log.warn(
+      `Generate feature page ${ctx.attemptNumber} failed.` +
+        `There are ${ctx.retriesLeft} retries left. Error: ${ctx.error}`,
+    );
+  },
+});
+
 export async function generateFeaturePage(
   repoName: string,
   owner: string,
@@ -71,8 +85,6 @@ export async function generateFeaturePage(
   feature: IdentifiedFeature,
   fileContents: Map<string, string>,
 ): Promise<GeneratedPage> {
-  const openai = getOpenAI();
-
   // Build file context string with truncation for large files
   const fileContext = Array.from(fileContents.entries())
     .map(([path, content]) => `--- ${path} ---\n${truncateFile(content)}`)
@@ -113,25 +125,32 @@ export async function generateFeaturePage(
   ${fileContext}`;
 
   const done = log.time(`generateFeaturePage:${feature.title}`);
-  const res = await openai.responses.parse({
-    model: MODEL,
-    input: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt },
-    ],
-    text: { format: zodTextFormat(GeneratedPageSchema, "wiki_page") },
+  const res = await retryable({
+    model: MODELS["g31flash-lite"],
+    contents: userPrompt,
+    config: {
+      systemInstruction: systemPrompt,
+      responseMimeType: "application/json",
+      responseJsonSchema: toGeminiJsonSchema(GeneratedPageSchema),
+    },
   });
 
-  if (!res.output_parsed) {
-    throw new Error(`No response for feature: ${feature.title}`);
-  }
+  const parsed = parseStructuredJson(
+    GeneratedPageSchema,
+    res.text,
+    `feature page ${feature.title}`,
+  );
 
-  done({ feature: feature.title, model: MODEL });
+  done({
+    feature: feature.title,
+    model: MODELS["g31flash-lite"],
+  });
+
   const {
     markdownContent,
     entryPoints: rawEPs,
     citations: rawCitations,
-  } = res.output_parsed;
+  } = parsed;
 
   // Back-fill githubUrls if the model omitted them
   const entryPoints: EntryPoint[] = rawEPs.map((ep) => ({

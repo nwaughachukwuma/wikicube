@@ -4,8 +4,8 @@
  * Code chunks: split at function/class/module boundaries with file path + import context preserved.
  * Wiki chunks: split at feature/section level with title + summary context preserved.
  *
- * Every chunk is guaranteed ≤ MAX_CHUNK_TOKENS (1024) so that batches of 7
- * stay safely within the text-embedding-3-small context window (8192 tokens).
+ * Every chunk is guaranteed ≤ MAX_CHUNK_TOKENS (1024) so that embedding batches
+ * stay within a conservative request budget.
  */
 
 import { encoding_for_model } from "tiktoken";

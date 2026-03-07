@@ -14,7 +14,7 @@ interface FileStore {
   pollWikiData: (owner: string, repo: string) => () => void;
 }
 
-export const wikiStore = create<FileStore>((set, get) => ({
+export const wikiStore = create<FileStore>((set) => ({
   data: null,
   loading: false,
   getWikiData: async (owner, repo) => {
@@ -40,7 +40,7 @@ export const wikiStore = create<FileStore>((set, get) => ({
           return null;
         })
         .then((data) => {
-          if (data?.wiki?.search_ready) {
+          if (data?.wiki.search_ready || data?.wiki.search_error) {
             set({ data });
             clearInterval(interval);
           }

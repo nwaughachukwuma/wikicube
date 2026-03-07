@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getWikiById, matchChunks, getFeatures } from "@/lib/db";
-import { generateEmbeddings } from "@/lib/openai";
+import { generateEmbeddings } from "@/lib/genai";
 import { getSupabaseUser } from "@/lib/supabase/server";
 import { privateWikiGuard } from "@/lib/db.utils";
 
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Embed the search query
-  const embeddings = await generateEmbeddings([query]);
+  const embeddings = await generateEmbeddings([query], 'RETRIEVAL_QUERY');
   if (!embeddings.length || !embeddings[0]?.length) {
     return NextResponse.json(
       { error: "Failed to generate query embedding" },

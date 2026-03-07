@@ -12,6 +12,7 @@ import { ErrorPanel } from "./analysis-progress/ErrorPanel";
 import { ProgressSteps } from "./analysis-progress/ProgressSteps";
 import { FeatureProgress } from "./analysis-progress/FeatureProgress";
 import { useMounted } from "@/lib/hooks/mounted";
+import { debounce } from "throttle-debounce";
 
 interface Props {
   owner: string;
@@ -34,9 +35,18 @@ export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
   const { mounted } = useMounted();
 
   // Auto-scroll to the first in-progress item
+  const autoScroll = useRef(
+    debounce(500, () => {
+      activeRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }),
+  ).current;
+
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [features]);
+    autoScroll();
+  }, [features, autoScroll]);
 
   // Warn user before leaving while analysis is running
   useEffect(() => {
@@ -144,62 +154,67 @@ export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
         }
       }
     },
-    [owner, repo, router, updateStep, handleStatusEvent, onComplete],
+    [updateStep, handleStatusEvent, onComplete],
   );
 
-  useEffect(() => {
-    const abortController = new AbortController();
+  useEffect(
+    () => {
+      const abortController = new AbortController();
 
-    async function runAnalysis() {
-      if (running || !mounted) return;
-      setRunning(true);
-      try {
-        const res = await fetch("/api/analyze", {
-          method: "POST",
-          body: JSON.stringify({
-            repoUrl: `https://github.com/${owner}/${repo}`,
-          }),
-          headers: { "Content-Type": "application/json" },
-          signal: abortController.signal,
-        });
+      async function runAnalysis() {
+        if (running || !mounted) return;
+        setRunning(true);
+        try {
+          const res = await fetch("/api/analyze", {
+            method: "POST",
+            body: JSON.stringify({
+              repoUrl: `https://github.com/${owner}/${repo}`,
+            }),
+            headers: { "Content-Type": "application/json" },
+            signal: abortController.signal,
+          });
 
-        if (!res.ok) {
-          const data = await res.json();
-          throw new Error(data.error || "Analysis failed");
-        }
-
-        // Handle cached JSON response (already done)
-        const contentType = res.headers.get("content-type") || "";
-        if (contentType.includes("application/json")) {
-          const data = await res.json();
-          if (data.status === "done" || data.cached) {
-            onComplete();
-            return;
+          if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || "Analysis failed");
           }
-        }
 
-        // SSE stream
-        await handleStreamingResponse(res);
-      } catch (err) {
-        if (!abortController.signal.aborted) {
-          setError(err instanceof Error ? err.message : "Analysis failed");
+          // Handle cached JSON response (already done)
+          const contentType = res.headers.get("content-type") || "";
+          if (contentType.includes("application/json")) {
+            const data = await res.json();
+            if (data.status === "done" || data.cached) {
+              onComplete();
+              return;
+            }
+          }
+
+          // SSE stream
+          await handleStreamingResponse(res);
+        } catch (err) {
+          if (!abortController.signal.aborted) {
+            setError(err instanceof Error ? err.message : "Analysis failed");
+          }
+        } finally {
+          setRunning(false);
         }
-      } finally {
-        setRunning(false);
       }
-    }
 
-    runAnalysis();
-    return () => abortController.abort();
-  }, [
-    owner,
-    repo,
-    router,
-    mounted,
-    setRunning,
-    handleStreamingResponse,
-    onComplete,
-  ]);
+      runAnalysis();
+      return () => abortController.abort();
+    },
+    /* eslint-disable  react-hooks/exhaustive-deps */
+    [
+      owner,
+      repo,
+      router,
+      mounted,
+      setRunning,
+      handleStreamingResponse,
+      onComplete,
+    ],
+    /* eslint-enable react-hooks/exhaustive-deps  */
+  );
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center px-6">

@@ -33,7 +33,6 @@ export function useChatSession({ wikiId }: UseChatSessionOptions) {
         return data;
       }
     } catch {
-      // non-fatal
     } finally {
       setLoadingSessions(false);
     }
@@ -42,21 +41,19 @@ export function useChatSession({ wikiId }: UseChatSessionOptions) {
 
   const loadSession = useCallback(
     async (sessionId: string): Promise<Message[] | null> => {
-      try {
+      async function handler(sessionId: string) {
         const res = await fetch(
           `/api/chat/sessions?wikiId=${wikiId}&sessionId=${sessionId}`,
         );
         if (!res.ok) return null;
 
-        const rows: Array<{ role: "user" | "assistant"; content: string }> =
-          await res.json();
-
+        const messages: Message[] = await res.json();
         sessionIdRef.current = sessionId;
         sessionStorage.setItem(`chat-session-${wikiId}`, sessionId);
-        return rows.map((r) => ({ role: r.role, content: r.content }));
-      } catch {
-        return null;
+        return messages.map((r) => ({ role: r.role, content: r.content }));
       }
+
+      return handler(sessionId).catch(() => null);
     },
     [wikiId],
   );

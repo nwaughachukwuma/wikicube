@@ -228,6 +228,8 @@ const README_FILES = [
   "CONTRIBUTING.md",
 ];
 
+export const DOC_PATH_RE = /^docs\/.+\.mdx?$/i;
+
 export async function fetchProjectContext(
   owner: string,
   repo: string,
@@ -241,11 +243,12 @@ export async function fetchProjectContext(
     treePathSet.has(m.toLowerCase()),
   );
 
-  // Detect top-level docs (e.g. docs/*.md) for richer feature context
+  // Detect markdown docs anywhere under docs/, including localized and nested
+  // paths like docs/zh/readme.md or docs/guides/setup/index.mdx.
   const docPaths = treePaths
     .filter(
       (p) =>
-        /^docs\/[^/]+\.mdx?$/i.test(p) &&
+        DOC_PATH_RE.test(p) &&
         !README_FILES.some((r) => r.toLowerCase() === p.toLowerCase()),
     )
     .slice(0, 5);

@@ -10,6 +10,7 @@ export interface Wiki {
   visibility: "public" | "private";
   indexed_by: string | null;
   search_ready: boolean;
+  search_error: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -41,6 +42,20 @@ export type WikiStatus =
   | "done"
   | "error";
 
+export interface EntryPoint {
+  file: string;
+  line: number;
+  symbol: string;
+  githubUrl: string;
+}
+
+export interface Citation {
+  file: string;
+  startLine: number;
+  endLine: number;
+  githubUrl: string;
+}
+
 export interface Feature {
   id: string;
   wiki_id: string;
@@ -51,20 +66,6 @@ export interface Feature {
   entry_points: EntryPoint[];
   citations: Citation[];
   sort_order: number;
-}
-
-export interface Citation {
-  file: string;
-  startLine: number;
-  endLine: number;
-  githubUrl: string;
-}
-
-export interface EntryPoint {
-  file: string;
-  line: number;
-  symbol: string;
-  githubUrl: string;
 }
 
 export interface Chunk {

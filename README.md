@@ -20,7 +20,7 @@ Paste a GitHub URL and get a polished, AI-generated wiki organized by user-facin
 - **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS 4
-- **AI**: OpenAI `gpt-5-mini` + `text-embedding-3-small` (1536 dims)
+- **AI**: Gemini `gemini-3.1-flash-lite-preview` + `gemini-embedding-001` (1536 dims)
 - **Database**: Supabase (PostgreSQL + pgvector)
 - **Deployment**: Vercel
 
@@ -30,7 +30,7 @@ Paste a GitHub URL and get a polished, AI-generated wiki organized by user-facin
 
 - Node.js 18+
 - Supabase project (free tier works)
-- OpenAI API key
+- Gemini API key
 
 ### Setup
 
@@ -112,12 +112,12 @@ src/
     │   ├── pageGenerator.ts    # Phases C+D: file fetch + page generation
     │   ├── embedder.ts         # Phases E+F: overview generation + embedding
     │   └── index.ts            # Re-exports
-    └── openai/             # OpenAI integration
-        ├── embeddings.ts       # Batch embedding via text-embedding-3-small
+    └── genai/                  # AI provider facade (Gemini-backed)
+      ├── embeddings.ts       # Batch embedding via gemini-embedding-001
         ├── generateFeatureFlag.ts # Per-feature wiki page generation
         ├── generateOverview.ts # Repo overview page generation
         ├── identifyFeatures.ts # Feature identification prompt
-        ├── utils.ts            # Shared model constant (gpt-5-mini)
+      ├── utils.ts            # Shared Gemini client + model constants
         ├── wikiChat.ts         # Streaming RAG chat
         └── index.ts            # Re-exports
 ```
@@ -129,7 +129,7 @@ src/
 3. **Phase C — Targeted File Fetching** — Per-feature file fetch with a budget of 30 files / 300 lines each, prioritising entry points; keeps context under ~40k tokens
 4. **Phase D — Page Generation** — Parallel LLM calls (concurrency 3) generate wiki pages with inline GitHub citations; all run inside `Promise.allSettled()`
 5. **Phase E — Overview Generation** — Synthesises all feature titles + summaries into a repo overview page with a Mermaid architecture diagram
-6. **Phase F — Embedding** — Chunks all wiki content + source code into ~500-token passages, batch-embeds via `text-embedding-3-small`, stores in Supabase pgvector
+6. **Phase F — Embedding** — Chunks all wiki content + source code into ~500-token passages, batch-embeds via Gemini embeddings, stores in Supabase pgvector
 
 Progress is streamed to the client via **SSE** throughout all phases.
 
@@ -147,7 +147,7 @@ Progress is streamed to the client via **SSE** throughout all phases.
 
 | Variable                    | Description                                                      |
 | --------------------------- | ---------------------------------------------------------------- |
-| `OPENAI_API_KEY`            | OpenAI API key                                                   |
+| `GEMINI_API_KEY`            | Gemini API key                                                   |
 | `NEXT_PUBLIC_SUPABASE_URL`  | Supabase project URL                                             |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only)                     |
 | `GITHUB_TOKEN`              | _(Optional)_ GitHub personal access token for higher rate limits |

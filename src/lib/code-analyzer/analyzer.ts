@@ -1,11 +1,11 @@
-import { updateWikiStatus } from "../db";
+import { markSearchFailed, updateWikiStatus } from "../db";
 import { logger } from "../logger";
 import type { AnalysisEvent, PipelineOptions } from "../types";
 import { gatherContext } from "./contextGatherer";
 import { identifyRepoFeatures } from "./featureIdentifier";
 import { generateAllPages } from "./pageGenerator";
 import { generateOverviewPage, embedWikiAndCode } from "./embedder";
-import { extractError } from "../error";
+import { ensureError } from "../error";
 
 const log = logger("repo:analyzer");
 
@@ -77,21 +77,29 @@ export async function runAnalysisPipeline(
       sourceFiles,
       overview,
       onEvent,
-    }).catch((err) =>
-      log.error("background embedding failed", {
+    }).catch(async (err) => {
+      const normalizedError = ensureError(err, "Background embedding failed");
+      log.error("Background embedding failed", {
         wikiId,
-        error: extractError(err),
-      }),
-    );
+        error: normalizedError.message,
+        stack: normalizedError.stack,
+      });
+      onEvent({
+        type: "status",
+        status: "error",
+        message: "Background embedding failed.",
+      });
+      await markSearchFailed(wikiId, normalizedError.message);
+    });
 
     return wikiId;
   } catch (err) {
+    const normalizedError = ensureError(err, "Pipeline failed");
     log.error("pipeline failed", {
       owner,
       repo,
-      // @ts-expect-error - err might not be an Error object
-      error: extractError(err),
-      stack: err instanceof Error ? err.stack : undefined,
+      error: normalizedError.message,
+      stack: normalizedError.stack,
     });
     onEvent({
       type: "error",

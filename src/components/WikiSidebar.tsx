@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Feature } from "@/lib/types";
+import type { Feature, Wiki } from "@/lib/types";
 import SearchBar from "@/components/SearchBar";
 import WikiHistoryPanel from "@/components/WikiHistoryPanel";
 import { OptimLink } from "./OptimisticLink";
@@ -10,23 +10,20 @@ import { OptimLink } from "./OptimisticLink";
 interface Props {
   owner: string;
   repo: string;
-  wikiId: string;
+  wiki: Wiki;
   features: Feature[];
-  searchReady?: boolean;
   onNavigate?: () => void;
 }
 
 export default function WikiSidebar({
   owner,
   repo,
-  wikiId,
+  wiki,
   features,
-  searchReady,
   onNavigate,
 }: Props) {
   const pathname = usePathname();
   const basePath = `/wiki/${owner}/${repo}`;
-
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
@@ -52,11 +49,10 @@ export default function WikiSidebar({
       {/* Search */}
       <div className="p-3 border-b border-border">
         <SearchBar
-          wikiId={wikiId}
           owner={owner}
           repo={repo}
-          features={features.map((f) => ({ title: f.title, slug: f.slug }))}
-          searchReady={searchReady}
+          wiki={wiki}
+          features={features}
           onNavigate={onNavigate}
         />
       </div>

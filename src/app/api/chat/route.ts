@@ -7,7 +7,7 @@ import {
   insertChatMessage,
   getChatSessionMessages,
 } from "@/lib/db";
-import { generateEmbeddings, chatWithWiki } from "@/lib/openai";
+import { generateEmbeddings, chatWithWiki } from "@/lib/genai";
 import { privateWikiGuard, authRouteGuard } from "@/lib/db.utils";
 
 export const maxDuration = 120;
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
   }
 
   // Semantic search
-  const embeddings = await generateEmbeddings([question]);
+  const embeddings = await generateEmbeddings([question], "QUESTION_ANSWERING");
   if (embeddings.length && embeddings[0].length) {
     const chunks = await matchChunks(wikiId, embeddings[0], {
       matchCount: 8,

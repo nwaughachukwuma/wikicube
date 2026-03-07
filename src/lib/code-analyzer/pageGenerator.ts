@@ -1,5 +1,5 @@
 import { getMultipleFiles } from "../github";
-import { generateFeaturePage } from "../openai";
+import { generateFeaturePage } from "../genai";
 import { insertFeature } from "../db";
 import { batchAll } from "../batchOps";
 import { logger } from "../logger";

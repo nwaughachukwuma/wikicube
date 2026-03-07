@@ -36,17 +36,17 @@ export default function WikiShell({
     });
   }, [owner, repo, wiki, getWikiData]);
 
+  // do some necessary cleanup or state updates here if needed
   const handleAnalysisComplete = useCallback(() => {
-    // do some necessary cleanup or state updates here if needed
+    // location.href = `/wiki/${owner}/${repo}`;
     setTimeout(() => {
-      location.href = `/wiki/${owner}/${repo}`;
       location.reload();
     }, 1000);
-  }, [owner, repo]);
+  }, []);
 
   // Poll for search_ready when wiki is done but search index isn't built yet
   useEffect(() => {
-    if (!data || data.wiki.search_ready) return;
+    if (!data || data.wiki.search_ready || data.wiki.search_error) return;
     const unsubscribe = pollWikiData(owner, repo);
     return () => unsubscribe();
   }, [data, owner, repo, pollWikiData]);
@@ -74,9 +74,8 @@ export default function WikiShell({
     return undefined;
   }
 
-  if (loading || !mounted) {
-    return <PageLoading />;
-  } else if (!wiki) {
+  if (loading || !mounted) return <PageLoading />;
+  else if (!wiki) {
     return (
       <GenerateWiki
         owner={owner}
@@ -110,9 +109,8 @@ export default function WikiShell({
         <WikiSidebar
           owner={owner}
           repo={repo}
-          wikiId={data.wiki.id}
+          wiki={wiki}
           features={data.features}
-          searchReady={data.wiki.search_ready}
           onNavigate={() => setSidebarOpen(false)}
         />
       </aside>
@@ -129,11 +127,7 @@ export default function WikiShell({
       <main className="flex-1 min-w-0">{children}</main>
 
       {/* Chat panel — pass current page context */}
-      <ChatPanel
-        wikiId={data.wiki.id}
-        pageContext={getPageContext(data)}
-        searchReady={data.wiki.search_ready}
-      />
+      <ChatPanel wiki={wiki} pageContext={getPageContext(data)} />
     </div>
   );
 }

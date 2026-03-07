@@ -13,14 +13,13 @@ import { ChatInput } from "./chat-panel/ChatInput";
 import type { ChatPanelProps } from "./chat-panel/types";
 import { signIn } from "./AuthButton";
 
-export default function ChatPanel({
-  wikiId,
-  pageContext,
-  searchReady,
-}: ChatPanelProps) {
+export default function ChatPanel({ wiki, pageContext }: ChatPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<"sessions" | "chat" | null>(null);
   const { user, authLoading } = useUser();
+  const wikiId = wiki.id;
+  const searchReady = wiki.search_ready;
+  const searchError = wiki.search_error;
 
   const {
     sessionIdRef,
@@ -123,13 +122,17 @@ export default function ChatPanel({
                 ) : (
                   view === "chat" && (
                     <>
-                      {!searchReady && (
+                      {searchError ? (
+                        <div className="px-4 py-2 bg-bg-alt border-b border-border text-xs text-text-muted">
+                          Search indexing failed. Answers may be incomplete.
+                        </div>
+                      ) : !searchReady ? (
                         <div className="px-4 py-2 bg-bg-alt border-b border-border flex items-center gap-2 text-xs text-text-muted">
                           <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse shrink-0" />
                           Search index is being built. Answers may be incomplete
                           until ready.
                         </div>
-                      )}
+                      ) : null}
                       <ChatMessages
                         messages={messages}
                         isThinking={isThinking}
