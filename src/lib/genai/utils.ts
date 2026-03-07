@@ -6,6 +6,7 @@ import { makeRetriable, type Options } from "p-retry";
 export const MODELS = {
   "g31flash-lite": "gemini-3.1-flash-lite-preview",
   g3flash: "gemini-3-flash-preview",
+  g31pro: "gemini-3.1-pro-preview",
 } as const;
 
 export const EMBEDDING_MODEL = "gemini-embedding-001";

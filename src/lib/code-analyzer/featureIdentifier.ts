@@ -112,18 +112,18 @@ export async function identifyRepoFeatures(params: {
       : identifiedFeatures;
 
   // Cap to MAX_FEATURES for faster generation.
-  const capped = validated.slice(0, MAX_FEATURES);
+  // const capped = validated.slice(0, MAX_FEATURES);
   // Emit the full list so the UI can show all features at once
   onEvent({
     type: "features_list",
-    features: capped.map((f) => f.title),
+    features: validated.map((f) => f.title),
   });
 
   onEvent({
     type: "status",
     status: "generating_pages",
-    message: `Found ${identifiedFeatures.length} features, processing top ${capped.length}. Generating wiki pages...`,
+    message: `Found ${identifiedFeatures.length} features, processing top ${validated.length}. Generating wiki pages...`,
   });
 
-  return capped;
+  return validated;
 }

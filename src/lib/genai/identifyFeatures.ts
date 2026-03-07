@@ -83,7 +83,7 @@ export async function identifyFeatures(
 
   const done = log.time("identifyFeatures");
   const res = await retryable({
-    model: MODELS["g3flash"],
+    model: MODELS["g31pro"],
     contents: userPrompt,
     config: {
       systemInstruction: systemPrompt,
@@ -100,7 +100,7 @@ export async function identifyFeatures(
 
   done({
     featureCount: parsed.features.length,
-    model: MODELS["g3flash"],
+    model: MODELS["g31pro"],
   });
   return parsed.features as IdentifiedFeature[];
 }

@@ -32,18 +32,20 @@ ${context}`,
     })),
   });
 
-  const retryChat = makeRetriable(chat.sendMessageStream, {
+  const chatStream = async (question: string) =>
+    chat.sendMessageStream({ message: question });
+
+  const retryChat = makeRetriable(chatStream, {
     retries: 3,
     onFailedAttempt(ctx) {
       log.warn(
         `Chat with Wiki sendMessageStream ${ctx.attemptNumber} failed.` +
-        `There are ${ctx.retriesLeft} retries left. Error: ${ctx.error}`,
+          `There are ${ctx.retriesLeft} retries left. Error: ${ctx.error}`,
       );
     },
   });
 
-  const res = await retryChat({ message: question });
-
+  const res = await retryChat(question);
   const encoder = new TextEncoder();
   return new ReadableStream({
     async start(controller) {

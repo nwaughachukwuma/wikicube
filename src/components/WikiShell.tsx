@@ -36,10 +36,10 @@ export default function WikiShell({
     });
   }, [owner, repo, wiki, getWikiData]);
 
+  // do some necessary cleanup or state updates here if needed
   const handleAnalysisComplete = useCallback(() => {
-    // do some necessary cleanup or state updates here if needed
     setTimeout(() => {
-      location.href = `/wiki/${owner}/${repo}`;
+      // location.href = `/wiki/${owner}/${repo}`;
       location.reload();
     }, 1000);
   }, [owner, repo]);
