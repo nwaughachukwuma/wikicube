@@ -38,11 +38,11 @@ export default function WikiShell({
 
   // do some necessary cleanup or state updates here if needed
   const handleAnalysisComplete = useCallback(() => {
+    // location.href = `/wiki/${owner}/${repo}`;
     setTimeout(() => {
-      // location.href = `/wiki/${owner}/${repo}`;
       location.reload();
     }, 1000);
-  }, [owner, repo]);
+  }, []);
 
   // Poll for search_ready when wiki is done but search index isn't built yet
   useEffect(() => {
@@ -109,7 +109,7 @@ export default function WikiShell({
         <WikiSidebar
           owner={owner}
           repo={repo}
-          wiki={data.wiki}
+          wiki={wiki}
           features={data.features}
           onNavigate={() => setSidebarOpen(false)}
         />
@@ -127,7 +127,7 @@ export default function WikiShell({
       <main className="flex-1 min-w-0">{children}</main>
 
       {/* Chat panel — pass current page context */}
-      <ChatPanel wiki={data.wiki} pageContext={getPageContext(data)} />
+      <ChatPanel wiki={wiki} pageContext={getPageContext(data)} />
     </div>
   );
 }

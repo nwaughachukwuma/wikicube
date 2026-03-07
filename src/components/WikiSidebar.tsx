@@ -24,8 +24,6 @@ export default function WikiSidebar({
 }: Props) {
   const pathname = usePathname();
   const basePath = `/wiki/${owner}/${repo}`;
-  const wikiId = wiki.id;
-
   return (
     <div className="h-full flex flex-col">
       {/* Header */}

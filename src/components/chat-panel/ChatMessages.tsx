@@ -3,6 +3,7 @@
 import { useRef, useEffect } from "react";
 import MarkdownRenderer from "../MarkdownRenderer";
 import type { Message } from "./types";
+import { debounce } from "throttle-debounce";
 
 interface ChatMessagesProps {
   messages: Message[];
@@ -17,9 +18,18 @@ export function ChatMessages({
 }: ChatMessagesProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const scrollToBottom = useRef(
+    debounce(500, () => {
+      messagesEndRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "end",
+      });
+    }),
+  ).current;
+
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isStreaming]);
+    scrollToBottom();
+  }, [messages, isStreaming, scrollToBottom]);
 
   return (
     <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 space-y-4">

@@ -35,10 +35,7 @@ export default function SearchBar({
   const [semanticResults, setSemanticResults] = useState<SearchResult[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-
   const wikiId = wiki.id;
-  const searchReady = wiki.search_ready;
-  const searchError = wiki.search_error;
 
   // Fuse.js fuzzy matcher on feature titles
   const fuse = useMemo(
@@ -155,15 +152,14 @@ export default function SearchBar({
 
   return (
     <div className="relative">
-      {searchError ? (
+      {wiki.search_error ? (
         <div className="mb-1.5 text-[10px] text-text-muted">
-          Semantic search is unavailable right now. Feature title search still
-          works.
+          Search indexing failed. You can still search by feature title.
         </div>
-      ) : !searchReady ? (
+      ) : !wiki.search_ready ? (
         <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-text-muted">
           <div className="w-1.5 h-1.5 bg-accent rounded-full animate-pulse" />
-          Search indexing in progress…
+          Search indexing in progress...
         </div>
       ) : null}
       <div className="flex items-center gap-2 border border-border px-2.5 py-1.5 bg-card">

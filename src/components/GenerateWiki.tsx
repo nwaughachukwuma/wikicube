@@ -12,6 +12,7 @@ import { ErrorPanel } from "./analysis-progress/ErrorPanel";
 import { ProgressSteps } from "./analysis-progress/ProgressSteps";
 import { FeatureProgress } from "./analysis-progress/FeatureProgress";
 import { useMounted } from "@/lib/hooks/mounted";
+import { debounce } from "throttle-debounce";
 
 interface Props {
   owner: string;
@@ -34,9 +35,18 @@ export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
   const { mounted } = useMounted();
 
   // Auto-scroll to the first in-progress item
+  const autoScroll = useRef(
+    debounce(500, () => {
+      activeRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }),
+  ).current;
+
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [features]);
+    autoScroll();
+  }, [features, autoScroll]);
 
   // Warn user before leaving while analysis is running
   useEffect(() => {
