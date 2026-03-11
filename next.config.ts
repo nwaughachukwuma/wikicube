@@ -1,9 +1,21 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
   experimental: {
     serverActions: {
       bodySizeLimit: "10mb",
     },
+    outputFileTracingIncludes: {
+      "/api/**": ["./node_modules/tiktoken/**/*.wasm"],
+    },
+  },
+  webpack: (config) => {
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+      layers: true,
+    };
+    return config;
   },
   images: {
     remotePatterns: [
