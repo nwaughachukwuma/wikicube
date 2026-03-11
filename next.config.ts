@@ -5,9 +5,9 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
-    outputFileTracingIncludes: {
-      "/api/**": ["./node_modules/tiktoken/**/*.wasm"],
-    },
+  },
+  outputFileTracingIncludes: {
+    "/api/**": ["./node_modules/tiktoken/**/*.wasm"],
   },
   webpack: (config) => {
     config.experiments = {
