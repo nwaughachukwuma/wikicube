@@ -6,12 +6,6 @@ import type { AnalysisEvent, IdentifiedFeature, RepoMeta } from "../types";
 const log = logger("feature-identifier");
 
 /**
- * Maximum number of features to process.
- * Set to Infinity (or remove the slice) to process all identified features.
- */
-export const MAX_FEATURES = 10;
-
-/**
  * Validate LLM-returned file paths against the actual repo tree.
  * Falls back to basename matching for near-misses.
  */
@@ -111,8 +105,6 @@ export async function identifyRepoFeatures(params: {
       ? validateFilePaths(identifiedFeatures, treePaths)
       : identifiedFeatures;
 
-  // Cap to MAX_FEATURES for faster generation.
-  // const capped = validated.slice(0, MAX_FEATURES);
   // Emit the full list so the UI can show all features at once
   onEvent({
     type: "features_list",
