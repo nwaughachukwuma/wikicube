@@ -3,13 +3,26 @@
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
-import { ChevronDown, ChevronUp, Copy, Check, ArrowLeft, Loader2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Check,
+  ArrowLeft,
+  Loader2,
+} from "lucide-react";
 import type { Challenge } from "@/lib/types";
 
 const PREVIEW_LENGTH = 240;
 const OBJECTIVE_PREVIEW_LENGTH = 100;
 
-function ChallengeCard({ challenge, index }: { challenge: Challenge; index: number }) {
+function ChallengeCard({
+  challenge,
+  index,
+}: {
+  challenge: Challenge;
+  index: number;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -21,7 +34,9 @@ function ChallengeCard({ challenge, index }: { challenge: Challenge; index: numb
     `## Acceptance Criteria\n${challenge.acceptance_criteria}`,
   ].join("\n\n");
 
-  const preview = fullContent.slice(0, PREVIEW_LENGTH) + (fullContent.length > PREVIEW_LENGTH ? "…" : "");
+  const preview =
+    fullContent.slice(0, PREVIEW_LENGTH) +
+    (fullContent.length > PREVIEW_LENGTH ? "…" : "");
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(fullContent);
@@ -142,7 +157,7 @@ export default function ChallengesPage() {
             Agent Challenges
           </h1>
           <p className="mt-2 text-sm text-text-muted">
-            {owner}/{repo} — 10 tough challenges to test agent capabilities
+            {owner}/{repo} — Tough eval-like tasks to test agent capabilities
           </p>
         </div>
 
@@ -169,7 +184,11 @@ export default function ChallengesPage() {
         {!loading && !error && challenges.length > 0 && (
           <div className="space-y-4">
             {challenges.map((challenge, i) => (
-              <ChallengeCard key={challenge.id} challenge={challenge} index={i} />
+              <ChallengeCard
+                key={challenge.id}
+                challenge={challenge}
+                index={i}
+              />
             ))}
           </div>
         )}
