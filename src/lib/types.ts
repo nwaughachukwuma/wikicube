@@ -127,6 +127,19 @@ export interface TreeEntry {
   size?: number;
 }
 
+/* ─── Agent Challenges ─── */
+
+export interface Challenge {
+  id: string;
+  wiki_id: string;
+  role: string;
+  background: string;
+  objective: string;
+  task: string;
+  acceptance_criteria: string;
+  created_at: string;
+}
+
 /* ─── SSE event types ─── */
 
 export type AnalysisEvent =

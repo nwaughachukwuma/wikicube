@@ -133,3 +133,20 @@ update public.wikis
 -- Track whether embedding errored
 alter table public.wikis
   add column if not exists search_error text default null;
+
+-- Agent challenges table
+create table if not exists public.challenges (
+  id uuid default gen_random_uuid() primary key,
+  wiki_id uuid not null references public.wikis(id) on delete cascade,
+  role text not null,
+  background text not null,
+  objective text not null,
+  task text not null,
+  acceptance_criteria text not null,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists idx_challenges_wiki_id on public.challenges(wiki_id);
+
+alter table public.challenges enable row level security;
+create policy "Allow public read on challenges" on public.challenges for select using (true);

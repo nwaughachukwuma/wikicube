@@ -8,6 +8,7 @@ import type {
   Chunk,
   WikiChat,
   ChatSession,
+  Challenge,
 } from "./types";
 import { withRetry } from "./db.utils";
 
@@ -374,4 +375,31 @@ export async function getWikiChatSessions(
         new Date(b.last_activity).getTime() -
         new Date(a.last_activity).getTime(),
     );
+}
+
+/* ─── Agent Challenges ─── */
+
+export async function getChallengesByWikiId(
+  wikiId: string,
+): Promise<Challenge[]> {
+  const { data, error } = await getServerClient()
+    .from("challenges")
+    .select("*")
+    .eq("wiki_id", wikiId)
+    .order("created_at", { ascending: true });
+
+  if (error) throw error;
+  return (data || []) as Challenge[];
+}
+
+export async function insertChallenges(
+  challenges: Array<Omit<Challenge, "id" | "created_at">>,
+): Promise<Challenge[]> {
+  const { data, error } = await getServerClient()
+    .from("challenges")
+    .insert(challenges.map(stripNullBytes))
+    .select();
+
+  if (error) throw error;
+  return (data || []) as Challenge[];
 }

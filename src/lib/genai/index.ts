@@ -4,3 +4,4 @@ export * from "./wikiChat";
 export * from "./generateOverview";
 export * from "./identifyFeatures";
 export * from "./generateFeature";
+export * from "./generateChallenges";
