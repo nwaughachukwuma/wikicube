@@ -48,15 +48,14 @@ export async function generateChallenges(opts: {
   const { owner, repo, overview, features, issues, pullRequests } = opts;
 
   const featureContext = features
-    .map(
-      (f) =>
-        `### ${f.title}\n${f.summary}\n${f.markdown_content.slice(0, 2000)}`,
-    )
+    .map((f) => `### ${f.title}\n${f.summary}\n${f.markdown_content}`)
     .join("\n\n");
 
-  const systemPrompt = `You are a world-class AI evaluation expert who designs exceptionally tough, realistic agent challenges for large AI labs. These challenges are used to stress-test LLM agent capabilities in code understanding, debugging, onboarding, and complex multi-step engineering tasks.
+  const systemPrompt = `You are a world-class AI evaluation expert who designs exceptionally tough, realistic agent challenges for large AI labs. 
+  These challenges are used to stress-test LLM agent capabilities in code understanding, debugging, onboarding, and complex multi-step engineering tasks.
 
-Given a GitHub repository's wiki documentation, features, recent issues, and recent pull requests, generate exactly 10 diverse and challenging agent tasks. Each challenge must be a realistic scenario that pushes an agent to:
+Given a GitHub repository's wiki documentation, features, recent issues, and recent pull requests, generate exactly 10 diverse and challenging agent tasks. 
+Each challenge must be a realistic scenario that pushes an agent to:
 
 - Deeply understand the codebase architecture, conventions, and patterns
 - Navigate complex multi-file codebases
@@ -66,7 +65,7 @@ Given a GitHub repository's wiki documentation, features, recent issues, and rec
 
 CHALLENGE DIVERSITY REQUIREMENTS:
 - Mix different challenge types: debugging, onboarding, feature implementation, refactoring, performance optimization, migration, security audit, test coverage, documentation, and architecture redesign
-- Vary difficulty levels from hard to extremely hard
+- Vary difficulty levels from very hard to extremely hard
 - Each challenge must be specific to THIS repository — reference actual subsystems, features, and patterns from the provided context
 - Use real issue/PR themes when available to ground challenges in actual codebase problems
 
@@ -94,14 +93,14 @@ Return ONLY valid JSON with this structure:
   const userPrompt = `Repository: ${owner}/${repo}
 
 ## Wiki Overview
-${overview.slice(0, 4000)}
+${overview.slice(0, 8000)}
 
 ## Features & Subsystems
-${featureContext.slice(0, 12000)}
+${featureContext.slice(0, 36000)}
 
-${issues ? `## Recent Issues\n${issues.slice(0, 4000)}` : ""}
+${issues ? `## Recent Issues\n${issues.slice(0, 12000)}` : ""}
 
-${pullRequests ? `## Recent Pull Requests\n${pullRequests.slice(0, 4000)}` : ""}`;
+${pullRequests ? `## Recent Pull Requests\n${pullRequests.slice(0, 12000)}` : ""}`;
 
   const done = log.time("generateChallenges");
   const res = await retryable({

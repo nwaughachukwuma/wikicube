@@ -256,7 +256,7 @@ export async function getRecentIssues(
       .filter((i) => !i.pull_request)
       .map(
         (i) =>
-          `#${i.number} [${i.state}] ${i.title}${i.labels.length ? ` (${i.labels.map((l) => l.name).join(", ")})` : ""}${i.body ? `\n${i.body.slice(0, 500)}` : ""}`,
+          `#${i.number} [${i.state}] ${i.title}${i.labels.length ? ` (${i.labels.map((l) => l.name).join(", ")})` : ""}${i.body ? `\n${i.body.slice(0, 2048)}` : ""}`,
       )
       .join("\n\n");
   } catch (err) {
@@ -286,7 +286,7 @@ export async function getRecentPullRequests(
     return prs
       .map(
         (pr) =>
-          `#${pr.number} [${pr.state}] ${pr.title}${pr.labels.length ? ` (${pr.labels.map((l) => l.name).join(", ")})` : ""}${pr.body ? `\n${pr.body.slice(0, 500)}` : ""}`,
+          `#${pr.number} [${pr.state}] ${pr.title}${pr.labels.length ? ` (${pr.labels.map((l) => l.name).join(", ")})` : ""}${pr.body ? `\n${pr.body.slice(0, 2048)}` : ""}`,
       )
       .join("\n\n");
   } catch (err) {
