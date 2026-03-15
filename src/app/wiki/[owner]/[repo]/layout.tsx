@@ -37,7 +37,7 @@ export default async function WikiLayout({
         <div className="absolute top-5 right-5 flex items-center gap-4">
           <a
             href={`/challenges/${owner}/${repo}`}
-            className="text-xs tracking-widest text-text-muted hover:text-text transition"
+            className="text-sm text-text-muted hover:text-text transition"
           >
             Agent Challenges
           </a>
