@@ -6,6 +6,9 @@ import { useEffect, useState, useCallback } from "react";
 import { ChevronDown, ChevronUp, Copy, Check, ArrowLeft, Loader2 } from "lucide-react";
 import type { Challenge } from "@/lib/types";
 
+const PREVIEW_LENGTH = 240;
+const OBJECTIVE_PREVIEW_LENGTH = 100;
+
 function ChallengeCard({ challenge, index }: { challenge: Challenge; index: number }) {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -18,7 +21,7 @@ function ChallengeCard({ challenge, index }: { challenge: Challenge; index: numb
     `## Acceptance Criteria\n${challenge.acceptance_criteria}`,
   ].join("\n\n");
 
-  const preview = fullContent.slice(0, 240) + (fullContent.length > 240 ? "…" : "");
+  const preview = fullContent.slice(0, PREVIEW_LENGTH) + (fullContent.length > PREVIEW_LENGTH ? "…" : "");
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(fullContent);
@@ -35,8 +38,8 @@ function ChallengeCard({ challenge, index }: { challenge: Challenge; index: numb
               Challenge {index + 1}
             </div>
             <h3 className="font-display text-lg uppercase tracking-tight mb-3">
-              {challenge.objective.slice(0, 100)}
-              {challenge.objective.length > 100 ? "…" : ""}
+              {challenge.objective.slice(0, OBJECTIVE_PREVIEW_LENGTH)}
+              {challenge.objective.length > OBJECTIVE_PREVIEW_LENGTH ? "…" : ""}
             </h3>
           </div>
           <button
