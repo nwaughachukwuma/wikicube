@@ -34,7 +34,13 @@ export default async function WikiLayout({
       <div className="relative">
         {children}
 
-        <div className="absolute top-5 right-5">
+        <div className="absolute top-5 right-5 flex items-center gap-4">
+          <a
+            href={`/challenges/${owner}/${repo}`}
+            className="text-sm text-text-muted hover:text-text transition"
+          >
+            Agent Challenges
+          </a>
           <AuthButton />
         </div>
       </div>

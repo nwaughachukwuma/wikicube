@@ -230,6 +230,71 @@ const README_FILES = [
 
 export const DOC_PATH_RE = /^docs\/.+\.mdx?$/i;
 
+/* ─── Issues & Pull Requests ─── */
+
+export async function getRecentIssues(
+  owner: string,
+  repo: string,
+  token?: string,
+): Promise<string> {
+  try {
+    const res = await fetch(
+      `${GITHUB_API}/repos/${owner}/${repo}/issues?state=all&per_page=10&sort=updated&direction=desc`,
+      { headers: headers(token) },
+    );
+    if (!res.ok) return "";
+    const issues = (await res.json()) as Array<{
+      number: number;
+      title: string;
+      body: string | null;
+      state: string;
+      labels: Array<{ name: string }>;
+      pull_request?: unknown;
+    }>;
+    // Filter out pull requests (GitHub's issues endpoint includes PRs)
+    return issues
+      .filter((i) => !i.pull_request)
+      .map(
+        (i) =>
+          `#${i.number} [${i.state}] ${i.title}${i.labels.length ? ` (${i.labels.map((l) => l.name).join(", ")})` : ""}${i.body ? `\n${i.body.slice(0, 2048)}` : ""}`,
+      )
+      .join("\n\n");
+  } catch (err) {
+    log.warn("Failed to fetch issues", { owner, repo, error: String(err) });
+    return "";
+  }
+}
+
+export async function getRecentPullRequests(
+  owner: string,
+  repo: string,
+  token?: string,
+): Promise<string> {
+  try {
+    const res = await fetch(
+      `${GITHUB_API}/repos/${owner}/${repo}/pulls?state=all&per_page=10&sort=updated&direction=desc`,
+      { headers: headers(token) },
+    );
+    if (!res.ok) return "";
+    const prs = (await res.json()) as Array<{
+      number: number;
+      title: string;
+      body: string | null;
+      state: string;
+      labels: Array<{ name: string }>;
+    }>;
+    return prs
+      .map(
+        (pr) =>
+          `#${pr.number} [${pr.state}] ${pr.title}${pr.labels.length ? ` (${pr.labels.map((l) => l.name).join(", ")})` : ""}${pr.body ? `\n${pr.body.slice(0, 2048)}` : ""}`,
+      )
+      .join("\n\n");
+  } catch (err) {
+    log.warn("Failed to fetch PRs", { owner, repo, error: String(err) });
+    return "";
+  }
+}
+
 export async function fetchProjectContext(
   owner: string,
   repo: string,
