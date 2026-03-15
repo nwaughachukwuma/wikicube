@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getWiki, getFeatures, getChallengesByWikiId, insertChallenges } from "@/lib/db";
+import {
+  getWiki,
+  getFeatures,
+  getChallengesByWikiId,
+  insertChallenges,
+} from "@/lib/db";
 import { getRecentIssues, getRecentPullRequests } from "@/lib/github";
 import { generateChallenges } from "@/lib/genai/generateChallenges";
 import { getSupabaseUser } from "@/lib/supabase/server";
@@ -47,7 +52,10 @@ export async function POST(
   // Check if challenges already exist
   const existing = await getChallengesByWikiId(wiki.id);
   if (existing.length > 0) {
-    return NextResponse.json({ challenges: existing, wiki_id: wiki.id });
+    return NextResponse.json({
+      challenges: existing,
+      wiki_id: wiki.id,
+    });
   }
 
   // Gather context
