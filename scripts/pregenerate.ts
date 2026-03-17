@@ -40,7 +40,7 @@ const EXAMPLE_REPOS = [
 ];
 
 async function main() {
-  console.log("=== Cubic Wiki — Pregeneration Script ===\n");
+  console.log("=== Wikicube — Pregeneration Script ===\n");
   console.log(`Processing ${EXAMPLE_REPOS.length} repositories...\n`);
 
   for (const { owner, repo } of EXAMPLE_REPOS) {
