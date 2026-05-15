@@ -20,21 +20,26 @@ const PostSchema = z.object({
 
 export default async function analyzeRoutes(fastify: FastifyInstance) {
   fastify.post("/analyze", async (request, reply) => {
-    const body = request.body as Record<string, unknown>;
-    const parsed = PostSchema.safeParse(body);
+    const parsed = PostSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: "repoUrl is required" });
     }
 
     const { owner, repo } = parseRepoUrl(parsed.data.repoUrl);
     const authHeader = request.headers.authorization ?? "";
-    const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+    const bearerToken = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : undefined;
 
     const githubToken = parsed.data.githubToken;
     let userId: string | undefined;
 
     if (githubToken) {
-      const { user, err } = await authRouteGuard(bearerToken, undefined, "Re-authenticate to continue");
+      const { user, err } = await authRouteGuard(
+        bearerToken,
+        undefined,
+        "Re-authenticate to continue",
+      );
       if (err) return reply.status(401).send(err);
       userId = user?.id;
     }

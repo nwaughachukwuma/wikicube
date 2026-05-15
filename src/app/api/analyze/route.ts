@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import type { AnalysisEvent } from "@/lib/types";
-import { parseRepoUrl, GITHUB_REPO_RE } from "@/lib/github";
-import { runAnalysisPipeline } from "@/lib/code-analyzer";
-import { getWiki } from "@/lib/db";
-import { extractError } from "@/lib/error";
+import { GITHUB_REPO_RE } from "@/lib/github";
 import { getSupabaseSession } from "@/lib/supabase/server";
-import { authRouteGuard } from "@/lib/db.utils";
 
 const PostSchema = z.object({
   repoUrl: z
@@ -27,54 +22,34 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "repoUrl is required" }, { status: 400 });
   }
 
-  const { owner, repo } = parseRepoUrl(parsed.data.repoUrl);
   const session = await getSupabaseSession();
   const githubToken = session?.provider_token || void 0;
-  // If a GitHub token is provided it means the user wants to index a personal/private repo
-  // — require Supabase authentication so we can record indexed_by.
-  let userId: string | undefined;
-  if (githubToken) {
-    const { user, err } = await authRouteGuard("Re-authenticate to continue");
-    if (err) return err;
-    userId = user.id;
+
+  const response = await fetch(`${process.env.BACKEND_URL}/analyze`, {
+    method: "POST",
+    body: JSON.stringify({
+      repoUrl: parsed.data.repoUrl,
+      githubToken,
+    }),
+    headers: {
+      "content-type": "application/json",
+      ...(session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {}),
+    },
+  });
+
+  // If backend returned JSON (cached wiki), forward it directly
+  const ct = response.headers.get("content-type") || "";
+  if (!ct.includes("text/event-stream")) {
+    const body = (await response.json().catch(() => ({
+      error: "Backend error",
+    }))) as { error?: string };
+    return NextResponse.json(body, { status: response.status });
   }
 
-  // Check if we already have a completed wiki
-  const existing = await getWiki(owner, repo);
-  if (existing && existing.status === "done") {
-    return NextResponse.json({
-      wikiId: existing.id,
-      status: "done",
-      cached: true,
-    });
-  }
-
-  const encoder = new TextEncoder();
-  const stream = new TransformStream();
-  const writer = stream.writable.getWriter();
-  const sendEvent = async (evt: AnalysisEvent) => {
-    try {
-      await writer.write(encoder.encode(`data: ${JSON.stringify(evt)}\n\n`));
-    } catch {}
-  };
-
-  const pipelineOpts = {
-    githubToken,
-    userId,
-    visibility: githubToken ? ("private" as const) : ("public" as const),
-  };
-
-  // Run pipeline in the background (non-blocking for the stream)
-  void runAnalysisPipeline(owner, repo, sendEvent, pipelineOpts)
-    .catch(async (err) => {
-      await sendEvent({
-        type: "error",
-        message: extractError(err, "Repo analysis pipeline failed"),
-      });
-    })
-    .finally(() => writer.close());
-
-  return new Response(stream.readable, {
+  // Proxy the SSE stream through unchanged
+  return new Response(response.body, {
     headers: {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
