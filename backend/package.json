@@ -6,8 +6,7 @@
     "tsc": "tsc",
     "dev": "tsx watch src/server.ts",
     "build": "tsup",
-    "build:watch": "tsup --watch",
-    "start": "node dist/server.js",
+    "start": "npm run build && node dist/server.js",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
