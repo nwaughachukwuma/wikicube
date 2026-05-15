@@ -4,8 +4,8 @@ let _adminClient: SupabaseClient | null = null;
 
 export function getServerClient() {
   return (_adminClient ||= createClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SECRET_KEY,
   ));
 }
 

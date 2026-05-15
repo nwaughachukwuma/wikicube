@@ -122,14 +122,14 @@ export default function HomePage() {
 
         <p className="mt-3 text-xs text-text-muted text-center">
           <OptimLink href="/my-repos" className="underline hover:text-text">
-            Index your own repos
+            Index private repos
           </OptimLink>
         </p>
 
         {/* Example repos */}
         <div className="mt-16 w-full max-w-3xl">
           <p className="text-xs uppercase tracking-widest text-text-muted mb-4 text-center">
-            Try an example
+            Popular Repos
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {EXAMPLE_REPOS.map((example) => (

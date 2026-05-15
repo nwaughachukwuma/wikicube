@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { parseRepoUrl, GITHUB_REPO_RE } from "@shared/github.js";
+import { parseRepoUrl, GITHUB_REPO_RE, repoGuard } from "@shared/github.js";
 import { getWiki } from "../services/db.js";
 import { authRouteGuard } from "../services/auth.js";
 import { runAnalysisPipeline } from "../services/code-analyzer.js";
@@ -32,6 +32,8 @@ export default async function analyzeRoutes(fastify: FastifyInstance) {
       : undefined;
 
     const githubToken = parsed.data.githubToken;
+    await repoGuard(owner, repo, githubToken);
+
     let userId: string | undefined;
 
     if (githubToken) {
@@ -46,7 +48,11 @@ export default async function analyzeRoutes(fastify: FastifyInstance) {
 
     const existing = await getWiki(owner, repo);
     if (existing && existing.status === "done") {
-      return reply.send({ wikiId: existing.id, status: "done", cached: true });
+      return reply.send({
+        wikiId: existing.id,
+        status: "done",
+        cached: true,
+      });
     }
 
     const encoder = new TextEncoder();
