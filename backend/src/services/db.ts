@@ -1,5 +1,5 @@
-import { batchAll } from "../lib/batch-ops.js";
-import { logger } from "../lib/logger.js";
+import { batchAll } from "@shared/batch-ops.js";
+import { logger } from "@shared/logger.js";
 import { getServerClient } from "./supabase.js";
 import type {
   Wiki,
@@ -9,7 +9,7 @@ import type {
   WikiChat,
   ChatSession,
   Challenge,
-} from "../types.js";
+} from "@shared/types.js";
 import { withRetry } from "./retry.js";
 
 const log = logger("db");
@@ -146,7 +146,10 @@ export async function markSearchFailed(
   });
 }
 
-export async function getWiki(owner: string, repo: string): Promise<Wiki | null> {
+export async function getWiki(
+  owner: string,
+  repo: string,
+): Promise<Wiki | null> {
   const { data } = await getServerClient()
     .from("wikis")
     .select("*")
@@ -201,15 +204,23 @@ export async function insertChunks(
     batches.push(chunks.slice(i, i + BATCH_SIZE));
   }
 
-  log.info("inserting chunks", { totalChunks: chunks.length, batches: batches.length });
+  log.info("inserting chunks", {
+    totalChunks: chunks.length,
+    batches: batches.length,
+  });
 
   await batchAll(
     batches,
     async (batch, index) => {
-      return withRetry(`insert chunk batch ${index + 1}/${batches.length}`, async () => {
-        const { error } = await db.from("chunks").insert(stripNullBytes(batch));
-        if (error) throw error;
-      });
+      return withRetry(
+        `insert chunk batch ${index + 1}/${batches.length}`,
+        async () => {
+          const { error } = await db
+            .from("chunks")
+            .insert(stripNullBytes(batch));
+          if (error) throw error;
+        },
+      );
     },
     5,
   );
@@ -302,7 +313,8 @@ export async function getWikiChatSessions(
     const existing = sessionMap.get(row.session_id);
     if (!existing) {
       sessionMap.set(row.session_id, {
-        preview: row.role === "user" ? row.content.slice(0, 80) : "(session started)",
+        preview:
+          row.role === "user" ? row.content.slice(0, 80) : "(session started)",
         last_activity: row.created_at,
         message_count: 1,
       });
@@ -323,7 +335,9 @@ export async function getWikiChatSessions(
 
 /* ─── Agent Challenges ─── */
 
-export async function getChallengesByWikiId(wikiId: string): Promise<Challenge[]> {
+export async function getChallengesByWikiId(
+  wikiId: string,
+): Promise<Challenge[]> {
   const { data, error } = await getServerClient()
     .from("challenges")
     .select("*")

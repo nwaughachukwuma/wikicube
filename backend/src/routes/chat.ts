@@ -7,7 +7,8 @@ import {
   insertChatMessage,
   getChatSessionMessages,
 } from "../services/db.js";
-import { generateEmbeddings, chatWithWiki } from "../services/genai.js";
+import { generateEmbeddings } from "@shared/genai/embeddings.js";
+import { chatWithWiki } from "@shared/genai/wiki-chat.js";
 import { authRouteGuard, privateWikiGuard } from "../services/auth.js";
 
 const ChatSchema = z.object({
@@ -20,7 +21,9 @@ const ChatSchema = z.object({
 export default async function chatRoutes(fastify: FastifyInstance) {
   fastify.post("/chat", async (request, reply) => {
     const authHeader = request.headers.authorization ?? "";
-    const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+    const bearerToken = authHeader.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : undefined;
 
     const { user, err } = await authRouteGuard(bearerToken, reply);
     if (err) return reply.status(401).send(err);
@@ -39,7 +42,9 @@ export default async function chatRoutes(fastify: FastifyInstance) {
     const guard = privateWikiGuard(wiki, user?.id, reply);
     if (guard && guard.error) return reply.status(403).send(guard);
 
-    const history = (await getChatSessionMessages(wikiId, sessionId, user?.id)).map((m) => ({
+    const history = (
+      await getChatSessionMessages(wikiId, sessionId, user?.id)
+    ).map((m) => ({
       role: m.role,
       content: m.content,
     }));
@@ -48,9 +53,13 @@ export default async function chatRoutes(fastify: FastifyInstance) {
 
     const contextChunks: string[] = [];
     if (wiki.overview) contextChunks.push(`[Wiki Overview]\n${wiki.overview}`);
-    if (pageContext) contextChunks.push(`[Current Page Context]\n${pageContext}`);
+    if (pageContext)
+      contextChunks.push(`[Current Page Context]\n${pageContext}`);
 
-    const embeddings = await generateEmbeddings([question], "QUESTION_ANSWERING");
+    const embeddings = await generateEmbeddings(
+      [question],
+      "QUESTION_ANSWERING",
+    );
     if (embeddings.length && embeddings[0].length) {
       const chunks = await matchChunks(wikiId, embeddings[0], {
         matchCount: 8,
@@ -87,7 +96,13 @@ export default async function chatRoutes(fastify: FastifyInstance) {
         const finalText = decoder.decode();
         if (finalText) fullContent += finalText;
         if (fullContent) {
-          await insertChatMessage(wikiId, sessionId, "assistant", fullContent, user?.id);
+          await insertChatMessage(
+            wikiId,
+            sessionId,
+            "assistant",
+            fullContent,
+            user?.id,
+          );
         }
       } catch {}
     })();

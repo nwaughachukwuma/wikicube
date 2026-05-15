@@ -1,5 +1,5 @@
-import { logger } from "../lib/logger.js";
-import { ensureError, extractError } from "../lib/error.js";
+import { logger } from "@shared/logger.js";
+import { ensureError, extractError } from "@shared/error.js";
 import pRetry from "p-retry";
 
 const log = logger("db:utils");

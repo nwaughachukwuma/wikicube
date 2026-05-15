@@ -1,7 +1,12 @@
 import type { FastifyInstance } from "fastify";
-import { getWiki, getFeatures, getChallengesByWikiId, insertChallenges } from "../services/db.js";
-import { getRecentIssues, getRecentPullRequests } from "../services/github.js";
-import { generateChallenges } from "../services/genai.js";
+import {
+  getWiki,
+  getFeatures,
+  getChallengesByWikiId,
+  insertChallenges,
+} from "../services/db.js";
+import { getRecentIssues, getRecentPullRequests } from "@shared/github.js";
+import { generateChallenges } from "@shared/genai/generate-challenges.js";
 import { getSupabaseUser } from "../services/supabase.js";
 import { privateWikiGuard } from "../services/auth.js";
 
@@ -16,7 +21,9 @@ export default async function challengesRoutes(fastify: FastifyInstance) {
 
     if (wiki.visibility === "private") {
       const authHeader = request.headers.authorization ?? "";
-      const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+      const bearerToken = authHeader.startsWith("Bearer ")
+        ? authHeader.slice(7)
+        : undefined;
       const user = await getSupabaseUser(bearerToken);
       const guard = privateWikiGuard(wiki, user?.id, reply);
       if (guard && guard.error) return reply.status(403).send(guard);
@@ -36,7 +43,9 @@ export default async function challengesRoutes(fastify: FastifyInstance) {
 
     if (wiki.visibility === "private") {
       const authHeader = request.headers.authorization ?? "";
-      const bearerToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : undefined;
+      const bearerToken = authHeader.startsWith("Bearer ")
+        ? authHeader.slice(7)
+        : undefined;
       const user = await getSupabaseUser(bearerToken);
       const guard = privateWikiGuard(wiki, user?.id, reply);
       if (guard && guard.error) return reply.status(403).send(guard);

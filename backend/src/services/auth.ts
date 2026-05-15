@@ -1,6 +1,6 @@
 import type { FastifyReply } from "fastify";
 import { getSupabaseUser } from "./supabase.js";
-import type { Wiki } from "../types.js";
+import type { Wiki } from "@shared/types.js";
 
 export function canAccessWiki(
   wiki: Wiki,

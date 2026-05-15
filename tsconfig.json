@@ -15,7 +15,10 @@
     "incremental": true,
     "plugins": [{ "name": "next" }],
     "paths": {
-      "@/*": ["./src/*"]
+      "@": ["./src"],
+      "@/*": ["./src/*"],
+      "@shared": ["./shared/dist"],
+      "@shared/*": ["./shared/dist/*"]
     }
   },
   "include": [
@@ -25,5 +28,5 @@
     ".next/types/**/*.ts",
     "src/lib/code-analyzer/analyzer.ts.deprecated"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "backend"]
 }

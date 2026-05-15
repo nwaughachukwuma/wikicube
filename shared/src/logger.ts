@@ -52,6 +52,14 @@ export function logger(module: string) {
     error: (msg: string, data?: Record<string, unknown>) =>
       log("error", msg, data),
 
+    /**
+     * Start a timer. Returns a function to call when the operation completes.
+     * Logs at `info` level with duration in ms.
+     *
+     *   const done = log.time("fetchTree");
+     *   await fetchTree();
+     *   done({ fileCount: 42 });
+     */
     time(operation: string) {
       const start = performance.now();
       return (data?: Record<string, unknown>) => {

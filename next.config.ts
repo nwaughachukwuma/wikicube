@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const nextConfig: NextConfig = {
   experimental: {
@@ -14,6 +15,10 @@ const nextConfig: NextConfig = {
       ...config.experiments,
       asyncWebAssembly: true,
       layers: true,
+    };
+    config.resolve.alias = {
+      ...(config.resolve.alias as Record<string, string> || {}),
+      "@shared": path.resolve(process.cwd(), "shared/dist"),
     };
     return config;
   },

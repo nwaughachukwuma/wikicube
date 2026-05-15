@@ -89,7 +89,7 @@ export interface WikiChat {
 
 export interface ChatSession {
   session_id: string;
-  preview: string;
+  preview: string; // first user message, truncated
   last_activity: string;
   message_count: number;
 }

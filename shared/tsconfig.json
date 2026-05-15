@@ -14,12 +14,9 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "paths": {
-      "@shared": ["../shared/dist"],
-      "@shared/*": ["../shared/dist/*"]
-    }
+    "composite": true,
+    "tsBuildInfoFile": "./.tsbuildinfo"
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"],
-  "references": [{ "path": "../shared" }]
+  "exclude": ["node_modules", "dist"]
 }

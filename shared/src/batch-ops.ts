@@ -3,6 +3,10 @@ const DEFAULT_CONCURRENCY = 3;
 /**
  * Concurrently map over an array with a concurrency limit.
  * Results are returned **in input order**
+ *
+ * @param items  - array to process
+ * @param fn     - async handler receiving each item and its index
+ * @param concurrency - max parallel tasks (default 3)
  */
 export async function batchAll<T, U>(
   items: T[],

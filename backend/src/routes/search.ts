@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { getWikiById, matchChunks, getFeatures } from "../services/db.js";
-import { generateEmbeddings } from "../services/genai.js";
+import { generateEmbeddings } from "@shared/genai/embeddings.js";
 import { getSupabaseUser } from "../services/supabase.js";
 import { privateWikiGuard } from "../services/auth.js";
 

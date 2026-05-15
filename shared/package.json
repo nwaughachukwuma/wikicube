@@ -1,0 +1,24 @@
+{
+  "name": "@cubic/shared",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./dist/*.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@google/genai": "^1.44.0",
+    "github-slugger": "^2.0.0",
+    "p-retry": "^7.1.1",
+    "tiktoken": "^1.0.22",
+    "typescript": "^5.7.0",
+    "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.25.1"
+  }
+}

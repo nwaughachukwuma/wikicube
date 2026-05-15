@@ -1,11 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { parseRepoUrl, GITHUB_REPO_RE } from "../services/github.js";
+import { parseRepoUrl, GITHUB_REPO_RE } from "@shared/github.js";
 import { getWiki } from "../services/db.js";
 import { authRouteGuard } from "../services/auth.js";
 import { runAnalysisPipeline } from "../services/code-analyzer.js";
-import { extractError } from "../lib/error.js";
-import type { AnalysisEvent } from "../types.js";
+import { extractError } from "@shared/error.js";
+import type { AnalysisEvent } from "@shared/types.js";
 
 const PostSchema = z.object({
   repoUrl: z

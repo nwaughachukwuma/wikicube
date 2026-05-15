@@ -1,13 +1,13 @@
-import { logger } from "../lib/logger.js";
-import { batchAll } from "../lib/batch-ops.js";
-import { ensureError } from "../lib/error.js";
+import { logger } from "@shared/logger.js";
+import { batchAll } from "@shared/batch-ops.js";
+import { ensureError } from "@shared/error.js";
 import type {
   AnalysisEvent,
   Feature,
   IdentifiedFeature,
   PipelineOptions,
   RepoMeta,
-} from "../types.js";
+} from "@shared/types.js";
 import {
   getRepoMeta,
   getRepoTree,
@@ -15,7 +15,13 @@ import {
   formatTreeString,
   fetchProjectContext,
   getMultipleFiles,
-} from "./github.js";
+} from "@shared/github.js";
+import {
+  identifyFeatures,
+  generateFeaturePage,
+  generateOverview,
+  generateEmbeddings,
+} from "@shared/genai/index.js";
 import {
   upsertWiki,
   updateWikiStatus,
@@ -24,12 +30,6 @@ import {
   markSearchReady,
   markSearchFailed,
 } from "./db.js";
-import {
-  identifyFeatures,
-  generateFeaturePage,
-  generateOverview,
-  generateEmbeddings,
-} from "./genai.js";
 import GithubSlugger from "github-slugger";
 import { encoding_for_model } from "tiktoken";
 
@@ -47,7 +47,8 @@ export async function runAnalysisPipeline(
   const pipelineDone = log.time("pipeline");
   try {
     const contextResult = await gatherContext(owner, repo, onEvent, opts);
-    const { meta, wikiId, treeString, treePaths, readme, manifests } = contextResult;
+    const { meta, wikiId, treeString, treePaths, readme, manifests } =
+      contextResult;
 
     const identifiedFeatures = await identifyRepoFeatures({
       owner,
@@ -86,18 +87,40 @@ export async function runAnalysisPipeline(
     pipelineDone({ wikiId, featureCount: features.length });
     onEvent({ type: "done", wikiId });
 
-    void embedWikiAndCode({ wikiId, features, sourceFiles, overview, onEvent }).catch(async (err) => {
+    void embedWikiAndCode({
+      wikiId,
+      features,
+      sourceFiles,
+      overview,
+      onEvent,
+    }).catch(async (err) => {
       const normalizedError = ensureError(err, "Background embedding failed");
-      log.error("Background embedding failed", { wikiId, error: normalizedError.message, stack: normalizedError.stack });
-      onEvent({ type: "status", status: "error", message: "Background embedding failed." });
+      log.error("Background embedding failed", {
+        wikiId,
+        error: normalizedError.message,
+        stack: normalizedError.stack,
+      });
+      onEvent({
+        type: "status",
+        status: "error",
+        message: "Background embedding failed.",
+      });
       await markSearchFailed(wikiId, normalizedError.message);
     });
 
     return wikiId;
   } catch (err) {
     const normalizedError = ensureError(err, "Pipeline failed");
-    log.error("pipeline failed", { owner, repo, error: normalizedError.message, stack: normalizedError.stack });
-    onEvent({ type: "error", message: err instanceof Error ? err.message : "Unknown error" });
+    log.error("pipeline failed", {
+      owner,
+      repo,
+      error: normalizedError.message,
+      stack: normalizedError.stack,
+    });
+    onEvent({
+      type: "error",
+      message: err instanceof Error ? err.message : "Unknown error",
+    });
     throw err;
   }
 }
@@ -121,13 +144,21 @@ export async function gatherContext(
   onEvent: (event: AnalysisEvent) => void,
   opts: PipelineOptions = {},
 ): Promise<GatheredContext> {
-  onEvent({ type: "status", status: "fetching_tree", message: "Fetching repository metadata..." });
+  onEvent({
+    type: "status",
+    status: "fetching_tree",
+    message: "Fetching repository metadata...",
+  });
 
   const metaDone = logCtx.time("getRepoMeta");
   const meta = await getRepoMeta(owner, repo, opts.githubToken);
   metaDone({ defaultBranch: meta.defaultBranch });
 
-  onEvent({ type: "status", status: "fetching_tree", message: "Fetching file tree..." });
+  onEvent({
+    type: "status",
+    status: "fetching_tree",
+    message: "Fetching file tree...",
+  });
 
   const upsertAndTreeDone = logCtx.time("upsertWiki:+:getRepoTree");
   const [wiki, rawTree] = await Promise.all([
@@ -142,8 +173,16 @@ export async function gatherContext(
 
   const wikiId = wiki.id;
   const tree = filterTree(rawTree);
-  logCtx.info("tree filtered", { wikiId, rawFiles: rawTree.length, filteredFiles: tree.length });
-  onEvent({ type: "status", status: "fetching_tree", message: "Fetching README and manifests..." });
+  logCtx.info("tree filtered", {
+    wikiId,
+    rawFiles: rawTree.length,
+    filteredFiles: tree.length,
+  });
+  onEvent({
+    type: "status",
+    status: "fetching_tree",
+    message: "Fetching README and manifests...",
+  });
 
   const fetchCtxDone = logCtx.time("fetchProjectContext");
   const treePaths = tree.map((e) => e.path);
@@ -154,16 +193,29 @@ export async function gatherContext(
     treePaths,
     opts.githubToken,
   );
-  fetchCtxDone({ readmeLength: readme.length, manifestLength: manifests.length });
+  fetchCtxDone({
+    readmeLength: readme.length,
+    manifestLength: manifests.length,
+  });
 
-  return { meta, wikiId, treeString: formatTreeString(tree), treePaths, readme, manifests };
+  return {
+    meta,
+    wikiId,
+    treeString: formatTreeString(tree),
+    treePaths,
+    readme,
+    manifests,
+  };
 }
 
 /* ─── Feature Identifier ─── */
 
 const logFeatId = logger("feature-identifier");
 
-function validateFilePaths(features: IdentifiedFeature[], treePaths: string[]): IdentifiedFeature[] {
+function validateFilePaths(
+  features: IdentifiedFeature[],
+  treePaths: string[],
+): IdentifiedFeature[] {
   const treeSet = new Set(treePaths);
   const basenameMap = new Map<string, string[]>();
   for (const p of treePaths) {
@@ -182,9 +234,16 @@ function validateFilePaths(features: IdentifiedFeature[], treePaths: string[]): 
         const candidates = basenameMap.get(base);
         if (candidates?.length === 1) {
           validated.push(candidates[0]);
-          logFeatId.warn("file path corrected", { feature: feature.title, from: file, to: candidates[0] });
+          logFeatId.warn("file path corrected", {
+            feature: feature.title,
+            from: file,
+            to: candidates[0],
+          });
         } else {
-          logFeatId.warn("file path dropped (not in tree)", { feature: feature.title, path: file });
+          logFeatId.warn("file path dropped (not in tree)", {
+            feature: feature.title,
+            path: file,
+          });
         }
       }
     }
@@ -203,10 +262,24 @@ export async function identifyRepoFeatures(params: {
   onEvent: (event: AnalysisEvent) => void;
   treePaths: string[];
 }): Promise<IdentifiedFeature[]> {
-  const { wikiId, repo, owner, treeString, treePaths = [], onEvent, manifests, readme, meta } = params;
+  const {
+    wikiId,
+    repo,
+    owner,
+    treeString,
+    treePaths = [],
+    onEvent,
+    manifests,
+    readme,
+    meta,
+  } = params;
 
   await updateWikiStatus(wikiId, "identifying_features");
-  onEvent({ type: "status", status: "identifying_features", message: "Identifying user-facing features..." });
+  onEvent({
+    type: "status",
+    status: "identifying_features",
+    message: "Identifying user-facing features...",
+  });
 
   const featuresDone = logFeatId.time("identifyFeatures");
   const identifiedFeatures = await identifyFeatures(
@@ -218,9 +291,13 @@ export async function identifyRepoFeatures(params: {
   );
   featuresDone({ identifiedFeatures });
 
-  if (!identifiedFeatures.length) throw new Error("No features identified in repository");
+  if (!identifiedFeatures.length)
+    throw new Error("No features identified in repository");
 
-  const validated = treePaths.length > 0 ? validateFilePaths(identifiedFeatures, treePaths) : identifiedFeatures;
+  const validated =
+    treePaths.length > 0
+      ? validateFilePaths(identifiedFeatures, treePaths)
+      : identifiedFeatures;
 
   onEvent({ type: "features_list", features: validated.map((f) => f.title) });
   onEvent({
@@ -277,7 +354,11 @@ export async function generateAllPages(
       return acc;
     }, new Map<string, string>());
 
-  pageGenDone({ featuresCount: features.length, totalIdentified: identifiedFeatures.length, sourceFiles: sourceFiles.size });
+  pageGenDone({
+    featuresCount: features.length,
+    totalIdentified: identifiedFeatures.length,
+    sourceFiles: sourceFiles.size,
+  });
   return { features, sourceFiles };
 }
 
@@ -291,7 +372,8 @@ async function fetchFilesAndGeneratePage(params: {
   onEvent: (event: AnalysisEvent) => void;
   githubToken?: string;
 }): Promise<PageGenResult | null> {
-  const { order, owner, repo, meta, wikiId, onEvent, identified, githubToken } = params;
+  const { order, owner, repo, meta, wikiId, onEvent, identified, githubToken } =
+    params;
   const sourceFiles = new Map<string, string>();
   onEvent({ type: "feature_started", featureTitle: identified.title });
 
@@ -304,7 +386,10 @@ async function fetchFilesAndGeneratePage(params: {
       identified.relevantFiles,
       githubToken,
     );
-    fetchDone({ filesToFetch: identified.relevantFiles.length, fileContents: fileContents.size });
+    fetchDone({
+      filesToFetch: identified.relevantFiles.length,
+      fileContents: fileContents.size,
+    });
 
     for (const [path, content] of fileContents) sourceFiles.set(path, content);
 
@@ -338,7 +423,10 @@ async function fetchFilesAndGeneratePage(params: {
       error: err instanceof Error ? err.message : String(err),
       stack: err instanceof Error ? err.stack : undefined,
     });
-    onEvent({ type: "feature_done", featureTitle: `${identified.title} (partial)` });
+    onEvent({
+      type: "feature_done",
+      featureTitle: `${identified.title} (partial)`,
+    });
     return null;
   }
 }
@@ -356,8 +444,13 @@ export async function generateOverviewPage(params: {
   features: Feature[];
   onEvent: (event: AnalysisEvent) => void;
 }): Promise<string> {
-  const { wikiId, owner, repo, description, readme, features, onEvent } = params;
-  onEvent({ type: "status", status: "generating_pages", message: "Generating overview page..." });
+  const { wikiId, owner, repo, description, readme, features, onEvent } =
+    params;
+  onEvent({
+    type: "status",
+    status: "generating_pages",
+    message: "Generating overview page...",
+  });
 
   const overviewDone = logEmbedder.time("generateOverview");
   const overview = await generateOverview(
@@ -381,7 +474,11 @@ export async function embedWikiAndCode(params: {
 }): Promise<void> {
   const { wikiId, features, sourceFiles, overview, onEvent } = params;
   logEmbedder.info("starting embedding phase", { wikiId });
-  onEvent({ type: "status", status: "embedding", message: "Creating search index..." });
+  onEvent({
+    type: "status",
+    status: "embedding",
+    message: "Creating search index...",
+  });
 
   const chunkMeta: Array<{
     feature_id: string | null;
@@ -392,20 +489,36 @@ export async function embedWikiAndCode(params: {
   const allChunkTexts: string[] = [];
   for (const text of chunkOverview(overview)) {
     allChunkTexts.push(text);
-    chunkMeta.push({ source_type: "wiki", feature_id: null, source_file: null });
+    chunkMeta.push({
+      source_type: "wiki",
+      feature_id: null,
+      source_file: null,
+    });
   }
 
   for (const feature of features) {
-    for (const wc of chunkWikiContent(feature.title, feature.summary, feature.markdown_content)) {
+    for (const wc of chunkWikiContent(
+      feature.title,
+      feature.summary,
+      feature.markdown_content,
+    )) {
       allChunkTexts.push(wc.content);
-      chunkMeta.push({ source_type: "wiki", feature_id: feature.id, source_file: null });
+      chunkMeta.push({
+        source_type: "wiki",
+        feature_id: feature.id,
+        source_file: null,
+      });
     }
   }
 
   for (const [filePath, content] of sourceFiles) {
     for (const cc of chunkCodeFile(filePath, content)) {
       allChunkTexts.push(cc.content);
-      chunkMeta.push({ source_type: "code", feature_id: null, source_file: cc.filePath });
+      chunkMeta.push({
+        source_type: "code",
+        feature_id: null,
+        source_file: cc.filePath,
+      });
     }
   }
 
@@ -424,7 +537,10 @@ export async function embedWikiAndCode(params: {
 
   if (allChunkTexts.length === 0) {
     await markSearchReady(wikiId);
-    logEmbedder.warn("No chunks generated; marking search ready without embeddings", { wikiId });
+    logEmbedder.warn(
+      "No chunks generated; marking search ready without embeddings",
+      { wikiId },
+    );
     return;
   }
 
@@ -506,10 +622,13 @@ const BOUNDARY_PATTERNS = [
   /^(public|private|protected|internal)?\s*(static\s+)?(async\s+)?(Task|void|\w+)\s+\w+\s*\(/,
 ];
 
-const isBoundaryLine = (trimmed: string) => BOUNDARY_PATTERNS.some((p) => p.test(trimmed));
+const isBoundaryLine = (trimmed: string) =>
+  BOUNDARY_PATTERNS.some((p) => p.test(trimmed));
 
 function extractSymbolName(line: string): string | null {
-  const match = line.match(/(?:function|class|interface|type|enum|struct|trait|impl|mod|def|fn|func)\s+(\w+)/);
+  const match = line.match(
+    /(?:function|class|interface|type|enum|struct|trait|impl|mod|def|fn|func)\s+(\w+)/,
+  );
   if (match) return match[1];
   const constMatch = line.match(/(?:const|let|var)\s+(\w+)\s*=/);
   return constMatch ? constMatch[1] : null;
@@ -574,7 +693,8 @@ export function chunkCodeFile(filePath: string, content: string): CodeChunk[] {
     const raw = currentLines.join("\n").trim();
     if (!raw) return;
 
-    const isImportOnly = currentStart <= importBlock.split("\n").length + 1 && !currentSymbol;
+    const isImportOnly =
+      currentStart <= importBlock.split("\n").length + 1 && !currentSymbol;
     const prefix = isImportOnly ? `// File: ${filePath}\n\n` : importHeader;
     const prefixTokens = countTokens(prefix);
     const bodyLimit = Math.max(64, MAX_CHUNK_TOKENS - prefixTokens);
@@ -622,9 +742,16 @@ export function chunkWikiContent(
 ): WikiChunk[] {
   const chunks: WikiChunk[] = [];
   const summaryPrefix = `# ${featureTitle}\n\n`;
-  const summaryBodyLimit = Math.max(64, MAX_CHUNK_TOKENS - countTokens(summaryPrefix));
+  const summaryBodyLimit = Math.max(
+    64,
+    MAX_CHUNK_TOKENS - countTokens(summaryPrefix),
+  );
   for (const body of splitByTokenLimit(featureSummary, summaryBodyLimit)) {
-    chunks.push({ content: `${summaryPrefix}${body}`, featureTitle, sectionHeading: null });
+    chunks.push({
+      content: `${summaryPrefix}${body}`,
+      featureTitle,
+      sectionHeading: null,
+    });
   }
 
   const sections = markdownContent.split(/(?=^## )/m);
@@ -638,7 +765,11 @@ export function chunkWikiContent(
     const bodyChunks = splitByTokenLimit(section.trim(), bodyLimit);
 
     for (const body of bodyChunks) {
-      chunks.push({ content: `${contextPrefix}${body}`, featureTitle, sectionHeading: heading });
+      chunks.push({
+        content: `${contextPrefix}${body}`,
+        featureTitle,
+        sectionHeading: heading,
+      });
     }
   }
   return chunks;
