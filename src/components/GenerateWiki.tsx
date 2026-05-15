@@ -13,6 +13,7 @@ import { ProgressSteps } from "./analysis-progress/ProgressSteps";
 import { FeatureProgress } from "./analysis-progress/FeatureProgress";
 import { useMounted } from "@/lib/hooks/mounted";
 import { debounce } from "throttle-debounce";
+import { HttpError } from "@shared/error";
 
 interface Props {
   owner: string;
@@ -175,8 +176,7 @@ export default function AnalysisProgress({ owner, repo, onComplete }: Props) {
           });
 
           if (!res.ok) {
-            const data = await res.json();
-            throw new Error(data.error || "Analysis failed");
+            throw new HttpError(res);
           }
 
           // Handle cached JSON response (already done)

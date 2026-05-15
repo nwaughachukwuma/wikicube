@@ -41,19 +41,22 @@ export function parseRepoUrl(url: string): { owner: string; repo: string } {
   return { owner: match[1], repo: match[2] };
 }
 
+export async function repoGuard(owner: string, repo: string, token?: string) {
+  const res = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`, {
+    headers: headers(token),
+  });
+  if (res.ok) return res;
+  const orignalError = `GitHub API error ${res.status}: ${await res.text()}`;
+  throw new HttpError(res, orignalError);
+}
+
 /** Fetch repo metadata */
 export async function getRepoMeta(
   owner: string,
   repo: string,
   token?: string,
 ): Promise<RepoMeta> {
-  const res = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`, {
-    headers: headers(token),
-  });
-  if (!res.ok) {
-    throw new Error(`GitHub API error ${res.status}: ${await res.text()}`);
-  }
-
+  const res = await repoGuard(owner, repo, token);
   const data = (await res.json()) as Record<string, unknown>;
   return {
     owner,
@@ -359,13 +362,4 @@ export async function fetchProjectContext(
     readme: readmeResult.content,
     manifests: [...manifestContents, ...docsContents].join("\n\n"),
   };
-}
-
-export async function repoGuard(owner: string, repo: string, token?: string) {
-  const response = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  if (response.status >= 300) {
-    throw new HttpError(response);
-  }
 }
