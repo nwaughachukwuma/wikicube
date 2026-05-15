@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { GITHUB_REPO_RE } from "@shared/github";
 import { getSupabaseSession } from "@/lib/supabase/server";
+import { HttpError } from "@shared/error";
 
 const PostSchema = z.object({
   repoUrl: z
@@ -38,6 +39,13 @@ export async function POST(req: NextRequest) {
         : {}),
     },
   });
+
+  if (response.status >= 300) {
+    NextResponse.json(
+      { error: HttpError.getHumanReadableMessage(response) },
+      { status: response.status },
+    );
+  }
 
   // If backend returned JSON (cached wiki), forward it directly
   const ct = response.headers.get("content-type") || "";

@@ -1,15 +1,22 @@
 import type { RepoMeta, TreeEntry } from "./types";
 import { logger } from "./logger";
 import { batchAll } from "./batch-ops";
+import { HttpError } from "./error";
 
 const log = logger("github");
 const GITHUB_API = "https://api.github.com";
 
-const headers = (token?: string): Record<string, string> => ({
-  Accept: "application/vnd.github.v3+json",
-  "User-Agent": "wikicube/1.0",
-  Authorization: `Bearer ${token ?? process.env.GITHUB_TOKEN}`,
-});
+const headers = (token?: string): Record<string, string> => {
+  const h: Record<string, string> = {
+    Accept: "application/vnd.github.v3+json",
+    "User-Agent": "wikicube/1.0",
+  };
+  const authToken = token || process.env.GITHUB_TOKEN;
+  if (authToken) {
+    h["Authorization"] = `Bearer ${authToken}`;
+  }
+  return h;
+};
 
 // Detection
 export const GITHUB_URL_RE =
@@ -352,4 +359,13 @@ export async function fetchProjectContext(
     readme: readmeResult.content,
     manifests: [...manifestContents, ...docsContents].join("\n\n"),
   };
+}
+
+export async function repoGuard(owner: string, repo: string, token?: string) {
+  const response = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (response.status >= 300) {
+    throw new HttpError(response);
+  }
 }

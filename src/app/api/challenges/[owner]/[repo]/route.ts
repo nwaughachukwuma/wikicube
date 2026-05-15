@@ -7,8 +7,7 @@ import {
 } from "@/lib/db";
 import { getRecentIssues, getRecentPullRequests } from "@shared/github";
 import { generateChallenges } from "@shared/genai/generate-challenges";
-import { getSupabaseUser } from "@/lib/supabase/server";
-import { privateWikiGuard } from "@/lib/db.utils";
+import { validateRepoAccess } from "@/lib/db.utils";
 
 export async function GET(
   _req: NextRequest,
@@ -20,11 +19,8 @@ export async function GET(
     return NextResponse.json({ error: "Wiki not found" }, { status: 404 });
   }
 
-  if (wiki.visibility === "private") {
-    const user = await getSupabaseUser();
-    const error = privateWikiGuard(wiki, user?.id);
-    if (error) return error;
-  }
+  const error = await validateRepoAccess(owner, repo);
+  if (error) return error;
 
   const challenges = await getChallengesByWikiId(wiki.id);
   return NextResponse.json({ challenges, wiki_id: wiki.id });
@@ -43,11 +39,8 @@ export async function POST(
     );
   }
 
-  if (wiki.visibility === "private") {
-    const user = await getSupabaseUser();
-    const error = privateWikiGuard(wiki, user?.id);
-    if (error) return error;
-  }
+  const error = await validateRepoAccess(owner, repo);
+  if (error) return error;
 
   // Check if challenges already exist
   const existing = await getChallengesByWikiId(wiki.id);

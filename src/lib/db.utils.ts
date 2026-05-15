@@ -1,27 +1,30 @@
 import { NextResponse } from "next/server";
-import { getSupabaseUser } from "./supabase/server";
-import type { Wiki } from "./types";
+import { getSupabaseSession, getSupabaseUser } from "@/lib/supabase/server";
 import pRetry from "p-retry";
 import { ensureError, extractError } from "./error";
 import { logger } from "./logger";
+import { repoGuard } from "@shared/github";
 
 /**
  * Enforce access control for private wikis
  *
  * Check whether a user may access a given wiki.
- * Public wikis are accessible to everyone; private wikis require the user to
- * be the one who indexed them (indexed_by === userId).
+ * Public wikis are accessible to everyone; private wikis require the user
+ * to have active permission to the repo
  */
-export function canAccessWiki(
-  wiki: Wiki,
-  userId: string | null | undefined,
-): boolean {
-  if (wiki.visibility !== "private") return true;
-  return !!userId && wiki.indexed_by === userId;
+export async function canAccessRepo(
+  owner: string,
+  repo: string,
+): Promise<boolean> {
+  const session = await getSupabaseSession();
+  const token = session?.provider_token || void 0;
+  return await repoGuard(owner, repo, token)
+    .then(() => true)
+    .catch(() => false);
 }
 
-export function privateWikiGuard(wiki: Wiki, userId?: string | null) {
-  if (!canAccessWiki(wiki, userId)) {
+export async function validateRepoAccess(owner: string, repo: string) {
+  if (!(await canAccessRepo(owner, repo))) {
     return NextResponse.json(
       { error: "You do not have access to this wiki" },
       { status: 403 },

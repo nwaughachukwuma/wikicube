@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getWikiById, matchChunks, getFeatures } from "@/lib/db";
 import { generateEmbeddings } from "@shared/genai";
 import { getSupabaseUser } from "@/lib/supabase/server";
-import { privateWikiGuard } from "@/lib/db.utils";
+import { validateRepoAccess } from "@/lib/db.utils";
 
 const SearchSchema = z.object({
   wikiId: z.string().nonempty("wikiId must be a non-empty string"),
@@ -28,11 +28,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (wiki.visibility === "private") {
-    const user = await getSupabaseUser();
-    const error = privateWikiGuard(wiki, user?.id);
-    if (error) return error;
-  }
+  const error = await validateRepoAccess(wiki.owner, wiki.repo);
+  if (error) return error;
 
   // Embed the search query
   const embeddings = await generateEmbeddings([query], "RETRIEVAL_QUERY");
