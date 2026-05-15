@@ -6,7 +6,7 @@ import { HttpError } from "./error";
 const log = logger("github");
 const GITHUB_API = "https://api.github.com";
 
-const headers = (token?: string): Record<string, string> => {
+const headers = (token?: string) => {
   const h: Record<string, string> = {
     Accept: "application/vnd.github.v3+json",
     "User-Agent": "wikicube/1.0",
