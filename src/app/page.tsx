@@ -6,10 +6,7 @@ import { OptimLink } from "@/components/OptimisticLink";
 import AppHeader from "@/components/AppHeader";
 import { PageLoading } from "@/components/PageLoading";
 import { useUser } from "@/lib/supabase/useUser";
-
-/** Matches owner/repo or github.com/owner/repo */
-const GITHUB_REPO_RE =
-  /(?:github\.com\/)?([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/;
+import { GITHUB_REPO_RE } from "@shared/github";
 
 const EXAMPLE_REPOS = [
   {

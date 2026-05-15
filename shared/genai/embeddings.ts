@@ -1,13 +1,13 @@
 /* ─── Embeddings ─── */
 import { makeRetriable } from "p-retry";
-import { batchAll } from "../batch-ops.js";
-import { logger } from "../logger.js";
+import { batchAll } from "../batch-ops";
+import { logger } from "../logger";
 import {
   EMBEDDING_DIMENSIONS,
   EMBEDDING_MODEL,
   getGemini,
   type TaskType,
-} from "./utils.js";
+} from "./utils";
 
 const log = logger("gemini:embeddings");
 

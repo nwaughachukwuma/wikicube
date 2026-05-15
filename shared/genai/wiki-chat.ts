@@ -2,8 +2,8 @@
 
 import { makeRetriable } from "p-retry";
 import type { Content } from "@google/genai";
-import { getGemini, MODELS } from "./utils.js";
-import { logger } from "../logger.js";
+import { getGemini, MODELS } from "./utils";
+import { logger } from "../logger";
 
 const log = logger("gemini:chatWithWiki");
 

@@ -30,7 +30,7 @@ if (fs.existsSync(envPath)) {
 }
 
 // Now import project modules (they read process.env at call time)
-import { runAnalysisPipeline } from "../src/lib/code-analyzer";
+import { runAnalysisPipeline } from "../backend/src/services/code-analyzer";
 import type { AnalysisEvent } from "../src/lib/types";
 
 const EXAMPLE_REPOS = [

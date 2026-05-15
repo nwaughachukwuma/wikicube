@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { GITHUB_REPO_RE } from "@/lib/github";
+import { GITHUB_REPO_RE } from "@shared/github";
 import { getSupabaseSession } from "@/lib/supabase/server";
 
 const PostSchema = z.object({

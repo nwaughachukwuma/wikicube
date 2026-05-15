@@ -1,6 +1,6 @@
-import type { RepoMeta, TreeEntry } from "./types.js";
-import { logger } from "./logger.js";
-import { batchAll } from "./batch-ops.js";
+import type { RepoMeta, TreeEntry } from "./types";
+import { logger } from "./logger";
+import { batchAll } from "./batch-ops";
 
 const log = logger("github");
 const GITHUB_API = "https://api.github.com";
@@ -15,7 +15,10 @@ const headers = (token?: string): Record<string, string> => ({
 export const GITHUB_URL_RE =
   /^https?:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(\/.*)?$/;
 
-// Extraction
+/**
+ * #### Extraction
+ * Matches owner/repo or github.com/owner/repo
+ * */
 export const GITHUB_REPO_RE =
   /(?:github\.com\/)?([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/;
 

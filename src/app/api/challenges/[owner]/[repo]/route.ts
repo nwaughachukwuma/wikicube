@@ -5,8 +5,8 @@ import {
   getChallengesByWikiId,
   insertChallenges,
 } from "@/lib/db";
-import { getRecentIssues, getRecentPullRequests } from "@/lib/github";
-import { generateChallenges } from "@/lib/genai/generateChallenges";
+import { getRecentIssues, getRecentPullRequests } from "@shared/github";
+import { generateChallenges } from "@shared/genai/generate-challenges";
 import { getSupabaseUser } from "@/lib/supabase/server";
 import { privateWikiGuard } from "@/lib/db.utils";
 

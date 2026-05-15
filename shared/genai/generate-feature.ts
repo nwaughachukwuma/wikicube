@@ -6,15 +6,15 @@ import {
   parseStructuredJson,
   retryGenerateContent,
   toGeminiJsonSchema,
-} from "./utils.js";
+} from "./utils";
 import type {
   Citation,
   EntryPoint,
   GeneratedPage,
   IdentifiedFeature,
-} from "../types.js";
-import { logger } from "../logger.js";
-import { buildGitHubUrl } from "../github.js";
+} from "../types";
+import { logger } from "../logger";
+import { buildGitHubUrl } from "../github";
 
 const log = logger("gemini:featureFlag");
 

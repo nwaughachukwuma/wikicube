@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { DOC_PATH_RE } from "../src/lib/github";
+import { DOC_PATH_RE } from "../shared/github";
 
 describe("DOC_PATH_RE", () => {
   test.each([
