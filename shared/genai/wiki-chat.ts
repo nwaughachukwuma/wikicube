@@ -1,9 +1,9 @@
 /* ─── RAG: Chat with wiki ─── */
 
-import type { Content } from "@google/genai";
-import { getGemini, MODELS } from "./utils";
 import { makeRetriable } from "p-retry";
-import { logger } from "../logger";
+import type { Content } from "@google/genai";
+import { getGemini, MODELS } from "./utils.js";
+import { logger } from "../logger.js";
 
 const log = logger("gemini:chatWithWiki");
 

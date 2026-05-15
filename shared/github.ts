@@ -1,6 +1,6 @@
-import type { RepoMeta, TreeEntry } from "./types";
-import { logger } from "./logger";
-import { batchAll } from "./batch-ops";
+import type { RepoMeta, TreeEntry } from "./types.js";
+import { logger } from "./logger.js";
+import { batchAll } from "./batch-ops.js";
 
 const log = logger("github");
 const GITHUB_API = "https://api.github.com";

@@ -1,7 +1,7 @@
 /* ─── Embeddings ─── */
-import { batchAll } from "../batch-ops";
 import { makeRetriable } from "p-retry";
-import { logger } from "../logger";
+import { batchAll } from "../batch-ops.js";
+import { logger } from "../logger.js";
 import {
   EMBEDDING_DIMENSIONS,
   EMBEDDING_MODEL,

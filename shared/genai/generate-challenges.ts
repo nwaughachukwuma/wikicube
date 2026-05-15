@@ -1,11 +1,11 @@
 import { z } from "zod";
-import { logger } from "../logger";
+import { logger } from "../logger.js";
 import {
   MODELS,
   parseStructuredJson,
   retryGenerateContent,
   toGeminiJsonSchema,
-} from "./utils";
+} from "./utils.js";
 
 const log = logger("gemini:challenges");
 
