@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { IdentifiedFeature } from "../types.js";
-import { logger } from "../logger.js";
+import type { IdentifiedFeature } from "../types";
+import { logger } from "../logger";
 import {
   MODELS,
   parseStructuredJson,

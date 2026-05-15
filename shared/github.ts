@@ -1,6 +1,6 @@
-import type { RepoMeta, TreeEntry } from "./types.js";
-import { logger } from "./logger.js";
-import { batchAll } from "./batch-ops.js";
+import type { RepoMeta, TreeEntry } from "./types";
+import { logger } from "./logger";
+import { batchAll } from "./batch-ops";
 
 const log = logger("github");
 const GITHUB_API = "https://api.github.com";
@@ -71,7 +71,10 @@ export async function getRepoTree(
     throw new Error(`Failed to fetch tree: ${res.status}`);
   }
 
-  const data = (await res.json()) as { tree?: Array<{ path: string; type: string; size?: number }>; truncated?: boolean };
+  const data = (await res.json()) as {
+    tree?: Array<{ path: string; type: string; size?: number }>;
+    truncated?: boolean;
+  };
   if (data.truncated) {
     log.warn("tree truncated by GitHub API", { owner, repo, branch });
   }

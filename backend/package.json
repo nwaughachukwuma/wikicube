@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "tsc": "tsc",
     "dev": "tsx watch src/server.ts",
-    "build": "tsc",
+    "build": "tsup",
+    "build:watch": "tsup --watch",
     "start": "node dist/server.js",
     "lint": "tsc --noEmit"
   },
@@ -23,6 +25,7 @@
   "devDependencies": {
     "@types/node": "^22.0.0",
     "tsc-alias": "^1.8.17",
+    "tsup": "^8.5.1",
     "tsx": "^4.0.0",
     "typescript": "^5.7.0"
   }

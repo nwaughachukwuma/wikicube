@@ -1,6 +1,6 @@
-import { logger } from "@shared/logger.js";
-import { batchAll } from "@shared/batch-ops.js";
-import { ensureError } from "@shared/error.js";
+import { logger } from "@shared/logger";
+import { batchAll } from "@shared/batch-ops";
+import { ensureError } from "@shared/error";
 import type {
   AnalysisEvent,
   Feature,
@@ -15,13 +15,13 @@ import {
   formatTreeString,
   fetchProjectContext,
   getMultipleFiles,
-} from "@shared/github.js";
+} from "@shared/github";
 import {
   identifyFeatures,
   generateFeaturePage,
   generateOverview,
   generateEmbeddings,
-} from "@shared/genai/index.js";
+} from "@shared/genai";
 import {
   upsertWiki,
   updateWikiStatus,

@@ -1,7 +1,7 @@
 /* ─── Phase E: Generate overview page ─── */
 
-import { logger } from "../logger.js";
-import { MODELS, retryGenerateContent } from "./utils.js";
+import { logger } from "../logger";
+import { MODELS, retryGenerateContent } from "./utils";
 
 const log = logger("gemini:overview");
 
