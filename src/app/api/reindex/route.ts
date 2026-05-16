@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   const session = await getSupabaseSession();
   const githubToken = session?.provider_token || void 0;
 
-  const response = await fetch(`${process.env.BACKEND_URL}/reindex`, {
+  const response = await fetch(`${process.env.BACKEND_BASE_URL}/reindex`, {
     method: "POST",
     body: JSON.stringify({ owner, repo, githubToken }),
     headers: {
