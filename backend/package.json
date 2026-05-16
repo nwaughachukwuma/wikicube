@@ -7,7 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsup",
     "start": "npm run build && node dist/server.js",
-    "lint": "tsc --noEmit"
+    "lint": "eslint ."
   },
   "dependencies": {
     "@fastify/cors": "^10.0.0",
@@ -23,6 +23,11 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.3",
+    "@typescript-eslint/parser": "^8.59.3",
+    "eslint": "^9.39.4",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
     "tsc-alias": "^1.8.17",
     "tsup": "^8.5.1",
     "tsx": "^4.0.0",
