@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseSession } from "@/lib/supabase/server";
 import { HttpError } from "@shared/error";
 
-export const maxDuration = 300;
-
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { owner, repo } = body;

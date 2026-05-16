@@ -11,8 +11,6 @@ import { chatWithWiki } from "@shared/genai";
 import { validateRepoAccess, authRouteGuard } from "@/lib/db.utils";
 import { generateEmbeddings } from "@shared/embeddings";
 
-export const maxDuration = 120;
-
 const ChatSchema = z.object({
   wikiId: z.string().min(1, "wikiId must be a non-empty string"),
   sessionId: z.string().min(1, "sessionId must be a non-empty string"),
