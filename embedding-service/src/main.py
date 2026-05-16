@@ -28,6 +28,11 @@ class EmbeddingResponse(BaseModel):
     embeddings: list[list[float]]
 
 
+@app.get("/health")
+def health() -> str:
+    return "Hello World!"
+
+
 @app.post("/generate-embeddings", response_model=EmbeddingResponse)
 def generate_embeddings(req: EmbeddingRequest):
     prefixed = [f"{TASK_PREFIXES[req.task_type]}{t}" for t in req.texts]
