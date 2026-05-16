@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import type { Wiki } from "@shared/types";
 import { dayAgo } from "@/lib/timing";
+import { toast } from "sonner";
 
 const PAGE_SIZE = 10;
 
@@ -34,6 +35,7 @@ export default function AdminReposPage() {
   const [search, setSearch] = useState("");
   const [filterVisibility, setFilterVisibility] = useState<string>("all");
   const [filterWikiStatus, setFilterWikiStatus] = useState<string>("all");
+  const [reindexingAll, setReindexingAll] = useState(false);
 
   const fetchWikis = useCallback(async () => {
     setLoading(true);
@@ -136,14 +138,49 @@ export default function AdminReposPage() {
     }
   };
 
+  const handleReindexAll = async () => {
+    setReindexingAll(true);
+
+    return fetch("/api/reindex", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({}),
+    })
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error(res.statusText);
+      })
+      .then(() => fetchWikis())
+      .catch((err) => {
+        toast.error("Error Reindexing", {
+          description: err.message,
+        });
+      })
+      .finally(() => setReindexingAll(false));
+  };
+
   return (
     <main className="min-h-screen flex flex-col">
       <AppHeader />
 
       <div className="flex-1 max-w-3xl w-full mx-auto px-6 py-12">
-        <h1 className="font-display text-3xl uppercase tracking-tight">
-          Admin — Indexed Repos
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="font-display text-3xl uppercase tracking-tight">
+            Admin — Indexed Repos
+          </h1>
+          <button
+            onClick={handleReindexAll}
+            disabled={reindexingAll || wikis.length === 0}
+            className="flex cursor-pointer items-center gap-2 px-4 py-2 border border-border text-xs font-display
+                       uppercase tracking-wide hover:border-border-strong transition
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {reindexingAll && (
+              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+            )}
+            Reindex All
+          </button>
+        </div>
 
         <p className="mt-2 text-text-muted text-sm">
           {wikis.length} wiki{wikis.length !== 1 ? "s" : ""} indexed

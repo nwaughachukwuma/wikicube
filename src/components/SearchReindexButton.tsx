@@ -26,7 +26,7 @@ export const SearchReindexButton = ({ owner, repo }: Props) => {
         throw new HttpError(res, orignalError);
       })
       .then(() => {
-        toast.success("Re-indexing completed.", {
+        toast.success("Reindexing completed.", {
           description: "Refreshing...",
         });
         setTimeout(() => {
@@ -34,7 +34,7 @@ export const SearchReindexButton = ({ owner, repo }: Props) => {
         }, 3000);
       })
       .catch((err) => {
-        toast.error("Re-indexing failed", {
+        toast.error("Reindexing failed", {
           description: err.message,
         });
       })
@@ -53,7 +53,7 @@ export const SearchReindexButton = ({ owner, repo }: Props) => {
           style={{ animation: "spin 0.3s linear infinite" }}
         />
       ) : (
-        "Re-index"
+        "Reindex"
       )}
     </button>
   );
