@@ -569,10 +569,40 @@ export async function embedWikiAndCode(params: {
 const MAX_CHUNK_TOKENS = 1024;
 const encoder = encoding_for_model("gpt-4o-mini");
 
-const countTokens = (text: string) => encoder.encode(text).length;
+const FORBIDDEN_TOKENS = [
+  "<|endoftext|>",
+  "\u0060",
+  "<|endofprompt|>",
+  "<|fim_prefix|>",
+  "<|fim_middle|>",
+  "<|fim_suffix|>",
+  "\u0060\u0060",
+  "\u0060\u0060\u0060",
+  "\u0060\u0060\u0060\u0060",
+  "<|discriminator|>",
+  "<|startoftext|>",
+];
+
+function sanitizeText(text: string): string {
+  let result = text;
+  for (const token of FORBIDDEN_TOKENS) {
+    result = result.split(token).join("");
+  }
+  return result.replace(/[^\x20-\x7E\n\r\t]/g, "");
+}
+
+function safeEncode(text: string): Uint32Array {
+  try {
+    return encoder.encode(sanitizeText(text));
+  } catch {
+    return encoder.encode(sanitizeText(text));
+  }
+}
+
+const countTokens = (text: string) => safeEncode(text).length;
 
 function splitByTokenLimit(text: string, limit = MAX_CHUNK_TOKENS): string[] {
-  const tokens = encoder.encode(text);
+  const tokens = safeEncode(text);
   if (tokens.length <= limit) return [text];
   const pieces: string[] = [];
   for (let i = 0; i < tokens.length; i += limit) {
