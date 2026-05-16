@@ -13,16 +13,22 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { Wiki } from "@shared/types";
+import { dayAgo } from "@/lib/timing";
 
 const PAGE_SIZE = 10;
 
+interface EnrichedWiki extends Wiki {
+  description: string;
+  github_updated_at: string | null;
+}
+
 export default function AdminReposPage() {
-  const [wikis, setWikis] = useState<Wiki[]>([]);
+  const [wikis, setWikis] = useState<EnrichedWiki[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState<string | null>(null);
   const [reindexing, setReindexing] = useState<string | null>(null);
-  const [detailWiki, setDetailWiki] = useState<Wiki | null>(null);
+  const [detailWiki, setDetailWiki] = useState<EnrichedWiki | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
@@ -229,18 +235,39 @@ export default function AdminReposPage() {
                       className="hover:bg-bg-alt/50 transition cursor-pointer"
                     >
                       <td className="px-5 py-3">
-                        <div className="flex items-center gap-2">
-                          {wiki.visibility === "private" ? (
-                            <Lock className="w-3 h-3 text-text-muted shrink-0" />
-                          ) : (
-                            <Globe className="w-3 h-3 text-text-muted shrink-0" />
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            {wiki.visibility === "private" ? (
+                              <Lock className="w-3 h-3 text-text-muted shrink-0" />
+                            ) : (
+                              <Globe className="w-3 h-3 text-text-muted shrink-0" />
+                            )}
+                            <span className="font-mono text-sm font-medium truncate">
+                              {wiki.owner}/{wiki.repo}
+                            </span>
+                          </div>
+
+                          {wiki.description && (
+                            <p className="mt-0.5 text-xs text-text-muted truncate pl-5">
+                              {wiki.description}
+                            </p>
                           )}
-                          <span className="font-mono font-medium">
-                            {wiki.owner}/{wiki.repo}
-                          </span>
+
+                          {wiki.github_updated_at && (
+                            <p className="mt-0.5 text-[10px] text-text-muted pl-5">
+                              GH: {dayAgo(wiki.github_updated_at)}
+                            </p>
+                          )}
+
+                          {wiki.updated_at && (
+                            <p className="mt-0.5 text-xs text-text-muted truncate pl-5">
+                              {dayAgo(wiki.updated_at)}
+                            </p>
+                          )}
                         </div>
                       </td>
-                      <td className="px-5 py-3">
+
+                      <td className="px-5 py-3 shrink-0">
                         <span
                           className={`text-xs uppercase tracking-wider ${
                             wiki.status === "done"
@@ -253,13 +280,15 @@ export default function AdminReposPage() {
                           {wiki.status}
                         </span>
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-5 py-3 shrink-0">
                         {wiki.search_error ? (
                           <span className="text-xs text-red-500">error</span>
                         ) : wiki.search_ready ? (
                           <span className="text-xs text-green-500">ready</span>
                         ) : (
-                          <span className="text-xs text-text-muted">pending</span>
+                          <span className="text-xs text-text-muted">
+                            pending
+                          </span>
                         )}
                       </td>
                     </tr>
