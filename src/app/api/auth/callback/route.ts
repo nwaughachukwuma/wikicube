@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   }
 
   if (!isLocalEnv && forwardedHost) {
-    return NextResponse.redirect(`https://${forwardedHost}${next}`);
+    return NextResponse.redirect(`https://${forwardedHost}${safeNext}`);
   }
   return NextResponse.redirect(new URL(safeNext, req.url));
 }
