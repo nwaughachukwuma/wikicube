@@ -1,10 +1,25 @@
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 from typing import Literal
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://wikicube.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:3031",
+        "http://195.201.23.25:3031",
+        "http://localhost",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 USER_AGENTS = ["wikicube/1.0"]
 model = SentenceTransformer("nomic-ai/nomic-embed-text-v1.5")
 
