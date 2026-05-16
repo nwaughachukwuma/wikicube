@@ -25,7 +25,14 @@ export const SearchReindexButton = ({ owner, repo }: Props) => {
         const orignalError = `GitHub API error ${res.status}: ${await res.text()}`;
         throw new HttpError(res, orignalError);
       })
-      .then(() => window.location.reload())
+      .then(() => {
+        toast.success("Re-indexing completed.", {
+          description: "Refreshing...",
+        });
+        setTimeout(() => {
+          window.location.reload();
+        }, 3000);
+      })
       .catch((err) => {
         toast.error("Re-indexing failed", {
           description: err.message,
