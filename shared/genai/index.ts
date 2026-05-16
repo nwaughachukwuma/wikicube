@@ -1,5 +1,4 @@
 export * from "./utils";
-export * from "./embeddings";
 export * from "./wiki-chat";
 export * from "./generate-overview";
 export * from "./identify-features";

@@ -16,7 +16,7 @@ async def check_user_agent(request: Request, call_next):
     return await call_next(request)
 
 
-TaskType = Literal["search_document", "search_query", "classification"]
+TaskType = Literal["search_document", "search_query", "classification", "clustering"]
 Dimensionality = Literal[256, 512, 768, 1536]
 
 TASK_PREFIXES = {

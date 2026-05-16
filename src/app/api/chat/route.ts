@@ -7,8 +7,9 @@ import {
   insertChatMessage,
   getChatSessionMessages,
 } from "@/lib/db";
-import { generateEmbeddings, chatWithWiki } from "@shared/genai";
+import { chatWithWiki } from "@shared/genai";
 import { validateRepoAccess, authRouteGuard } from "@/lib/db.utils";
+import { generateEmbeddings } from "@shared/embeddings";
 
 export const maxDuration = 120;
 

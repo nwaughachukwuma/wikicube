@@ -1,3 +1,5 @@
+import GithubSlugger from "github-slugger";
+import { encoding_for_model } from "tiktoken";
 import { logger } from "@shared/logger.js";
 import { batchAll } from "@shared/batch-ops.js";
 import { ensureError } from "@shared/error.js";
@@ -20,7 +22,6 @@ import {
   identifyFeatures,
   generateFeaturePage,
   generateOverview,
-  generateEmbeddings,
 } from "@shared/genai/index.js";
 import {
   upsertWiki,
@@ -30,8 +31,7 @@ import {
   markSearchReady,
   markSearchFailed,
 } from "./db.js";
-import GithubSlugger from "github-slugger";
-import { encoding_for_model } from "tiktoken";
+import { generateEmbeddings } from "@shared/embeddings.js";
 
 const log = logger("repo:analyzer");
 

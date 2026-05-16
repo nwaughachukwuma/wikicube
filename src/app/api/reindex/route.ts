@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
     body: JSON.stringify({ owner, repo, githubToken }),
     headers: {
       "content-type": "application/json",
+      "User-Agent": "wikicube/1.0",
       ...(session?.access_token
         ? { Authorization: `Bearer ${session.access_token}` }
         : {}),
