@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import type { Wiki } from "@shared/types";
 
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 10;
 
 export default function AdminReposPage() {
   const [wikis, setWikis] = useState<Wiki[]>([]);
@@ -134,7 +134,7 @@ export default function AdminReposPage() {
     <main className="min-h-screen flex flex-col">
       <AppHeader />
 
-      <div className="flex-1 max-w-4xl w-full mx-auto px-6 py-12">
+      <div className="flex-1 max-w-3xl w-full mx-auto px-6 py-12">
         <h1 className="font-display text-3xl uppercase tracking-tight">
           Admin — Indexed Repos
         </h1>
@@ -217,7 +217,7 @@ export default function AdminReposPage() {
                       Status
                     </th>
                     <th className="text-left px-5 py-3 font-display uppercase text-xs tracking-wider text-text-muted">
-                      Visibility
+                      Search
                     </th>
                   </tr>
                 </thead>
@@ -253,8 +253,14 @@ export default function AdminReposPage() {
                           {wiki.status}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-text-muted capitalize">
-                        {wiki.visibility}
+                      <td className="px-5 py-3">
+                        {wiki.search_error ? (
+                          <span className="text-xs text-red-500">error</span>
+                        ) : wiki.search_ready ? (
+                          <span className="text-xs text-green-500">ready</span>
+                        ) : (
+                          <span className="text-xs text-text-muted">pending</span>
+                        )}
                       </td>
                     </tr>
                   ))}
