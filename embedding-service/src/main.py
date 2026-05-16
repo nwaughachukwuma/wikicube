@@ -19,7 +19,7 @@ TASK_PREFIXES = {
 
 
 class EmbeddingRequest(BaseModel):
-    texts: list[str] = Field(..., min_length=1)
+    texts: list[str] = Field(..., min_length=1, max_length=8)
     task_type: TaskType = "search_document"
     dimensionality: Dimensionality = 768
 
