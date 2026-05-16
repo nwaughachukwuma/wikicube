@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { getSupabaseUser, getSupabaseSession } from "@/lib/supabase/server";
-import { HttpError } from "@shared/error";
 import { ADMIN_EMAILS } from "@shared/constants";
 
 export async function POST() {
@@ -10,8 +9,8 @@ export async function POST() {
   }
 
   const session = await getSupabaseSession();
-
-  const response = await fetch(`${process.env.BACKEND_BASE_URL}/reindex-all`, {
+  // fire and forget
+  void fetch(`${process.env.BACKEND_BASE_URL}/reindex-all`, {
     method: "POST",
     body: JSON.stringify({}),
     headers: {
@@ -23,12 +22,5 @@ export async function POST() {
     },
   });
 
-  if (!response.ok || response.status >= 300) {
-    return NextResponse.json(
-      { error: HttpError.getHumanReadableMessage(response) },
-      { status: response.status },
-    );
-  }
-
-  return NextResponse.json(await response.json(), { status: 200 });
+  return NextResponse.json({ ok: true, message: "Reindexing in progress" });
 }

@@ -150,7 +150,7 @@ export default function AdminReposPage() {
         if (res.ok) return res.json();
         throw new Error(res.statusText);
       })
-      .then(() => fetchWikis())
+      .then(() => toast.success("Reindexing in progress"))
       .catch((err) => {
         toast.error("Error Reindexing", {
           description: err.message,
