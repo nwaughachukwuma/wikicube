@@ -146,6 +146,16 @@ export async function markSearchFailed(
   });
 }
 
+export async function deleteChunks(wikiId: string) {
+  await withRetry("delete chunks", async () => {
+    const { error } = await getServerClient()
+      .from("chunks")
+      .delete()
+      .eq("wiki_id", wikiId);
+    if (error) throw error;
+  });
+}
+
 export async function getWiki(
   owner: string,
   repo: string,

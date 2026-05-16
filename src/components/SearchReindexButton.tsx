@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { HttpError } from "@shared/error";
+import { toast } from "sonner";
 
 type Props = {
   owner: string;
@@ -10,47 +12,26 @@ export const SearchReindexButton = ({ owner, repo }: Props) => {
   const [reindexing, setReindexing] = useState(false);
 
   const handleReindex = async () => {
+    if (reindexing) return;
     setReindexing(true);
-    try {
-      const res = await fetch("/api/reindex", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ owner, repo }),
-      });
 
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({ error: "Failed" }));
-        console.error("Reindex failed:", error);
-        return;
-      }
-
-      const reader = res.body?.getReader();
-      if (!reader) return;
-
-      const decoder = new TextDecoder();
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            try {
-              const evt = JSON.parse(line.slice(6));
-              if (evt.type === "done" || evt.type === "error") {
-                window.location.reload();
-                return;
-              }
-            } catch {}
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Reindex error:", err);
-    } finally {
-      setReindexing(false);
-    }
+    return await fetch("/api/reindex", {
+      method: "POST",
+      body: JSON.stringify({ owner, repo }),
+      headers: { "Content-Type": "application/json" },
+    })
+      .then(async (res) => {
+        if (res.ok) return res.json();
+        const orignalError = `GitHub API error ${res.status}: ${await res.text()}`;
+        throw new HttpError(res, orignalError);
+      })
+      .then(() => window.location.reload())
+      .catch((err) => {
+        toast.error("Re-indexing failed", {
+          description: err.message,
+        });
+      })
+      .finally(() => setReindexing(false));
   };
 
   return (

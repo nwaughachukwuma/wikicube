@@ -31,6 +31,9 @@ export interface PipelineOptions {
   userId?: string;
   /** Whether the repo is private */
   visibility?: "public" | "private";
+  skipToEmbedding?: boolean;
+  existingFeatures?: Array<Feature>;
+  existingOverview?: string;
 }
 
 export type WikiStatus =

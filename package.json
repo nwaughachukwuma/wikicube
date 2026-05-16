@@ -28,6 +28,7 @@
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.0",
     "shiki": "^1.24.0",
+    "sonner": "^2.0.7",
     "throttle-debounce": "^5.0.2",
     "tiktoken": "^1.0.22",
     "zod": "^3.25.76",
