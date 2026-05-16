@@ -1,0 +1,365 @@
+import type { RepoMeta, TreeEntry } from "./types";
+import { logger } from "./logger";
+import { batchAll } from "./batch-ops";
+import { HttpError } from "./error";
+
+const log = logger("github");
+const GITHUB_API = "https://api.github.com";
+
+const headers = (token?: string) => {
+  const h: Record<string, string> = {
+    Accept: "application/vnd.github.v3+json",
+    "User-Agent": "wikicube/1.0",
+  };
+  const authToken = token || process.env.GITHUB_TOKEN;
+  if (authToken) {
+    h["Authorization"] = `Bearer ${authToken}`;
+  }
+  return h;
+};
+
+// Detection
+export const GITHUB_URL_RE =
+  /^https?:\/\/(www\.)?github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+(\/.*)?$/;
+
+/**
+ * #### Extraction
+ * Matches owner/repo or github.com/owner/repo
+ * */
+export const GITHUB_REPO_RE =
+  /(?:github\.com\/)?([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/;
+
+/** Parse "owner/repo" from a GitHub URL */
+export function parseRepoUrl(url: string): { owner: string; repo: string } {
+  // handles: https://github.com/owner/repo, github.com/owner/repo, owner/repo
+  const cleaned = url
+    .trim()
+    .replace(/\/+$/, "")
+    .replace(/\.git$/, "");
+  const match = cleaned.match(GITHUB_REPO_RE);
+  if (!match) throw new Error(`Invalid GitHub URL: ${url}`);
+  return { owner: match[1], repo: match[2] };
+}
+
+export async function repoGuard(owner: string, repo: string, token?: string) {
+  const res = await fetch(`${GITHUB_API}/repos/${owner}/${repo}`, {
+    headers: headers(token),
+  });
+  if (res.ok) return res;
+  const orignalError = `GitHub API error ${res.status}: ${await res.text()}`;
+  throw new HttpError(res, orignalError);
+}
+
+/** Fetch repo metadata */
+export async function getRepoMeta(
+  owner: string,
+  repo: string,
+  token?: string,
+): Promise<RepoMeta> {
+  const res = await repoGuard(owner, repo, token);
+  const data = (await res.json()) as Record<string, unknown>;
+  return {
+    owner,
+    repo,
+    defaultBranch: data.default_branch as string,
+    description: (data.description as string) || "",
+    homepage: (data.homepage as string | null) || null,
+    topics: (data.topics as string[]) || [],
+    isPrivate: (data.private as boolean) ?? false,
+  } satisfies RepoMeta;
+}
+
+/** Fetch full file tree */
+export async function getRepoTree(
+  owner: string,
+  repo: string,
+  branch: string,
+  token?: string,
+): Promise<TreeEntry[]> {
+  const res = await fetch(
+    `${GITHUB_API}/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
+    { headers: headers(token) },
+  );
+  if (!res.ok) {
+    throw new Error(`Failed to fetch tree: ${res.status}`);
+  }
+
+  const data = (await res.json()) as {
+    tree?: Array<{ path: string; type: string; size?: number }>;
+    truncated?: boolean;
+  };
+  if (data.truncated) {
+    log.warn("tree truncated by GitHub API", { owner, repo, branch });
+  }
+  return (data.tree || []).map(
+    (e) =>
+      ({
+        path: e.path,
+        type: e.type as "blob" | "tree",
+        size: e.size,
+      }) satisfies TreeEntry,
+  );
+}
+
+/** Fetch raw file content. For private repos pass the user's GitHub token. */
+export async function getFileContent(
+  owner: string,
+  repo: string,
+  branch: string,
+  path: string,
+  token?: string,
+) {
+  const url = `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+  const res = await fetch(
+    url,
+    token ? { headers: { Authorization: `Bearer ${token}` } } : undefined,
+  );
+  const content = res.ok ? await res.text() : ""; // silently skip missing files
+  return { content, path };
+}
+
+/** Fetch multiple files with concurrency limit */
+export async function getMultipleFiles(
+  owner: string,
+  repo: string,
+  branch: string,
+  paths: string[],
+  token?: string,
+): Promise<Map<string, string>> {
+  const results = new Map<string, string>();
+  const queue = [...paths];
+
+  const concurrency = Math.min(10, paths.length);
+
+  async function worker() {
+    while (queue.length > 0) {
+      const path = queue.shift()!;
+      const res = await getFileContent(owner, repo, branch, path, token);
+      if (res.content) results.set(path, res.content);
+    }
+  }
+
+  const workers = Array.from({ length: concurrency }, worker);
+  await Promise.all(workers);
+  return results;
+}
+
+/** Build a GitHub URL to a specific file + line range */
+export function buildGitHubUrl(
+  owner: string,
+  repo: string,
+  branch: string,
+  file: string,
+  startLine?: number,
+  endLine?: number,
+): string {
+  let url = `https://github.com/${owner}/${repo}/blob/${branch}/${file}`;
+  if (startLine) {
+    url += `#L${startLine}`;
+    if (endLine && endLine !== startLine) url += `-L${endLine}`;
+  }
+  return url;
+}
+
+/* ─── Filtering ─── */
+
+const IGNORED_PATTERNS = [
+  /^node_modules\//,
+  /^vendor\//,
+  /^\.git\//,
+  /^dist\//,
+  /^build\//,
+  /^out\//,
+  /^\.next\//,
+  /^__pycache__\//,
+  /\.pyc$/,
+  /^\.venv\//,
+  /^venv\//,
+  /^\.env/,
+  /^coverage\//,
+  /^target\//,
+  /\.lock$/,
+  /package-lock\.json$/,
+  /\.min\.(js|css)$/,
+  /\.map$/,
+  /\.(png|jpg|jpeg|gif|svg|ico|webp|mp4|mp3|woff2?|ttf|eot|otf|zip|tar|gz|pdf)$/i,
+  /^\.DS_Store$/,
+  /^\.idea\//,
+  /^\.vscode\//,
+  /^\.husky\//,
+  /^test(s)?\/fixtures?\//,
+  /^__tests__\/snapshots?\//,
+  /^\.github\/workflows\//,
+  /^migrations?\//,
+];
+
+/** Filter tree to relevant source files only */
+export function filterTree(entries: TreeEntry[]): TreeEntry[] {
+  return entries.filter((e) => {
+    if (e.type !== "blob") return false;
+    return !IGNORED_PATTERNS.some((p) => p.test(e.path));
+  });
+}
+
+/** Format tree paths as a compact string for LLM context */
+export function formatTreeString(entries: TreeEntry[]): string {
+  return entries.map((e) => e.path).join("\n");
+}
+
+/** Detect and fetch manifest files for project description */
+const MANIFEST_FILES = [
+  "package.json",
+  "pyproject.toml",
+  "requirements.txt",
+  "Cargo.toml",
+  "go.mod",
+  "pom.xml",
+  "Gemfile",
+  "composer.json",
+  "setup.py",
+  "setup.cfg",
+  "Package.swift",
+  "CMakeLists.txt",
+  "pubspec.yaml",
+  "mix.exs",
+  "build.gradle",
+  "package.yaml",
+];
+
+const README_FILES = [
+  "README.md",
+  "README.rst",
+  "README.txt",
+  "README",
+  "readme.md",
+  "README.mdx",
+  "CHANGELOG.md",
+  "docs/intro.md",
+  "mkdocs.yml",
+  "docs/README.md",
+  "docs/index.md",
+  "CONTRIBUTING.md",
+];
+
+export const DOC_PATH_RE = /^docs\/.+\.mdx?$/i;
+
+/* ─── Issues & Pull Requests ─── */
+
+export async function getRecentIssues(
+  owner: string,
+  repo: string,
+  token?: string,
+): Promise<string> {
+  try {
+    const res = await fetch(
+      `${GITHUB_API}/repos/${owner}/${repo}/issues?state=all&per_page=10&sort=updated&direction=desc`,
+      { headers: headers(token) },
+    );
+    if (!res.ok) return "";
+    const issues = (await res.json()) as Array<{
+      number: number;
+      title: string;
+      body: string | null;
+      state: string;
+      labels: Array<{ name: string }>;
+      pull_request?: unknown;
+    }>;
+    // Filter out pull requests (GitHub's issues endpoint includes PRs)
+    return issues
+      .filter((i) => !i.pull_request)
+      .map(
+        (i) =>
+          `#${i.number} [${i.state}] ${i.title}${i.labels.length ? ` (${i.labels.map((l) => l.name).join(", ")})` : ""}${i.body ? `\n${i.body.slice(0, 2048)}` : ""}`,
+      )
+      .join("\n\n");
+  } catch (err) {
+    log.warn("Failed to fetch issues", { owner, repo, error: String(err) });
+    return "";
+  }
+}
+
+export async function getRecentPullRequests(
+  owner: string,
+  repo: string,
+  token?: string,
+): Promise<string> {
+  try {
+    const res = await fetch(
+      `${GITHUB_API}/repos/${owner}/${repo}/pulls?state=all&per_page=10&sort=updated&direction=desc`,
+      { headers: headers(token) },
+    );
+    if (!res.ok) return "";
+    const prs = (await res.json()) as Array<{
+      number: number;
+      title: string;
+      body: string | null;
+      state: string;
+      labels: Array<{ name: string }>;
+    }>;
+    return prs
+      .map(
+        (pr) =>
+          `#${pr.number} [${pr.state}] ${pr.title}${pr.labels.length ? ` (${pr.labels.map((l) => l.name).join(", ")})` : ""}${pr.body ? `\n${pr.body.slice(0, 2048)}` : ""}`,
+      )
+      .join("\n\n");
+  } catch (err) {
+    log.warn("Failed to fetch PRs", { owner, repo, error: String(err) });
+    return "";
+  }
+}
+
+export async function fetchProjectContext(
+  owner: string,
+  repo: string,
+  branch: string,
+  treePaths: string[],
+  token?: string,
+): Promise<{ readme: string; manifests: string }> {
+  const treePathSet = new Set(treePaths.map((p) => p.toLowerCase()));
+  const readmePath = README_FILES.find((r) => treePathSet.has(r.toLowerCase()));
+  const manifestPaths = MANIFEST_FILES.filter((m) =>
+    treePathSet.has(m.toLowerCase()),
+  );
+
+  // Detect markdown docs anywhere under docs/, including localized and nested
+  // paths like docs/zh/readme.md or docs/guides/setup/index.mdx.
+  const docPaths = treePaths
+    .filter(
+      (p) =>
+        DOC_PATH_RE.test(p) &&
+        !README_FILES.some((r) => r.toLowerCase() === p.toLowerCase()),
+    )
+    .slice(0, 5);
+
+  // Fetch README + manifests + docs in parallel
+  const pathsToFetch = [
+    ...(readmePath ? [readmePath] : []),
+    ...manifestPaths,
+    ...docPaths,
+  ];
+  const results = await batchAll(
+    pathsToFetch,
+    async (path) => getFileContent(owner, repo, branch, path, token),
+    20,
+  );
+
+  const readmeResult = readmePath ? results[0] : { content: "", path: "" };
+  const manifestStart = readmePath ? 1 : 0;
+  const manifestEnd = manifestStart + manifestPaths.length;
+
+  const manifestContents = results
+    .slice(manifestStart, manifestEnd)
+    .filter((res): res is { content: string; path: string } => !!res.content)
+    .map((v) => `--- ${v.path} ---\n${v.content}`);
+
+  // Append docs content to manifests (they provide additional project context)
+  const docsContents = results
+    .slice(manifestEnd)
+    .filter((res): res is { content: string; path: string } => !!res.content)
+    .map((v) => `--- ${v.path} ---\n${v.content.slice(0, 2000)}`);
+
+  return {
+    readme: readmeResult.content,
+    manifests: [...manifestContents, ...docsContents].join("\n\n"),
+  };
+}

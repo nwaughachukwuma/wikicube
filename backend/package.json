@@ -1,0 +1,36 @@
+{
+  "name": "wikicube-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "tsc": "tsc",
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup",
+    "start": "npm run build && node dist/server.js",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.0",
+    "@google/genai": "^1.44.0",
+    "@supabase/supabase-js": "^2.97.0",
+    "dotenv": "^17.3.1",
+    "fastify": "^5.0.0",
+    "github-slugger": "^2.0.0",
+    "p-retry": "^7.1.1",
+    "tiktoken": "^1.0.22",
+    "zod": "^3.25.76",
+    "zod-to-json-schema": "^3.25.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.3",
+    "@typescript-eslint/parser": "^8.59.3",
+    "eslint": "^9.39.4",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "tsc-alias": "^1.8.17",
+    "tsup": "^8.5.1",
+    "tsx": "^4.0.0",
+    "typescript": "^5.7.0"
+  }
+}

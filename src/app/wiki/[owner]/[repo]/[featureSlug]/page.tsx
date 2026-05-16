@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import TableOfContents from "@/components/TableOfContents";
-import type { Feature } from "@/lib/types";
+import type { Feature } from "@shared/types";
 import { wikiStore } from "@/lib/stores/wikiStore";
 import { useMounted } from "@/lib/hooks/mounted";
 

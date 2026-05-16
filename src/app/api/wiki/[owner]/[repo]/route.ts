@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWiki, getFeatures } from "@/lib/db";
-import { getSupabaseUser } from "@/lib/supabase/server";
-import { privateWikiGuard } from "@/lib/db.utils";
+import { validateRepoAccess } from "@/lib/db.utils";
 
 export async function GET(
   _req: NextRequest,
@@ -14,11 +13,8 @@ export async function GET(
     return NextResponse.json({ error: "Wiki not found" }, { status: 404 });
   }
 
-  if (wiki.visibility === "private") {
-    const user = await getSupabaseUser();
-    const error = privateWikiGuard(wiki, user?.id);
-    if (error) return error;
-  }
+  const error = await validateRepoAccess(wiki.owner, wiki.repo);
+  if (error) return error;
 
   const features = await getFeatures(wiki.id);
   return NextResponse.json(

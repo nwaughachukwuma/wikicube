@@ -10,8 +10,7 @@ import { redirect } from "next/navigation";
 import AuthButton from "@/components/AuthButton";
 import WikiShell from "@/components/WikiShell";
 import { getWiki } from "@/lib/db";
-import { canAccessWiki } from "@/lib/db.utils";
-import { getSupabaseUser } from "@/lib/supabase/server";
+import { canAccessRepo } from "@/lib/db.utils";
 
 export default async function WikiLayout({
   params,
@@ -22,11 +21,8 @@ export default async function WikiLayout({
 }) {
   const { owner, repo } = await params;
   const wiki = await getWiki(owner, repo);
-  if (wiki?.visibility === "private") {
-    const user = await getSupabaseUser();
-    if (!canAccessWiki(wiki, user?.id)) {
-      redirect("/");
-    }
+  if (!(await canAccessRepo(owner, repo))) {
+    redirect("/");
   }
 
   return (

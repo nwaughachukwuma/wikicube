@@ -7,8 +7,9 @@ import {
   insertChatMessage,
   getChatSessionMessages,
 } from "@/lib/db";
-import { generateEmbeddings, chatWithWiki } from "@/lib/genai";
-import { privateWikiGuard, authRouteGuard } from "@/lib/db.utils";
+import { chatWithWiki } from "@shared/genai";
+import { validateRepoAccess, authRouteGuard } from "@/lib/db.utils";
+import { generateEmbeddings } from "@shared/embeddings";
 
 export const maxDuration = 120;
 
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const error = privateWikiGuard(wiki, user.id);
+  const error = await validateRepoAccess(wiki.owner, wiki.repo);
   if (error) return error;
 
   // Load chat history from DB for this session (scoped to this user)

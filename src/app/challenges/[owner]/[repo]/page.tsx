@@ -11,7 +11,7 @@ import {
   ArrowLeft,
   Loader2,
 } from "lucide-react";
-import type { Challenge } from "@/lib/types";
+import type { Challenge } from "@shared/types";
 import { LinkifyGitHubRefs } from "./LinkifyGitHubRefs";
 
 const PREVIEW_LENGTH = 240;

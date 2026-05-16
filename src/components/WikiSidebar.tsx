@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { Feature, Wiki } from "@/lib/types";
+import type { Feature, Wiki } from "@shared/types";
 import SearchBar from "@/components/SearchBar";
 import WikiHistoryPanel from "@/components/WikiHistoryPanel";
 import { OptimLink } from "./OptimisticLink";

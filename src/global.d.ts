@@ -6,5 +6,6 @@ declare namespace NodeJS {
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY: string;
     GITHUB_TOKEN: string;
     GEMINI_API_KEY: string;
+    BACKEND_BASE_URL: string;
   }
 }

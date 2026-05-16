@@ -9,7 +9,7 @@ import GenerateWiki from "@/components/GenerateWiki";
 import { PageLoading } from "./PageLoading";
 import { WikiData, wikiStore } from "@/lib/stores/wikiStore";
 import { useMounted } from "@/lib/hooks/mounted";
-import type { Wiki } from "@/lib/types";
+import type { Wiki } from "@shared/types";
 
 export default function WikiShell({
   owner,

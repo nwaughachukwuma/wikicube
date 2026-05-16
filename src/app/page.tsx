@@ -6,10 +6,7 @@ import { OptimLink } from "@/components/OptimisticLink";
 import AppHeader from "@/components/AppHeader";
 import { PageLoading } from "@/components/PageLoading";
 import { useUser } from "@/lib/supabase/useUser";
-
-/** Matches owner/repo or github.com/owner/repo */
-const GITHUB_REPO_RE =
-  /(?:github\.com\/)?([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/;
+import { GITHUB_REPO_RE } from "@shared/github";
 
 const EXAMPLE_REPOS = [
   {
@@ -125,14 +122,14 @@ export default function HomePage() {
 
         <p className="mt-3 text-xs text-text-muted text-center">
           <OptimLink href="/my-repos" className="underline hover:text-text">
-            Index your own repos
+            Index your private repos
           </OptimLink>
         </p>
 
         {/* Example repos */}
         <div className="mt-16 w-full max-w-3xl">
           <p className="text-xs uppercase tracking-widest text-text-muted mb-4 text-center">
-            Try an example
+            Popular Repos
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {EXAMPLE_REPOS.map((example) => (

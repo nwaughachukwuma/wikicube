@@ -1,0 +1,4 @@
+fastapi
+granian[uvloop]
+sentence-transformers>=3.0.0
+pydantic

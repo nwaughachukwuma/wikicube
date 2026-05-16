@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Fuse from "fuse.js";
 import { SearchIcon } from "lucide-react";
-import type { Wiki, Feature } from "@/lib/types";
+import type { Wiki, Feature } from "@shared/types";
+import { SearchReindexButton } from "./SearchReindexButton";
 
 interface SearchResult {
   content: string;
@@ -153,8 +154,11 @@ export default function SearchBar({
   return (
     <div className="relative">
       {wiki.search_error ? (
-        <div className="mb-1.5 text-[10px] text-text-muted">
-          Search indexing failed. You can still search by feature title.
+        <div className="mb-1.5">
+          <div className="text-xs text-text-muted">
+            Search indexing failed. You can still search by feature title.
+          </div>
+          <SearchReindexButton owner={owner} repo={repo} />
         </div>
       ) : !wiki.search_ready ? (
         <div className="mb-1.5 flex items-center gap-1.5 text-[10px] text-text-muted">

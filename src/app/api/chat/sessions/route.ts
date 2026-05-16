@@ -4,7 +4,7 @@ import {
   getChatSessionMessages,
   getWikiById,
 } from "@/lib/db";
-import { authRouteGuard, privateWikiGuard } from "@/lib/db.utils";
+import { authRouteGuard, validateRepoAccess } from "@/lib/db.utils";
 
 /**
  * GET /api/chat/sessions?wikiId=xxx        → list sessions for a wiki (auth required)
@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
   if (!wiki) {
     return NextResponse.json({ error: "Wiki not found" }, { status: 404 });
   }
-  const error = privateWikiGuard(wiki, user.id);
+  const error = await validateRepoAccess(wiki.owner, wiki.repo);
   if (error) return error;
 
   const sessions = await getWikiChatSessions(wikiId, user.id);

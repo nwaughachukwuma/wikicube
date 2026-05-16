@@ -1,5 +1,5 @@
 import { batchAll } from "./batchOps";
-import { logger } from "./logger";
+import { logger } from "@shared/logger";
 import { getServerClient } from "./supabase/server";
 import type {
   Wiki,
@@ -9,7 +9,7 @@ import type {
   WikiChat,
   ChatSession,
   Challenge,
-} from "./types";
+} from "@shared/types";
 import { withRetry } from "./db.utils";
 
 const log = logger("db");

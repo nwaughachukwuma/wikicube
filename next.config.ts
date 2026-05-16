@@ -15,6 +15,7 @@ const nextConfig: NextConfig = {
       asyncWebAssembly: true,
       layers: true,
     };
+    config.externals.push(/backend/);
     return config;
   },
   images: {
