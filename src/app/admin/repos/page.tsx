@@ -141,7 +141,7 @@ export default function AdminReposPage() {
   const handleReindexAll = async () => {
     setReindexingAll(true);
 
-    return fetch("/api/reindex", {
+    return fetch("/api/reindex-all", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),

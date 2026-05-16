@@ -3,8 +3,6 @@ import { getSupabaseUser, getSupabaseSession } from "@/lib/supabase/server";
 import { HttpError } from "@shared/error";
 import { ADMIN_EMAILS } from "@shared/constants";
 
-export const maxDuration = 300;
-
 export async function POST() {
   const user = await getSupabaseUser();
   if (!user?.email || !ADMIN_EMAILS.has(user.email)) {
@@ -15,6 +13,7 @@ export async function POST() {
 
   const response = await fetch(`${process.env.BACKEND_BASE_URL}/reindex-all`, {
     method: "POST",
+    body: JSON.stringify({}),
     headers: {
       "content-type": "application/json",
       "User-Agent": "wikicube/1.0",
