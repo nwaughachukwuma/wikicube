@@ -16,11 +16,3 @@ export async function getSupabaseUser(token?: string) {
   if (error || !data.user) return null;
   return data.user;
 }
-
-export async function getSupabaseSession(token?: string) {
-  if (!token) return null;
-  const supabase = getServerClient();
-  const { data, error } = await supabase.auth.getSession();
-  if (error || !data.session) return null;
-  return data.session;
-}
