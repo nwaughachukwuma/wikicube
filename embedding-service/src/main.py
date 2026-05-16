@@ -1,11 +1,20 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 from sentence_transformers import SentenceTransformer
 from typing import Literal
 
 app = FastAPI()
-
+USER_AGENTS = ["wikicube/1.0"]
 model = SentenceTransformer("nomic-ai/nomic-embed-text-v1.5")
+
+
+@app.middleware("http")
+async def check_user_agent(request: Request, call_next):
+    if request.headers.get("user-agent") not in USER_AGENTS:
+        return JSONResponse(status_code=403, content={"detail": "Forbidden"})
+    return await call_next(request)
+
 
 TaskType = Literal["search_document", "search_query", "classification"]
 Dimensionality = Literal[256, 512, 768, 1536]
