@@ -46,7 +46,7 @@
     "eslint-config-next": "^15.5.12",
     "openai": "^4.77.0",
     "postcss": "^8.4.49",
-    "supabase": "^2.76.15",
+    "supabase": "^2.98.2",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0",
     "vitest": "^4.0.18"

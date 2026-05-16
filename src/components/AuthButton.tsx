@@ -11,7 +11,7 @@ export const signIn = async () => {
     provider: "github",
     options: {
       scopes: "repo read:user",
-      redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(window.location.pathname)}`,
+      redirectTo: `${window.location.origin}/api/auth/callback`, // ?next=${encodeURIComponent(window.location.pathname)}`
     },
   });
 };
