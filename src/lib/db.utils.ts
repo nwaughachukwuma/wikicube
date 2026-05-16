@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getSupabaseSession, getSupabaseUser } from "@/lib/supabase/server";
 import pRetry from "p-retry";
 import { ensureError, extractError } from "./error";
-import { logger } from "./logger";
+import { logger } from "@shared/logger";
 import { repoGuard } from "@shared/github";
 
 /**

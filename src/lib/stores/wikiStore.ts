@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { Feature, Wiki } from "../types";
+import type { Feature, Wiki } from "@shared/types";
 import { fetchWithSWR } from "../cache.client";
 
 export interface WikiData {

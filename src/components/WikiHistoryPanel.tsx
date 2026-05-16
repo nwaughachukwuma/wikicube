@@ -5,7 +5,7 @@ import { PanelLeft, X, BookOpen } from "lucide-react";
 import { OptimLink } from "@/components/OptimisticLink";
 import { fetchWithSWR } from "@/lib/cache.client";
 import { segmentByTime } from "@/lib/timing";
-import type { WikiEntry } from "@/lib/types";
+import type { WikiEntry } from "@shared/types";
 
 export default function WikiHistoryPanel() {
   const [open, setOpen] = useState(false);

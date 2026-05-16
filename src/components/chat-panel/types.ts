@@ -1,4 +1,4 @@
-import type { Wiki } from "@/lib/types";
+import type { Wiki } from "@shared/types";
 
 export interface Message {
   role: "user" | "assistant";

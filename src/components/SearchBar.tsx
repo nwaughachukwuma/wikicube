@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Fuse from "fuse.js";
 import { SearchIcon } from "lucide-react";
-import type { Wiki, Feature } from "@/lib/types";
+import type { Wiki, Feature } from "@shared/types";
 import { SearchReindexButton } from "./SearchReindexButton";
 
 interface SearchResult {

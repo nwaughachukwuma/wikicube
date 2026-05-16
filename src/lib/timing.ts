@@ -1,4 +1,4 @@
-import type { WikiEntry } from "./types";
+import type { WikiEntry } from "@shared/types";
 
 export function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();

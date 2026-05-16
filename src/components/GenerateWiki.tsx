@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
-import type { AnalysisEvent, WikiStatus } from "@/lib/types";
+import type { AnalysisEvent, WikiStatus } from "@shared/types";
 import type {
   ProgressStep,
   TrackedFeature,

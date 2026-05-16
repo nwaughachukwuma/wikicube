@@ -21,12 +21,15 @@
       "@shared/*": ["./shared/*"]
     }
   },
+  "exclude": ["node_modules", "backend"],
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "shared/**/*.ts",
+    "shared/**/*.tsx",
+    "tests/**/*.ts",
     ".next/types/**/*.ts",
     "src/lib/code-analyzer/analyzer.ts.deprecated"
-  ],
-  "exclude": ["node_modules", "backend"]
+  ]
 }

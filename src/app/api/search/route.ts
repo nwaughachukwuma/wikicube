@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { getWikiById, matchChunks, getFeatures } from "@/lib/db";
 import { generateEmbeddings } from "@shared/genai";
-import { getSupabaseUser } from "@/lib/supabase/server";
 import { validateRepoAccess } from "@/lib/db.utils";
 
 const SearchSchema = z.object({
