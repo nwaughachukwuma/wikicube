@@ -34,10 +34,14 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
 
     const handler = makeJobs();
     if (handler) {
-      // queue
-    } else {
-      // run local
+      handler.addJob("reindex", { data: wiki });
+      reply.send({
+        ok: true,
+        message: "Reindexing Operation Queued",
+      });
+      return;
     }
+
     await reindexHandler(wiki)
       .then(() => reply.send({ ok: "ok" }))
       .catch((err) => reply.status(400).send({ error: err }))
@@ -74,8 +78,8 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
     }
 
     handler.addBulkJobs([
-      { name: "myJobName", data: { foo: "bar" } },
-      { name: "myJobName", data: { qux: "baz" } },
+      { name: "dummy", data: { foo: "bar" } },
+      { name: "dummy", data: { qux: "baz" } },
     ]);
     reply.send({ ok: true });
   });

@@ -1,7 +1,13 @@
 import { Queue, QueueEvents, Worker } from "bullmq";
 import { logger } from "@shared/logger.js";
 import type { Wiki } from "@shared/types.js";
-import { getRedis, jobOptions, type JobParams, QUEUES } from "./queue.utils.js";
+import {
+  getRedis,
+  type JobName,
+  jobOptions,
+  type JobParams,
+  QUEUES,
+} from "./queue.utils.js";
 import { reindexHandler } from "../../handlers/reindex.js";
 
 const log = logger("queue:jobs");
@@ -34,40 +40,17 @@ function idempotentInit() {
   return myQueue;
 }
 
-// Jobs
-export const makeJobs = () => {
-  let queue: Queue | null = null;
-  try {
-    queue = idempotentInit();
-    queue.getMeta().then((v) => {
-      log.info("Queue configuration.", { ...v });
-    });
-  } catch (error) {
-    return null;
-  }
-
-  return {
-    async addJob(name: string, data: Record<string, any>) {
-      await queue.add(name, data, jobOptions);
-    },
-    async addBulkJobs(jobParams: JobParams[]) {
-      return await queue.addBulk(
-        jobParams.map((v) => ({ ...v, opts: jobOptions })),
-      );
-    },
-  };
-};
-
 // Worker
 const reindexWorker = new Worker(
   QUEUES.REINDEX,
   async (job) => {
-    if (job.name == "myJobName") {
+    const jobName = job.name as JobName;
+    if (jobName === "dummy") {
       console.log({ data: job.data });
       return;
     }
 
-    if (job.name === "reindex") {
+    if (jobName === "reindex") {
       const wiki = job.data.wiki as Wiki;
       return await reindexHandler(wiki)
         .then((v) => {
@@ -92,3 +75,27 @@ reindexWorker.on("failed", (job, err) => {
   }
   log.info(`A Job has failed with ${err.message}`);
 });
+
+// Jobs
+export const makeJobs = () => {
+  let queue: Queue | null = null;
+  try {
+    queue = idempotentInit();
+    queue.getMeta().then((v) => {
+      log.info("Queue configuration.", { ...v });
+    });
+  } catch (error) {
+    return null;
+  }
+
+  return {
+    async addJob(name: JobName, data: Record<string, any>) {
+      await queue.add(name, data, jobOptions);
+    },
+    async addBulkJobs(jobParams: JobParams[]) {
+      return await queue.addBulk(
+        jobParams.map((v) => ({ ...v, opts: jobOptions })),
+      );
+    },
+  };
+};

@@ -5,8 +5,10 @@ export const QUEUES = Object.freeze({
   REINDEX: "reindex",
 } as const);
 
+export type JobName = "dummy" | "reindex";
+
 export interface JobParams {
-  name: string;
+  name: JobName;
   data: Record<string, any>;
 }
 
