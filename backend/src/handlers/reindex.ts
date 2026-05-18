@@ -7,19 +7,16 @@ import { ensureError } from "@shared/error.js";
 
 const REINDEX_BATCH_SIZE = 5;
 
-export async function reindexHandler(wiki: Wiki, reply: FastifyReply) {
+export async function reindexHandler(wiki: Wiki) {
   const features = await getFeatures(wiki.id);
-  await reindexWikiAndCode(wiki.owner, wiki.repo, {
+  return reindexWikiAndCode(wiki.owner, wiki.repo, {
     visibility: wiki.visibility,
     existingFeatures: features,
     existingOverview: wiki.overview,
-  })
-    .then(() => reply.send({ ok: "ok" }))
-    .catch((err) => reply.status(400).send({ error: err }))
-    .finally(() => reply.raw.end());
+  });
 }
 
-export async function reindexAllHandler(wikis: Wiki[], reply: FastifyReply) {
+export async function reindexAllHandler(wikis: Wiki[]) {
   return batchAll(
     wikis,
     async (wiki: Wiki) => {

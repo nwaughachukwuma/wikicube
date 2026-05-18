@@ -1,2 +1,1 @@
-export * from "./workers.js";
-export * from "./reindex.jobs.js";
+export * from "./reindex.queue.js";

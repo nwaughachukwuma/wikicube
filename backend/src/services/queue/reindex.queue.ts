@@ -1,11 +1,14 @@
-import { Queue, QueueEvents } from "bullmq";
+import { Queue, QueueEvents, Worker } from "bullmq";
 import { logger } from "@shared/logger.js";
+import type { Wiki } from "@shared/types.js";
 import { getRedis, jobOptions, type JobParams, QUEUES } from "./queue.utils.js";
+import { reindexHandler } from "../../handlers/reindex.js";
 
 const log = logger("queue:jobs");
 let hasBeenInit = false;
 let myQueue: Queue | null = null;
 
+// Queue
 function idempotentInit() {
   if (hasBeenInit && myQueue) return myQueue;
 
@@ -31,6 +34,7 @@ function idempotentInit() {
   return myQueue;
 }
 
+// Jobs
 export const makeJobs = () => {
   let queue: Queue | null = null;
   try {
@@ -53,3 +57,38 @@ export const makeJobs = () => {
     },
   };
 };
+
+// Worker
+const reindexWorker = new Worker(
+  QUEUES.REINDEX,
+  async (job) => {
+    if (job.name == "myJobName") {
+      console.log({ data: job.data });
+      return;
+    }
+
+    if (job.name === "reindex") {
+      const wiki = job.data.wiki as Wiki;
+      return await reindexHandler(wiki)
+        .then((v) => {
+          log.info("REINDEX JOB COMPLETED", { v });
+        })
+        .catch((err) => {
+          log.info("REINDEX JOB FAILED", { err });
+        });
+    }
+  },
+  { connection: getRedis() },
+);
+
+reindexWorker.on("completed", (job) => {
+  log.info(`${job.id} has completed!`);
+});
+
+reindexWorker.on("failed", (job, err) => {
+  if (job) {
+    log.info(`${job.id} has failed with ${err.message}`);
+    return;
+  }
+  log.info(`A Job has failed with ${err.message}`);
+});

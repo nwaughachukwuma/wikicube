@@ -32,7 +32,16 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
         .send({ error: "Wiki is not fully generated yet" });
     }
 
-    await reindexHandler(wiki, reply);
+    const handler = makeJobs();
+    if (handler) {
+      // queue
+    } else {
+      // run local
+    }
+    await reindexHandler(wiki)
+      .then(() => reply.send({ ok: "ok" }))
+      .catch((err) => reply.status(400).send({ error: err }))
+      .finally(() => reply.raw.end());
   });
 
   fastify.post("/reindex-all", async (request, reply) => {
@@ -53,7 +62,7 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: error.message });
     }
 
-    const results = await reindexAllHandler(wikis, reply);
+    const results = await reindexAllHandler(wikis);
     return reply.send({ results });
   });
 
