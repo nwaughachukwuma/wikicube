@@ -57,8 +57,14 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
     return reply.send({ results });
   });
 
-  fastify.post("/use-queue", async (request, reply) => {
-    makeJobs().addBulkJobs([
+  fastify.post("/queue/healthcheck", async (request, reply) => {
+    const handler = makeJobs();
+    if (!handler) {
+      reply.status(400).send({ ok: false });
+      return;
+    }
+
+    handler.addBulkJobs([
       { name: "myJobName", data: { foo: "bar" } },
       { name: "myJobName", data: { qux: "baz" } },
     ]);
