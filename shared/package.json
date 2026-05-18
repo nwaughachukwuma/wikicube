@@ -1,6 +1,6 @@
 {
-  "name": "@cubic/shared",
-  "version": "1.0.0",
+  "name": "@wikicube/shared",
+  "version": "1.0.1",
   "type": "module",
   "exports": {
     "./*": {

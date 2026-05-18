@@ -1,6 +1,6 @@
 {
-  "name": "wikicube-backend",
-  "version": "1.0.0",
+  "name": "@wikicube/backend",
+  "version": "1.0.1",
   "type": "module",
   "scripts": {
     "tsc": "tsc",
