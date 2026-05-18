@@ -1,10 +1,10 @@
 import type { FastifyInstance } from "fastify";
+import { z, treeifyError } from "zod";
 import { getWiki } from "../services/db.js";
 import { adminRouteGuard } from "../services/auth.js";
 import { getServerClient } from "../services/supabase.js";
-import { makeJobs } from "../services/queue/index.js";
+import { reindexJobs } from "../services/queue/index.js";
 import { reindexHandler, reindexAllHandler } from "../handlers/reindex.js";
-import { z, treeifyError } from "zod";
 
 const ReindexReq = z.object({
   owner: z.string().nonempty("Owner is required"),
@@ -32,9 +32,8 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
         .send({ error: "Wiki is not fully generated yet" });
     }
 
-    const handler = makeJobs();
-    if (handler) {
-      handler.addJob("reindex", { data: wiki });
+    if (reindexJobs) {
+      reindexJobs.addJob("reindex", { data: wiki });
       reply.send({
         ok: true,
         message: "Reindexing Operation Queued",
@@ -71,13 +70,12 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post("/queue/healthcheck", async (request, reply) => {
-    const handler = makeJobs();
-    if (!handler) {
+    if (!reindexJobs) {
       reply.status(400).send({ ok: false });
       return;
     }
 
-    handler.addBulkJobs([
+    reindexJobs.addBulkJobs([
       { name: "dummy", data: { foo: "bar" } },
       { name: "dummy", data: { qux: "baz" } },
     ]);

@@ -10,12 +10,12 @@ import {
 } from "./queue.utils.js";
 import { reindexHandler } from "../../handlers/reindex.js";
 
-const log = logger("queue:jobs");
+const log = logger("queue:workers");
 let hasBeenInit = false;
 let myQueue: Queue | null = null;
 
 // Queue
-function idempotentInit() {
+export function initReindexQueue() {
   if (hasBeenInit && myQueue) return myQueue;
 
   myQueue = new Queue(QUEUES.REINDEX, { connection: getRedis() });
@@ -75,27 +75,3 @@ reindexWorker.on("failed", (job, err) => {
   }
   log.info(`A Job has failed with ${err.message}`);
 });
-
-// Jobs
-export const makeJobs = () => {
-  let queue: Queue | null = null;
-  try {
-    queue = idempotentInit();
-    queue.getMeta().then((v) => {
-      log.info("Queue configuration.", { ...v });
-    });
-  } catch (error) {
-    return null;
-  }
-
-  return {
-    async addJob(name: JobName, data: Record<string, any>) {
-      await queue.add(name, data, jobOptions);
-    },
-    async addBulkJobs(jobParams: JobParams[]) {
-      return await queue.addBulk(
-        jobParams.map((v) => ({ ...v, opts: jobOptions })),
-      );
-    },
-  };
-};
