@@ -6,6 +6,7 @@ import { getServerClient } from "../services/supabase.js";
 import { batchAll } from "@shared/batch-ops.js";
 import type { Wiki } from "@shared/types.js";
 import { ensureError } from "@shared/error.js";
+import { makeJobs } from "../services/queue/index.js";
 
 const REINDEX_BATCH_SIZE = 5;
 
@@ -84,5 +85,13 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
       REINDEX_BATCH_SIZE,
     );
     return reply.send({ results });
+  });
+
+  fastify.post("/use-queue", async (request, reply) => {
+    makeJobs().addBulkJobs([
+      { name: "myJobName", data: { foo: "bar" } },
+      { name: "myJobName", data: { qux: "baz" } },
+    ]);
+    reply.send({ ok: true });
   });
 }

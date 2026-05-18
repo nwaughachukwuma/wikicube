@@ -1,25 +1,31 @@
 import { Worker } from "bullmq";
 import { Redis } from "ioredis";
-import { JOBS } from "./queue.utils.js";
+import { QUEUES } from "./queue.utils.js";
+import { logger } from "@shared/logger.js";
 
-const connection = new Redis({ maxRetriesPerRequest: null });
+const log = logger("queue:workers");
 
-const worker = new Worker(
-  JOBS.REINDEX,
+const connection = new Redis({
+  maxRetriesPerRequest: null,
+  password: process.env.REDIS_PASSWORD,
+});
+
+const reindexWorker = new Worker(
+  QUEUES.REINDEX,
   async (job) => {
     console.log(job.data);
   },
   { connection },
 );
 
-worker.on("completed", (job) => {
-  console.log(`${job.id} has completed!`);
+reindexWorker.on("completed", (job) => {
+  log.info(`${job.id} has completed!`);
 });
 
-worker.on("failed", (job, err) => {
+reindexWorker.on("failed", (job, err) => {
   if (job) {
-    console.log(`${job.id} has failed with ${err.message}`);
+    log.info(`${job.id} has failed with ${err.message}`);
     return;
   }
-  console.log(`A Job has failed with ${err.message}`);
+  log.info(`A Job has failed with ${err.message}`);
 });
