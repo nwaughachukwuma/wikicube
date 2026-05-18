@@ -4,13 +4,22 @@ import { adminRouteGuard } from "../services/auth.js";
 import { getServerClient } from "../services/supabase.js";
 import { makeJobs } from "../services/queue/index.js";
 import { reindexHandler, reindexAllHandler } from "../handlers/reindex.js";
+import { z, treeifyError } from "zod";
+
+const ReindexReq = z.object({
+  owner: z.string().nonempty("Owner is required"),
+  repo: z.string().nonempty("Repo is required"),
+});
 
 export default async function reindexRoutes(fastify: FastifyInstance) {
   fastify.post("/reindex", async (request, reply) => {
-    const { owner, repo } = request.body as { owner: string; repo: string };
-    if (!owner || !repo) {
-      return reply.status(400).send({ error: "owner and repo are required" });
+    const parsed = ReindexReq.safeParse(request.body);
+    if (!parsed.success) {
+      reply.status(400).send(treeifyError(parsed.error));
+      return;
     }
+
+    const { owner, repo } = parsed.data;
 
     const wiki = await getWiki(owner, repo);
     if (!wiki) {

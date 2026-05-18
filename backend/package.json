@@ -20,7 +20,7 @@
     "ioredis": "^5.10.1",
     "p-retry": "^7.1.1",
     "tiktoken": "^1.0.22",
-    "zod": "^3.25.76",
+    "zod": "^4.3.6",
     "zod-to-json-schema": "^3.25.1"
   },
   "devDependencies": {
