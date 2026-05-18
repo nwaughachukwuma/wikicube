@@ -1,9 +1,10 @@
 import { Queue, QueueEvents } from "bullmq";
 import { logger } from "@shared/logger.js";
-import { jobOptions, type JobParams, QUEUES } from "./queue.utils.js";
+import { getRedis, jobOptions, type JobParams, QUEUES } from "./queue.utils.js";
 
 const log = logger("queue:jobs");
-const myQueue = new Queue(QUEUES.REINDEX);
+
+const myQueue = new Queue(QUEUES.REINDEX, { connection: getRedis() });
 myQueue.setGlobalConcurrency(10);
 
 export const makeJobs = () => {
@@ -23,20 +24,22 @@ export const makeJobs = () => {
   };
 };
 
-const queueEvents = new QueueEvents(QUEUES.REINDEX);
+const queueEvents = new QueueEvents(QUEUES.REINDEX, {
+  connection: getRedis(true),
+});
 
 queueEvents.on("waiting", ({ jobId }) => {
-  console.log(`A job with ID ${jobId} is waiting`);
+  log.info(`A job with ID ${jobId} is waiting`);
 });
 
 queueEvents.on("active", ({ jobId, prev }) => {
-  console.log(`Job ${jobId} is now active; previous status was ${prev}`);
+  log.info(`Job ${jobId} is now active; previous status was ${prev}`);
 });
 
 queueEvents.on("completed", ({ jobId, returnvalue }) => {
-  console.log(`${jobId} has completed and returned ${returnvalue}`);
+  log.info(`${jobId} has completed and returned ${returnvalue}`);
 });
 
 queueEvents.on("failed", ({ jobId, failedReason }) => {
-  console.log(`${jobId} has failed with reason ${failedReason}`);
+  log.info(`${jobId} has failed with reason ${failedReason}`);
 });

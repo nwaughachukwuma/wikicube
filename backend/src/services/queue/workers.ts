@@ -1,13 +1,12 @@
 import { Worker } from "bullmq";
-import { Redis } from "ioredis";
-import { QUEUES } from "./queue.utils.js";
+import { getRedis, QUEUES } from "./queue.utils.js";
 import { logger } from "@shared/logger.js";
 
 const log = logger("queue:workers");
 
-const connection = new Redis({
-  maxRetriesPerRequest: null,
-  password: process.env.REDIS_PASSWORD,
+log.info("process.env.REDIS_PASSWORD", {
+  pa: process.env.REDIS_PASSWORD,
+  len: process.env.REDIS_PASSWORD.length,
 });
 
 const reindexWorker = new Worker(
@@ -15,7 +14,7 @@ const reindexWorker = new Worker(
   async (job) => {
     console.log(job.data);
   },
-  { connection },
+  { connection: getRedis() },
 );
 
 reindexWorker.on("completed", (job) => {
