@@ -1,5 +1,9 @@
 import type { JobsOptions } from "bullmq";
 import { Redis } from "ioredis";
+import type { Queue } from "bullmq";
+import { logger } from "@shared/logger.js";
+
+const log = logger("queue:utils");
 
 export const QUEUES = Object.freeze({
   REINDEX: "reindex",
@@ -32,3 +36,23 @@ export function getRedis(force = false) {
 
   return (connection ||= new Redis(RedisOptions));
 }
+
+export const makeJobs = (queue: Queue) => {
+  try {
+    queue.getMeta().then((v) => {
+      log.info("Queue configuration.", { ...v });
+    });
+  } catch (error) {
+    return null;
+  }
+  return {
+    async addJob(name: JobName, data: Record<string, any>) {
+      await queue.add(name, data, jobOptions);
+    },
+    async addBulkJobs(jobParams: JobParams[]) {
+      return await queue.addBulk(
+        jobParams.map((v) => ({ ...v, opts: jobOptions })),
+      );
+    },
+  };
+};

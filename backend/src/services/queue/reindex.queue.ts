@@ -4,9 +4,9 @@ import type { Wiki } from "@shared/types.js";
 import {
   getRedis,
   type JobName,
-  jobOptions,
   type JobParams,
   QUEUES,
+  makeJobs,
 } from "./queue.utils.js";
 import { reindexHandler } from "../../handlers/reindex.js";
 
@@ -75,3 +75,6 @@ reindexWorker.on("failed", (job, err) => {
   }
   log.info(`A Job has failed with ${err.message}`);
 });
+
+// Jobs
+export const reindexJobs = makeJobs(initReindexQueue());
