@@ -9,10 +9,8 @@ export const QUEUES = Object.freeze({
   REINDEX: "reindex",
 } as const);
 
-export type JobName = "dummy" | "reindex";
-
-export interface JobParams {
-  name: JobName;
+export interface JobParams<T extends string> {
+  name: T;
   data: Record<string, any>;
 }
 
@@ -37,7 +35,7 @@ export function getRedis(force = false) {
   return (connection ||= new Redis(RedisOptions));
 }
 
-export const makeJobs = (queue: Queue) => {
+export const makeJobs = <T extends string>(queue: Queue) => {
   try {
     queue.getMeta().then((v) => {
       log.info("Queue configuration.", { ...v });
@@ -46,10 +44,10 @@ export const makeJobs = (queue: Queue) => {
     return null;
   }
   return {
-    async addJob(name: JobName, data: Record<string, any>) {
+    async addJob(name: T, data: Record<string, any>) {
       await queue.add(name, data, jobOptions);
     },
-    async addBulkJobs(jobParams: JobParams[]) {
+    async addBulkJobs(jobParams: JobParams<T>[]) {
       return await queue.addBulk(
         jobParams.map((v) => ({ ...v, opts: jobOptions })),
       );

@@ -1,18 +1,14 @@
 import { Queue, QueueEvents, Worker } from "bullmq";
 import { logger } from "@shared/logger.js";
 import type { Wiki } from "@shared/types.js";
-import {
-  getRedis,
-  type JobName,
-  type JobParams,
-  QUEUES,
-  makeJobs,
-} from "./queue.utils.js";
+import { getRedis, QUEUES, makeJobs } from "./queue.utils.js";
 import { reindexHandler } from "../../handlers/reindex.js";
 
 const log = logger("queue:workers");
+
 let hasBeenInit = false;
 let myQueue: Queue | null = null;
+type ReindexJobName = "dummy" | "reindex";
 
 // Queue
 export function initReindexQueue() {
@@ -44,7 +40,7 @@ export function initReindexQueue() {
 const reindexWorker = new Worker(
   QUEUES.REINDEX,
   async (job) => {
-    const jobName = job.name as JobName;
+    const jobName = job.name as ReindexJobName;
     if (jobName === "dummy") {
       console.log({ data: job.data });
       return;
@@ -77,4 +73,4 @@ reindexWorker.on("failed", (job, err) => {
 });
 
 // Jobs
-export const reindexJobs = makeJobs(initReindexQueue());
+export const reindexJobs = makeJobs<ReindexJobName>(initReindexQueue());
