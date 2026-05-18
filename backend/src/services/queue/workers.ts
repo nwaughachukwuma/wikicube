@@ -4,11 +4,6 @@ import { logger } from "@shared/logger.js";
 
 const log = logger("queue:workers");
 
-log.info("process.env.REDIS_PASSWORD", {
-  pa: process.env.REDIS_PASSWORD,
-  len: process.env.REDIS_PASSWORD.length,
-});
-
 const reindexWorker = new Worker(
   QUEUES.REINDEX,
   async (job) => {
