@@ -4,7 +4,7 @@ import { getWiki } from "../services/db.js";
 import { adminRouteGuard } from "../services/auth.js";
 import { getServerClient } from "../services/supabase.js";
 import { queueJobs } from "../services/queue/index.js";
-import { reindexAllHandler } from "../handlers/reindex.js";
+import { reindexAllHandler } from "../utils/reindex.js";
 import { reindexWikiAndCode } from "../services/reindex.js";
 
 const ReindexReq = z.object({

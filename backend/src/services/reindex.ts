@@ -1,7 +1,7 @@
 import { ensureError } from "@shared/error.js";
 import type { Wiki } from "@shared/types.js";
 import { markSearchFailed, deleteChunks, getFeatures } from "./db.js";
-import { embedWikiAndCode } from "./code-analyzer.js";
+import { embedWikiAndCode } from "../utils/code-analyzer/embedder.js";
 import { logger } from "@shared/logger.js";
 
 const log = logger("repo:reindexWikiAndCode");
