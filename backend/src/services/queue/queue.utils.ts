@@ -15,7 +15,7 @@ export interface JobParams<T extends string> {
 }
 
 export const jobOptions: JobsOptions = {
-  delay: 2000,
+  delay: 1000,
   removeOnComplete: 50,
   removeOnFail: { age: 36 * 3600, count: 1000 },
 };
@@ -44,10 +44,10 @@ export const makeJobs = <T extends string>(queue: Queue) => {
     return null;
   }
   return {
-    async addJob(name: T, data: Record<string, any>) {
+    async add(name: T, data: Record<string, any>) {
       await queue.add(name, data, jobOptions);
     },
-    async addBulkJobs(jobParams: JobParams<T>[]) {
+    async addBulk(jobParams: JobParams<T>[]) {
       return await queue.addBulk(
         jobParams.map((v) => ({ ...v, opts: jobOptions })),
       );

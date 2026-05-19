@@ -8,7 +8,7 @@ const log = logger("queue:workers");
 
 let hasBeenInit = false;
 let myQueue: Queue | null = null;
-type ReindexJobName = "dummy" | "reindex";
+export type ReindexJobName = "dummy" | "reindex";
 
 // Queue
 export function initReindexQueue() {
@@ -47,13 +47,17 @@ const reindexWorker = new Worker(
     }
 
     if (jobName === "reindex") {
-      const wiki = job.data.wiki as Wiki;
+      const wiki = job.data.wiki as Wiki | null;
+      if (!wiki) {
+        throw new Error("Wiki not found");
+      }
       return await reindexHandler(wiki)
         .then((v) => {
           log.info("REINDEX JOB COMPLETED", { v });
         })
         .catch((err) => {
           log.info("REINDEX JOB FAILED", { err });
+          throw err;
         });
     }
   },
@@ -71,6 +75,3 @@ reindexWorker.on("failed", (job, err) => {
   }
   log.info(`A Job has failed with ${err.message}`);
 });
-
-// Jobs
-export const reindexJobs = makeJobs<ReindexJobName>(initReindexQueue());
