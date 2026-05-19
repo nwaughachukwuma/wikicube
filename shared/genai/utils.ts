@@ -41,11 +41,10 @@ export function parseJsonResponse<T>(
   return JSON.parse(normalized) as T;
 }
 
-export function toGeminiJsonSchema(schema: z.ZodTypeAny) {
-  const jsonSchema = zodToJsonSchema(schema, {
+export function toGeminiJsonSchema(schema: z.ZodType) {
+  const jsonSchema = zodToJsonSchema(schema as any, {
     $refStrategy: "none",
-  }) as Record<string, unknown>;
-
+  });
   delete jsonSchema.$schema;
   return jsonSchema;
 }
