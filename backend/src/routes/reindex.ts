@@ -4,7 +4,8 @@ import { getWiki } from "../services/db.js";
 import { adminRouteGuard } from "../services/auth.js";
 import { getServerClient } from "../services/supabase.js";
 import { queueJobs } from "../services/queue/index.js";
-import { reindexHandler, reindexAllHandler } from "../handlers/reindex.js";
+import { reindexAllHandler } from "../handlers/reindex.js";
+import { reindexWikiAndCode } from "../services/reindex.js";
 
 const ReindexReq = z.object({
   owner: z.string().nonempty("Owner is required"),
@@ -38,7 +39,7 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    await reindexHandler(wiki)
+    await reindexWikiAndCode(wiki)
       .then(() => reply.send("Reindexing completed"))
       .catch((err) => reply.status(400).send({ error: err }))
       .finally(() => reply.raw.end());

@@ -1,8 +1,8 @@
 import { Queue, QueueEvents, Worker } from "bullmq";
 import { logger } from "@shared/logger.js";
 import type { Wiki } from "@shared/types.js";
-import { getRedis, QUEUES, makeJobs } from "./queue.utils.js";
-import { reindexHandler } from "../../handlers/reindex.js";
+import { getRedis, QUEUES } from "./queue.utils.js";
+import { reindexWikiAndCode } from "../reindex.js";
 
 const log = logger("queue:workers");
 
@@ -51,7 +51,7 @@ const reindexWorker = new Worker(
       if (!wiki) {
         throw new Error("Wiki not found");
       }
-      return await reindexHandler(wiki)
+      return await reindexWikiAndCode(wiki)
         .then((v) => {
           log.info("REINDEX JOB COMPLETED", { v });
         })
