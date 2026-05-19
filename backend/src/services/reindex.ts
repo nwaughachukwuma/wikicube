@@ -70,7 +70,7 @@ async function getSourceFiles(
       wiki.default_branch,
       Array.from(filePaths),
       githubToken,
-    );
+    ).catch(() => new Map());
     log.info("Source files fetched", {
       wikiId: wiki.id,
       fetchedCount: sourceFiles.size,
