@@ -37,14 +37,6 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
     }
 
     const githubToken = getProviderToken(request);
-
-    const reindexHandler = queueJobs().reindex;
-    if (reindexHandler) {
-      reindexHandler.add("reindex", { wiki, githubToken });
-      reply.send("Reindexing queued");
-      return;
-    }
-
     await reindexWikiAndCode(wiki, githubToken)
       .then(() => reply.send("Reindexing completed"))
       .catch((err) => reply.status(400).send({ error: err }))
@@ -68,7 +60,16 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: error.message });
     }
 
-    const results = await reindexAllHandler(wikis, getProviderToken(request));
+    const githubToken = getProviderToken(request);
+
+    const reindexHandler = queueJobs().reindex;
+    if (reindexHandler) {
+      reindexHandler.add("reindex-all", { wikis, githubToken });
+      reply.send("Reindex-all operation is queued");
+      return;
+    }
+
+    const results = await reindexAllHandler(wikis, githubToken);
     return reply.send({ results });
   });
 

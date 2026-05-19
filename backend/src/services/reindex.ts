@@ -42,7 +42,11 @@ export async function reindexWikiAndCode(wiki: Wiki, githubToken?: string) {
 }
 
 // Collect unique source file paths from feature citations and entry points
-async function getSourceFiles(wiki: Wiki, features: Feature[], githubToken?: string) {
+async function getSourceFiles(
+  wiki: Wiki,
+  features: Feature[],
+  githubToken?: string,
+) {
   const filePaths = new Set<string>();
   for (const feature of features) {
     for (const citation of feature.citations) {
@@ -65,7 +69,7 @@ async function getSourceFiles(wiki: Wiki, features: Feature[], githubToken?: str
       wiki.repo,
       wiki.default_branch,
       Array.from(filePaths),
-      githubToken
+      githubToken,
     );
     log.info("Source files fetched", {
       wikiId: wiki.id,

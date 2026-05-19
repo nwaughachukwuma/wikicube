@@ -2,13 +2,13 @@ import { Queue, QueueEvents, Worker } from "bullmq";
 import { logger } from "@shared/logger.js";
 import type { Wiki } from "@shared/types.js";
 import { getRedis, QUEUES } from "./queue.utils.js";
-import { reindexWikiAndCode } from "../reindex.js";
+import { reindexAllHandler } from "../../utils/reindex.js";
 
 const log = logger("queue:workers");
 
 let hasBeenInit = false;
 let myQueue: Queue | null = null;
-export type ReindexJobName = "dummy" | "reindex";
+export type ReindexJobName = "dummy" | "reindex-all";
 
 // Queue
 export function initReindexQueue() {
@@ -46,17 +46,17 @@ const reindexWorker = new Worker(
       return;
     }
 
-    if (jobName === "reindex") {
-      const wiki = job.data.wiki as Wiki | null;
-      if (!wiki) {
-        throw new Error("Wiki not found");
+    if (jobName === "reindex-all") {
+      const wikis = job.data.wikis as Wiki[] | null;
+      if (!wikis?.length) {
+        throw new Error("No wikis found");
       }
-      return await reindexWikiAndCode(wiki, job.data.githubToken)
+      return await reindexAllHandler(wikis, job.data.githubToken)
         .then((v) => {
-          log.info("REINDEX JOB COMPLETED", { v });
+          log.info("REINDEX-ALL JOB COMPLETED", { v });
         })
         .catch((err) => {
-          log.info("REINDEX JOB FAILED", { err });
+          log.info("REINDEX-ALL JOB FAILED", { err });
           throw err;
         });
     }
