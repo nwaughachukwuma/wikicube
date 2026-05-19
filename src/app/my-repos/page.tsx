@@ -103,7 +103,7 @@ export default function MyReposPage() {
 
             {error && (
               <div className="mt-8 p-4 border border-red-300 text-sm text-red-600">
-                {error.includes("GitHub token") ? (
+                {error.includes("Please re-authenticate") ? (
                   <>
                     GitHub access expired. Please{" "}
                     <button
