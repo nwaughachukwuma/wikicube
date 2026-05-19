@@ -5,11 +5,11 @@ import { ensureError } from "@shared/error.js";
 
 const REINDEX_BATCH_SIZE = 5;
 
-export async function reindexAllHandler(wikis: Wiki[]) {
+export async function reindexAllHandler(wikis: Wiki[], githubToken?: string) {
   return batchAll(
     wikis,
     async (wiki) =>
-      reindexWikiAndCode(wiki)
+      reindexWikiAndCode(wiki, githubToken)
         .then(() => ({
           owner: wiki.owner,
           repo: wiki.repo,

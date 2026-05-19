@@ -1,7 +1,11 @@
 import type { FastifyInstance } from "fastify";
 import { z, treeifyError } from "zod";
 import { getWiki } from "../services/db.js";
-import { adminRouteGuard } from "../services/auth.js";
+import {
+  adminRouteGuard,
+  getBearerToken,
+  getProviderToken,
+} from "../services/auth.js";
 import { getServerClient } from "../services/supabase.js";
 import { queueJobs } from "../services/queue/index.js";
 import { reindexAllHandler } from "../utils/reindex.js";
@@ -21,7 +25,6 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
     }
 
     const { owner, repo } = parsed.data;
-
     const wiki = await getWiki(owner, repo);
     if (!wiki) {
       return reply.status(404).send({ error: "Wiki not found" });
@@ -33,26 +36,28 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
         .send({ error: "Wiki is not fully generated yet" });
     }
 
-    if (queueJobs.reindex) {
-      queueJobs.reindex.add("reindex", { wiki });
+    const githubToken = getProviderToken(request);
+
+    const reindexHandler = queueJobs().reindex;
+    if (reindexHandler) {
+      reindexHandler.add("reindex", { wiki, githubToken });
       reply.send("Reindexing queued");
       return;
     }
 
-    await reindexWikiAndCode(wiki)
+    await reindexWikiAndCode(wiki, githubToken)
       .then(() => reply.send("Reindexing completed"))
       .catch((err) => reply.status(400).send({ error: err }))
       .finally(() => reply.raw.end());
   });
 
   fastify.post("/reindex-all", async (request, reply) => {
-    const authHeader = request.headers.authorization ?? "";
-    const bearerToken = authHeader.startsWith("Bearer ")
-      ? authHeader.slice(7)
-      : undefined;
-
-    const { err } = await adminRouteGuard(bearerToken, reply);
-    if (err) return;
+    const bearerToken = getBearerToken(request);
+    const user = await adminRouteGuard(bearerToken);
+    if (!user) {
+      reply.status(403).send({ error: "Forbidden" });
+      return;
+    }
 
     const { data: wikis, error } = await getServerClient()
       .from("wikis")
@@ -63,17 +68,18 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
       return reply.status(500).send({ error: error.message });
     }
 
-    const results = await reindexAllHandler(wikis);
+    const results = await reindexAllHandler(wikis, getProviderToken(request));
     return reply.send({ results });
   });
 
-  fastify.post("/queue/healthcheck", async (request, reply) => {
-    if (!queueJobs.reindex) {
+  fastify.post("/queue/healthcheck", async (_, reply) => {
+    const reindexHandler = queueJobs().reindex;
+    if (!reindexHandler) {
       reply.status(400).send({ ok: false });
       return;
     }
 
-    queueJobs.reindex.addBulk([
+    reindexHandler.addBulk([
       { name: "dummy", data: { foo: "bar" } },
       { name: "dummy", data: { qux: "baz" } },
     ]);

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
-import { GITHUB_REPO_RE } from "@shared/github";
+import { GITHUB_REPO_RE, parseRepoUrl, repoGuard } from "@shared/github";
 import { getSupabaseSession } from "@/lib/supabase/server";
 import { HttpError } from "@shared/error";
 
@@ -21,20 +21,36 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "repoUrl is required" }, { status: 400 });
   }
 
+  const { owner, repo } = parseRepoUrl(parsed.data.repoUrl);
+  const requireAuth = await repoGuard(owner, repo)
+    .then(() => false)
+    .catch(() => true);
+
   const session = await getSupabaseSession();
-  const githubToken = session?.provider_token || void 0;
+  if (requireAuth && !session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  if (requireAuth && !session?.provider_token) {
+    return NextResponse.json(
+      { error: "Please re-authenticate." },
+      { status: 403 },
+    );
+  }
 
   const response = await fetch(`${process.env.BACKEND_BASE_URL}/analyze`, {
     method: "POST",
     body: JSON.stringify({
       repoUrl: parsed.data.repoUrl,
-      githubToken,
     }),
     headers: {
       "content-type": "application/json",
       "User-Agent": "wikicube/1.0",
       ...(session?.access_token
         ? { Authorization: `Bearer ${session.access_token}` }
+        : {}),
+      ...(session?.provider_token
+        ? { "X-Provider-Token": session.provider_token }
         : {}),
     },
   });

@@ -51,7 +51,7 @@ const reindexWorker = new Worker(
       if (!wiki) {
         throw new Error("Wiki not found");
       }
-      return await reindexWikiAndCode(wiki)
+      return await reindexWikiAndCode(wiki, job.data.githubToken)
         .then((v) => {
           log.info("REINDEX JOB COMPLETED", { v });
         })

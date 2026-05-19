@@ -2,10 +2,11 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { parseRepoUrl, GITHUB_REPO_RE, repoGuard } from "@shared/github.js";
 import { getWiki } from "../services/db.js";
-import { authRouteGuard } from "../services/auth.js";
-import { runAnalysisPipeline } from "../services/code-analyzer.js";
+import { getBearerToken, getProviderToken } from "../services/auth.js";
+import { runAnalysisPipeline } from "../utils/code-analyzer/analyzer.js";
 import { extractError } from "@shared/error.js";
 import type { AnalysisEvent } from "@shared/types.js";
+import { getSupabaseUser } from "../services/supabase.js";
 
 const PostSchema = z.object({
   repoUrl: z
@@ -15,35 +16,26 @@ const PostSchema = z.object({
       (url) => url.match(GITHUB_REPO_RE),
       "Only GitHub repository URLs are allowed",
     ),
-  githubToken: z.string().optional(),
 });
 
 export default async function analyzeRoutes(fastify: FastifyInstance) {
   fastify.post("/analyze", async (request, reply) => {
+    const bearerToken = getBearerToken(request);
     const parsed = PostSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.status(400).send({ error: "repoUrl is required" });
     }
 
     const { owner, repo } = parseRepoUrl(parsed.data.repoUrl);
-    const authHeader = request.headers.authorization ?? "";
-    const bearerToken = authHeader.startsWith("Bearer ")
-      ? authHeader.slice(7)
-      : undefined;
-
-    const githubToken = parsed.data.githubToken;
-    await repoGuard(owner, repo, githubToken);
 
     let userId: string | undefined;
+    const githubToken = getProviderToken(request);
+    await repoGuard(owner, repo, githubToken);
 
-    if (githubToken) {
-      const { user, err } = await authRouteGuard(
-        bearerToken,
-        undefined,
-        "Re-authenticate to continue",
-      );
-      if (err) return reply.status(401).send(err);
-      userId = user?.id;
+    if (bearerToken) {
+      const user = await getSupabaseUser(bearerToken);
+      if (!user) return reply.status(401).send("Unathenticated");
+      userId = user.id;
     }
 
     const existing = await getWiki(owner, repo);
@@ -68,13 +60,11 @@ export default async function analyzeRoutes(fastify: FastifyInstance) {
       } catch {}
     };
 
-    const pipelineOpts = {
+    void runAnalysisPipeline(owner, repo, sendEvent, {
       githubToken,
       userId,
       visibility: githubToken ? ("private" as const) : ("public" as const),
-    };
-
-    void runAnalysisPipeline(owner, repo, sendEvent, pipelineOpts)
+    })
       .catch(async (err) => {
         await sendEvent({
           type: "error",

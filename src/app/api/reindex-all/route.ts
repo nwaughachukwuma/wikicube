@@ -9,6 +9,9 @@ export async function POST() {
   }
 
   const session = await getSupabaseSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   // fire and forget
   void fetch(`${process.env.BACKEND_BASE_URL}/reindex-all`, {
     method: "POST",
@@ -18,6 +21,9 @@ export async function POST() {
       "User-Agent": "wikicube/1.0",
       ...(session?.access_token
         ? { Authorization: `Bearer ${session.access_token}` }
+        : {}),
+      ...(session?.provider_token
+        ? { "X-Provider-Token": session.provider_token }
         : {}),
     },
   });
