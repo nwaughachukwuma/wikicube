@@ -15,6 +15,7 @@ import {
 import type { Wiki } from "@shared/types";
 import { dayAgo } from "@/lib/timing";
 import { toast } from "sonner";
+import { HttpError } from "@shared/error";
 
 const PAGE_SIZE = 10;
 
@@ -99,43 +100,31 @@ export default function AdminReposPage() {
 
   const handleReindex = async (wiki: Wiki) => {
     setReindexing(wiki.id);
-    try {
-      const res = await fetch("/api/reindex", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ owner: wiki.owner, repo: wiki.repo }),
+
+    return fetch("/api/reindex", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ owner: wiki.owner, repo: wiki.repo }),
+    })
+      .then(async (res) => {
+        if (res.ok) return res.json();
+        const orignalError = `GitHub API error ${res.status}: ${await res.text()}`;
+        throw new HttpError(res, orignalError);
+      })
+      .then(() => {
+        toast.success("Reindexing completed");
+        return fetchWikis();
+      })
+      .catch((err) => {
+        setError(err.message);
+        toast.error("Reindexing failed", {
+          description: err.message,
+        });
+      })
+      .finally(() => {
+        setReindexing(null);
+        setDetailWiki(null);
       });
-
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error || "Reindex failed");
-      }
-
-      const reader = res.body?.getReader();
-      if (reader) {
-        const decoder = new TextDecoder();
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          for (const line of decoder.decode(value).split("\n")) {
-            if (line.startsWith("data: ")) {
-              try {
-                const evt = JSON.parse(line.slice(6));
-                if (evt.type === "done" || evt.type === "error") {
-                  await fetchWikis();
-                  return;
-                }
-              } catch {}
-            }
-          }
-        }
-      }
-      await fetchWikis();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Reindex failed");
-    } finally {
-      setReindexing(null);
-    }
   };
 
   const handleReindexAll = async () => {

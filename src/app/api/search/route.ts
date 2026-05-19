@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
   const parsed = SearchSchema.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json(
-      { error: parsed.error.errors[0].message },
+      { error: z.treeifyError(parsed.error) },
       { status: 400 },
     );
   }

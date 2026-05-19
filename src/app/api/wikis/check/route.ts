@@ -28,7 +28,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const parseResult = RepoRefSchema.safeParse(await req.json());
   if (!parseResult.success) {
     return NextResponse.json(
-      { error: "Invalid request body", details: parseResult.error.errors },
+      {
+        error: "Invalid request body",
+        details: z.treeifyError(parseResult.error),
+      },
       { status: 400 },
     );
   }

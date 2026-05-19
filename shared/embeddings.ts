@@ -76,8 +76,5 @@ export async function generateEmbeddings(
     (b) => retryableEmbeddings(b, taskType),
     5,
   );
-
-  console.log({ results });
-
   return results.flat();
 }

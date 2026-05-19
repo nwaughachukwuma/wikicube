@@ -1,4 +1,4 @@
-import { batchAll } from "./batchOps";
+import { batchAll } from "@shared/batch-ops";
 import { logger } from "@shared/logger";
 import { getServerClient } from "./supabase/server";
 import type {

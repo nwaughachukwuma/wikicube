@@ -27,7 +27,7 @@ export async function GET(): Promise<NextResponse> {
   const providerToken = session.provider_token;
   if (!providerToken) {
     return NextResponse.json(
-      { error: "No GitHub token. Please re-authenticate." },
+      { error: "Please re-authenticate." },
       { status: 403 },
     );
   }
