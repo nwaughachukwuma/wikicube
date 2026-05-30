@@ -116,8 +116,8 @@ export default function ChallengesPage() {
     try {
       const res = await fetch(`/api/challenges/${owner}/${repo}`);
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to fetch challenges");
+        const error = await res.text();
+        throw new Error(error || "Failed to fetch challenges");
       }
       const data = await res.json();
       if (data.challenges.length > 0) {
@@ -129,8 +129,8 @@ export default function ChallengesPage() {
           method: "POST",
         });
         if (!genRes.ok) {
-          const errData = await genRes.json();
-          throw new Error(errData.error || "Failed to generate challenges");
+          const error = await genRes.text();
+          throw new Error(error || "Failed to generate challenges");
         }
         const genData = await genRes.json();
         setChallenges(genData.challenges);

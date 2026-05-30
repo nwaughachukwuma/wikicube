@@ -1,12 +1,12 @@
 import { GoogleGenAI } from "@google/genai";
-import type { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
+import { z } from "zod";
 import { makeRetriable, type Options } from "p-retry";
 
 export const MODELS = {
   "g31flash-lite": "gemini-3.1-flash-lite-preview",
   g3flash: "gemini-3-flash-preview",
   g31pro: "gemini-3.1-pro-preview",
+  g35flash: "gemini-3.5-flash",
 } as const;
 
 export const EMBEDDING_MODEL = "gemini-embedding-001";
@@ -42,9 +42,7 @@ export function parseJsonResponse<T>(
 }
 
 export function toGeminiJsonSchema(schema: z.ZodType) {
-  const jsonSchema = zodToJsonSchema(schema as any, {
-    $refStrategy: "none",
-  });
+  const jsonSchema = z.toJSONSchema(schema as any);
   delete jsonSchema.$schema;
   return jsonSchema;
 }
