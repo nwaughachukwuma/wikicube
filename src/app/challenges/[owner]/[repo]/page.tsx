@@ -14,6 +14,7 @@ import {
   Loader2,
   RefreshCw,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { Challenge } from "@shared/types";
 import { LinkifyGitHubRefs } from "./LinkifyGitHubRefs";
 
@@ -143,7 +144,11 @@ export default function ChallengesPage() {
           throw new Error(error || "Failed to generate challenges");
         }
         const genData = await genRes.json();
-        setChallenges([...genData.challenges].sort(byRecency));
+        const generated = [...genData.challenges].sort(byRecency);
+        setChallenges(generated);
+        toast.success(
+          `Generated ${generated.length} challenge${generated.length === 1 ? "" : "s"}`,
+        );
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -167,14 +172,22 @@ export default function ChallengesPage() {
         throw new Error(error || "Failed to fetch new challenges");
       }
       const data = await res.json();
-      setChallenges([...data.challenges].sort(byRecency));
+      const updated = [...data.challenges].sort(byRecency);
+      const prevIds = new Set(challenges.map((c) => c.id));
+      const newCount = updated.filter((c) => !prevIds.has(c.id)).length;
+      setChallenges(updated);
       setPage(1);
+      toast.success("Challenges updated", {
+        description: `${newCount} new · ${updated.length} total`,
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      const message = err instanceof Error ? err.message : "Something went wrong";
+      setError(message);
+      toast.error("Failed to fetch new challenges", { description: message });
     } finally {
       setFetchingNew(false);
     }
-  }, [owner, repo]);
+  }, [owner, repo, challenges]);
 
   useEffect(() => {
     fetchChallenges();
