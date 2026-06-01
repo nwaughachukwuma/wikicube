@@ -20,23 +20,36 @@ export const jobOptions: JobsOptions = {
   removeOnFail: { age: 36 * 3600, count: 1000 },
 };
 
-// Give up reconnecting after this many attempts so callers can fall back to
-// immediate execution instead of hanging on an unreachable Redis.
-export const REDIS_MAX_RETRIES = 5;
+const backoff = (times: number) => Math.min(times * 200, 2000);
 
-export const RedisOptions = {
+const baseRedisOptions = {
   host: "localhost",
   port: 6379,
   maxRetriesPerRequest: null,
   password: process.env.REDIS_PASSWORD,
+};
+
+// Give up reconnecting after this many attempts so request-path callers can
+// fall back to immediate execution instead of hanging on an unreachable Redis.
+export const REDIS_MAX_RETRIES = 5;
+
+export const RedisOptions = {
+  ...baseRedisOptions,
   retryStrategy: (times: number) =>
-    times > REDIS_MAX_RETRIES ? null : Math.min(times * 200, 2000),
+    times > REDIS_MAX_RETRIES ? null : backoff(times),
+};
+
+// The long-running worker keeps reconnecting indefinitely so a transient Redis
+// blip doesn't permanently stop background processing.
+export const WorkerRedisOptions = {
+  ...baseRedisOptions,
+  retryStrategy: backoff,
 };
 
 let connection: Redis | null = null;
 
-function createRedis() {
-  const redis = new Redis(RedisOptions);
+function createRedis(options = RedisOptions) {
+  const redis = new Redis(options);
   // Avoid crashing the process on connection errors when Redis is unreachable.
   redis.on("error", (err) => log.warn("Redis connection error", { error: err.message }));
   return redis;
@@ -46,6 +59,11 @@ export function getRedis(force = false) {
   if (force) return createRedis();
 
   return (connection ||= createRedis());
+}
+
+/** Dedicated uncapped connection for the long-running worker. */
+export function getWorkerRedis() {
+  return createRedis(WorkerRedisOptions);
 }
 
 /** Resolve once the connection is usable, or false once it has given up. */

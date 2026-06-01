@@ -1,7 +1,7 @@
 import { Queue, QueueEvents, Worker } from "bullmq";
 import { logger } from "@shared/logger.js";
 import type { Wiki } from "@shared/types.js";
-import { getRedis, QUEUES } from "./queue.utils.js";
+import { getRedis, getWorkerRedis, QUEUES } from "./queue.utils.js";
 import { reindexAllHandler } from "../../utils/reindex.js";
 
 const log = logger("queue:workers");
@@ -61,7 +61,7 @@ const reindexWorker = new Worker(
         });
     }
   },
-  { connection: getRedis() },
+  { connection: getWorkerRedis() },
 );
 
 reindexWorker.on("completed", (job) => {
