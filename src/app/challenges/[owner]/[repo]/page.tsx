@@ -6,16 +6,24 @@ import { useEffect, useState, useCallback } from "react";
 import {
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   Copy,
   Check,
   ArrowLeft,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import type { Challenge } from "@shared/types";
 import { LinkifyGitHubRefs } from "./LinkifyGitHubRefs";
 
 const PREVIEW_LENGTH = 240;
 const OBJECTIVE_PREVIEW_LENGTH = 100;
+const PAGE_SIZE = 10;
+
+// Most recent first
+const byRecency = (a: Challenge, b: Challenge) =>
+  new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
 
 function ChallengeCard({
   challenge,
@@ -108,7 +116,9 @@ export default function ChallengesPage() {
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [fetchingNew, setFetchingNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   const fetchChallenges = useCallback(async () => {
     setLoading(true);
@@ -121,7 +131,7 @@ export default function ChallengesPage() {
       }
       const data = await res.json();
       if (data.challenges.length > 0) {
-        setChallenges(data.challenges);
+        setChallenges([...data.challenges].sort(byRecency));
       } else {
         // No challenges exist — generate them
         setGenerating(true);
@@ -133,7 +143,7 @@ export default function ChallengesPage() {
           throw new Error(error || "Failed to generate challenges");
         }
         const genData = await genRes.json();
-        setChallenges(genData.challenges);
+        setChallenges([...genData.challenges].sort(byRecency));
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
@@ -143,9 +153,35 @@ export default function ChallengesPage() {
     }
   }, [owner, repo]);
 
+  // Generate a fresh batch and prepend it to the list
+  const fetchNew = useCallback(async () => {
+    setFetchingNew(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/challenges/${owner}/${repo}?refresh=true`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        const error = await res.text();
+        throw new Error(error || "Failed to fetch new challenges");
+      }
+      const data = await res.json();
+      setChallenges((prev) => [...data.challenges, ...prev]);
+      setPage(1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something went wrong");
+    } finally {
+      setFetchingNew(false);
+    }
+  }, [owner, repo]);
+
   useEffect(() => {
     fetchChallenges();
   }, [fetchChallenges]);
+
+  const totalPages = Math.max(1, Math.ceil(challenges.length / PAGE_SIZE));
+  const pageStart = (page - 1) * PAGE_SIZE;
+  const pageChallenges = challenges.slice(pageStart, pageStart + PAGE_SIZE);
 
   return (
     <div className="min-h-screen bg-bg">
@@ -160,12 +196,30 @@ export default function ChallengesPage() {
             <ArrowLeft className="w-3.5 h-3.5" />
             Back to Wiki
           </Link>
-          <h1 className="font-display text-4xl md:text-5xl uppercase tracking-tight">
-            Agent Challenges
-          </h1>
-          <p className="mt-2 text-sm text-text-muted">
-            {owner}/{repo} — Tough eval-like tasks to test agent capabilities
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h1 className="font-display text-4xl md:text-5xl uppercase tracking-tight">
+                Agent Challenges
+              </h1>
+              <p className="mt-2 text-sm text-text-muted">
+                {owner}/{repo} — Tough eval-like tasks to test agent capabilities
+              </p>
+            </div>
+            <button
+              onClick={fetchNew}
+              disabled={fetchingNew || loading}
+              className="shrink-0 inline-flex items-center gap-2 border border-border
+                         hover:border-border-strong px-4 py-2 text-xs uppercase tracking-wider
+                         text-text-muted hover:text-text transition disabled:opacity-50
+                         disabled:cursor-not-allowed"
+              title="Generate a fresh batch of challenges"
+            >
+              <RefreshCw
+                className={`w-3.5 h-3.5 ${fetchingNew ? "animate-spin" : ""}`}
+              />
+              {fetchingNew ? "Fetching…" : "Fetch new"}
+            </button>
+          </div>
         </div>
 
         {/* Loading state */}
@@ -189,17 +243,47 @@ export default function ChallengesPage() {
 
         {/* Challenges list */}
         {!loading && !error && challenges.length > 0 && (
-          <div className="space-y-4">
-            {challenges.map((challenge, i) => (
-              <ChallengeCard
-                key={challenge.id}
-                challenge={challenge}
-                index={i}
-                owner={owner}
-                repo={repo}
-              />
-            ))}
-          </div>
+          <>
+            <div className="space-y-4">
+              {pageChallenges.map((challenge, i) => (
+                <ChallengeCard
+                  key={challenge.id}
+                  challenge={challenge}
+                  index={pageStart + i}
+                  owner={owner}
+                  repo={repo}
+                />
+              ))}
+            </div>
+
+            {totalPages > 1 && (
+              <div className="mt-8 flex items-center justify-between">
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="inline-flex items-center gap-1 text-xs uppercase tracking-wider
+                             text-text-muted hover:text-text transition
+                             disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  Prev
+                </button>
+                <span className="text-xs uppercase tracking-widest text-text-muted">
+                  Page {page} / {totalPages}
+                </span>
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  className="inline-flex items-center gap-1 text-xs uppercase tracking-wider
+                             text-text-muted hover:text-text transition
+                             disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

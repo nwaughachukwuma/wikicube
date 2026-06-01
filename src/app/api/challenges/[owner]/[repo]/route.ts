@@ -27,7 +27,7 @@ export async function GET(
 }
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ owner: string; repo: string }> },
 ) {
   const { owner, repo } = await params;
@@ -42,13 +42,18 @@ export async function POST(
   const error = await validateRepoAccess(owner, repo);
   if (error) return error;
 
-  // Check if challenges already exist
-  const existing = await getChallengesByWikiId(wiki.id);
-  if (existing.length > 0) {
-    return NextResponse.json({
-      challenges: existing,
-      wiki_id: wiki.id,
-    });
+  // `refresh=true` forces a fresh batch even when challenges already exist
+  const refresh = req.nextUrl.searchParams.get("refresh") === "true";
+
+  // Reuse existing challenges unless a refresh was explicitly requested
+  if (!refresh) {
+    const existing = await getChallengesByWikiId(wiki.id);
+    if (existing.length > 0) {
+      return NextResponse.json({
+        challenges: existing,
+        wiki_id: wiki.id,
+      });
+    }
   }
 
   // Gather context
