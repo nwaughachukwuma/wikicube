@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import {
-  getWiki,
-  getFeatures,
-  getChallengesByWikiId,
-  insertChallenges,
-} from "@/lib/db";
-import { getRecentIssues, getRecentPullRequests } from "@shared/github";
-import { generateChallenges } from "@shared/genai/generate-challenges";
+import { getWiki, getChallengesByWikiId } from "@/lib/db";
+import { generateAndStoreChallenges } from "@/lib/challenges";
 import { validateRepoAccess } from "@/lib/db.utils";
 
 export async function GET(
@@ -51,38 +45,6 @@ export async function POST(
     });
   }
 
-  // Gather context
-  const features = await getFeatures(wiki.id);
-  const [issues, pullRequests] = await Promise.all([
-    getRecentIssues(owner, repo),
-    getRecentPullRequests(owner, repo),
-  ]);
-
-  // Generate challenges
-  const generated = await generateChallenges({
-    owner,
-    repo,
-    overview: wiki.overview,
-    features: features.map((f) => ({
-      title: f.title,
-      summary: f.summary,
-      markdown_content: f.markdown_content,
-    })),
-    issues,
-    pullRequests,
-  });
-
-  // Store in database
-  const challenges = await insertChallenges(
-    generated.map((c) => ({
-      wiki_id: wiki.id,
-      role: c.role,
-      background: c.background,
-      objective: c.objective,
-      task: c.task,
-      acceptance_criteria: c.acceptance_criteria,
-    })),
-  );
-
+  const challenges = await generateAndStoreChallenges(wiki, owner, repo);
   return NextResponse.json({ challenges, wiki_id: wiki.id });
 }
