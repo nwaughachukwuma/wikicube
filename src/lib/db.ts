@@ -403,3 +403,13 @@ export async function insertChallenges(
   if (error) throw error;
   return (data || []) as Challenge[];
 }
+
+export async function deleteChallenges(ids: string[]): Promise<void> {
+  if (ids.length === 0) return;
+  const { error } = await getServerClient()
+    .from("challenges")
+    .delete()
+    .in("id", ids);
+
+  if (error) throw error;
+}

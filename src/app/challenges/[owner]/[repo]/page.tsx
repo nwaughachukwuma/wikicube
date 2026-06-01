@@ -153,7 +153,8 @@ export default function ChallengesPage() {
     }
   }, [owner, repo]);
 
-  // Generate a fresh batch and prepend it to the list
+  // Generate a fresh batch. The server consolidates (dedupe + cap) and returns
+  // the full list, so we replace local state with its result.
   const fetchNew = useCallback(async () => {
     setFetchingNew(true);
     setError(null);
@@ -166,7 +167,7 @@ export default function ChallengesPage() {
         throw new Error(error || "Failed to fetch new challenges");
       }
       const data = await res.json();
-      setChallenges((prev) => [...data.challenges, ...prev]);
+      setChallenges([...data.challenges].sort(byRecency));
       setPage(1);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
