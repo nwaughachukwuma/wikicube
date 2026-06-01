@@ -20,27 +20,55 @@ export const jobOptions: JobsOptions = {
   removeOnFail: { age: 36 * 3600, count: 1000 },
 };
 
+// Give up reconnecting after this many attempts so callers can fall back to
+// immediate execution instead of hanging on an unreachable Redis.
+export const REDIS_MAX_RETRIES = 5;
+
 export const RedisOptions = {
   host: "localhost",
   port: 6379,
   maxRetriesPerRequest: null,
   password: process.env.REDIS_PASSWORD,
+  retryStrategy: (times: number) =>
+    times > REDIS_MAX_RETRIES ? null : Math.min(times * 200, 2000),
 };
 
 let connection: Redis | null = null;
 
-export function getRedis(force = false) {
-  if (force) return new Redis(RedisOptions);
-
-  return (connection ||= new Redis(RedisOptions));
+function createRedis() {
+  const redis = new Redis(RedisOptions);
+  // Avoid crashing the process on connection errors when Redis is unreachable.
+  redis.on("error", (err) => log.warn("Redis connection error", { error: err.message }));
+  return redis;
 }
 
-export const makeJobs = <T extends string>(queue: Queue) => {
-  try {
-    queue.getMeta().then((v) => {
-      log.info("Queue configuration.", { ...v });
-    });
-  } catch (error) {
+export function getRedis(force = false) {
+  if (force) return createRedis();
+
+  return (connection ||= createRedis());
+}
+
+/** Resolve once the connection is usable, or false once it has given up. */
+export function redisReady(redis: Redis): Promise<boolean> {
+  if (redis.status === "ready") return Promise.resolve(true);
+  if (redis.status === "end") return Promise.resolve(false);
+
+  return new Promise((resolve) => {
+    const done = (ok: boolean) => {
+      redis.off("ready", onReady);
+      redis.off("end", onEnd);
+      resolve(ok);
+    };
+    const onReady = () => done(true);
+    const onEnd = () => done(false);
+    redis.once("ready", onReady);
+    redis.once("end", onEnd);
+  });
+}
+
+export const makeJobs = async <T extends string>(queue: Queue) => {
+  if (!(await redisReady(getRedis()))) {
+    log.warn("Redis unreachable; queue disabled, falling back to immediate execution");
     return null;
   }
   return {

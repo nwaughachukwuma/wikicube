@@ -62,7 +62,7 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
 
     const githubToken = getProviderToken(request);
 
-    const reindexHandler = queueJobs().reindex;
+    const reindexHandler = (await queueJobs()).reindex;
     if (reindexHandler) {
       reindexHandler.add("reindex-all", { wikis, githubToken });
       reply.send("Reindex-all operation is queued");
@@ -74,7 +74,7 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
   });
 
   fastify.post("/queue/healthcheck", async (_, reply) => {
-    const reindexHandler = queueJobs().reindex;
+    const reindexHandler = (await queueJobs()).reindex;
     if (!reindexHandler) {
       reply.status(400).send({ ok: false });
       return;
