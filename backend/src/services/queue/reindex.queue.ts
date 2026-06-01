@@ -1,7 +1,7 @@
 import { Queue, QueueEvents, Worker } from "bullmq";
 import { logger } from "@shared/logger.js";
 import type { Wiki } from "@shared/types.js";
-import { getRedis, QUEUES } from "./queue.utils.js";
+import { connection, getRedis, getWorkerRedis, QUEUES } from "./queue.utils.js";
 import { reindexAllHandler } from "../../utils/reindex.js";
 
 const log = logger("queue:workers");
@@ -12,10 +12,15 @@ export type ReindexJobName = "dummy" | "reindex-all";
 
 // Queue
 export function initReindexQueue() {
-  if (hasBeenInit && myQueue) return myQueue;
+  if (hasBeenInit && myQueue && connection) return myQueue;
 
   myQueue = new Queue(QUEUES.REINDEX, { connection: getRedis() });
-  myQueue.setGlobalConcurrency(10);
+  myQueue.on("error", (e) => log.warn("Queue error", { error: e.message }));
+  myQueue
+    .setGlobalConcurrency(10)
+    .catch((e) =>
+      log.warn("Failed to set global concurrency", { error: e.message }),
+    );
   hasBeenInit = true;
 
   const queueEvents = new QueueEvents(QUEUES.REINDEX, {
@@ -61,7 +66,7 @@ const reindexWorker = new Worker(
         });
     }
   },
-  { connection: getRedis() },
+  { connection: getWorkerRedis() },
 );
 
 reindexWorker.on("completed", (job) => {
