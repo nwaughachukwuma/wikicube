@@ -1,7 +1,7 @@
 import { Queue, QueueEvents, Worker } from "bullmq";
 import { logger } from "@shared/logger.js";
 import type { Wiki } from "@shared/types.js";
-import { getRedis, getWorkerRedis, QUEUES } from "./queue.utils.js";
+import { connection, getRedis, getWorkerRedis, QUEUES } from "./queue.utils.js";
 import { reindexAllHandler } from "../../utils/reindex.js";
 
 const log = logger("queue:workers");
@@ -12,17 +12,15 @@ export type ReindexJobName = "dummy" | "reindex-all";
 
 // Queue
 export function initReindexQueue() {
-  if (hasBeenInit && myQueue) return myQueue;
+  if (hasBeenInit && myQueue && connection) return myQueue;
 
   myQueue = new Queue(QUEUES.REINDEX, { connection: getRedis() });
-  // BullMQ re-emits Redis connection failures as 'error' on the Queue; without
-  // a listener Node treats it as fatal and crashes the process.
-  myQueue.on("error", (err) => log.warn("Queue error", { error: err.message }));
-  // Fire-and-forget command: it rejects if Redis is unreachable, so swallow it
-  // to avoid an unhandled rejection taking down the process.
+  myQueue.on("error", (e) => log.warn("Queue error", { error: e.message }));
   myQueue
     .setGlobalConcurrency(10)
-    .catch((err) => log.warn("Failed to set global concurrency", { error: err.message }));
+    .catch((e) =>
+      log.warn("Failed to set global concurrency", { error: e.message }),
+    );
   hasBeenInit = true;
 
   const queueEvents = new QueueEvents(QUEUES.REINDEX, {
