@@ -97,8 +97,8 @@ export async function GET(
   { params }: { params: Promise<{ owner: string; repo: string }> },
 ) {
   const { owner, repo } = await params;
-  const sp = req.nextUrl.searchParams;
 
+  const sp = req.nextUrl.searchParams;
   const pageWindow = parsePage(sp.get("page"));
   if ("error" in pageWindow) {
     return NextResponse.json({ error: pageWindow.error }, { status: 400 });
@@ -134,8 +134,18 @@ export async function GET(
   const preIndex = sp.get("pre-index") === "true";
   let wiki = await getWiki(owner, repo);
   if (preIndex && (!wiki || wiki.status !== "done")) {
-    await indexRepo(owner, repo, token);
-    wiki = await getWiki(owner, repo);
+    if (!wiki || wiki.status === "error") {
+      void indexRepo(owner, repo, token).catch(() => {});
+    }
+    const statusUrl = `${new URL(req.url).origin}/api/wiki/${owner}/${repo}`;
+    return NextResponse.json(
+      {
+        status: "indexing",
+        message: "Repository indexing has started.",
+        status_url: statusUrl,
+      },
+      { status: 202, headers: { Location: statusUrl } },
+    );
   }
 
   if (!wiki) {
