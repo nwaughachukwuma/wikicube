@@ -1,12 +1,14 @@
+/**
+ * Parse `page=n` (single) or `page=x-y` (inclusive range) into a row window.
+ */
 import { NextRequest, NextResponse } from "next/server";
 import { repoGuard } from "@shared/github";
-import { HttpError } from "@shared/error";
+import { extractError, HttpError } from "@shared/error";
 import { getWiki, getChallengesPage } from "@/lib/db";
 import { generateAndStoreChallenges } from "@/lib/challenges";
 
 const PAGE_SIZE = 10;
 
-/** Parse `page=n` (single) or `page=x-y` (inclusive range) into a row window. */
 function parsePage(
   raw: string | null,
 ): { offset: number; limit: number } | { error: string } {
@@ -24,7 +26,10 @@ function parsePage(
     const from = Number(range[1]);
     const to = Number(range[2]);
     if (from < 1 || to < from) return { error: "invalid page range" };
-    return { offset: (from - 1) * PAGE_SIZE, limit: (to - from + 1) * PAGE_SIZE };
+    return {
+      offset: (from - 1) * PAGE_SIZE,
+      limit: (to - from + 1) * PAGE_SIZE,
+    };
   }
 
   return { error: "page must be a number (n) or a range (x-y)" };
@@ -66,9 +71,11 @@ async function indexRepo(owner: string, repo: string, token?: string) {
   for (;;) {
     const { value, done } = await reader.read();
     if (done) break;
+
     buffer += decoder.decode(value, { stream: true });
     const events = buffer.split("\n\n");
     buffer = events.pop() ?? "";
+
     for (const evt of events) {
       const line = evt.split("\n").find((l) => l.startsWith("data: "));
       if (!line) continue;
@@ -76,6 +83,7 @@ async function indexRepo(owner: string, repo: string, token?: string) {
         type?: string;
         message?: string;
       };
+
       if (payload.type === "done") return;
       if (payload.type === "error") {
         throw new Error(payload.message || "Indexing failed");
@@ -103,23 +111,22 @@ export async function GET(
     .catch((err: unknown) => ({
       ok: false as const,
       status: err instanceof HttpError ? err.status : 500,
+      error: extractError(err),
     }));
 
   if (!access.ok) {
-    if (!token) {
+    if (token) {
       return NextResponse.json(
-        {
-          error: "repo is private",
-          message:
-            "This repository is private. Provide a GitHub token via the 'Authorization: Bearer {token}' header.",
-        },
-        { status: 401 },
+        { error: "Repository not found", message: access.error },
+        { status: access.status },
       );
     }
-    const status = access.status === 404 ? 404 : access.status;
     return NextResponse.json(
-      { error: "Repository not found or token lacks access" },
-      { status },
+      {
+        error: "Repository not found or is private.",
+        message: `Provide a GitHub token via the 'Authorization: Bearer {token}' header.///${access.error}`,
+      },
+      { status: 401 },
     );
   }
 
@@ -131,21 +138,26 @@ export async function GET(
     wiki = await getWiki(owner, repo);
   }
 
-  if (!wiki || wiki.status !== "done") {
+  if (!wiki) {
     return NextResponse.json(
-      {
-        error: "Repository is not indexed. Retry with pre-index=true.",
-      },
+      { error: "Repository is not indexed. Retry with pre-index=true." },
       { status: 404 },
     );
   }
 
-  // Generate a batch on first access so the endpoint never returns empty.
+  if (wiki.status !== "done") {
+    return NextResponse.json(
+      { error: "Repository is being indexed. Please try again later" },
+      { status: 404 },
+    );
+  }
+
   let { challenges, total } = await getChallengesPage(
     wiki.id,
     pageWindow.offset,
     pageWindow.limit,
   );
+
   if (total === 0) {
     await generateAndStoreChallenges(wiki, owner, repo, token);
     ({ challenges, total } = await getChallengesPage(
