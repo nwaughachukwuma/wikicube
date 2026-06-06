@@ -135,13 +135,15 @@ export async function GET(
   let wiki = await getWiki(owner, repo);
   if (preIndex && (!wiki || wiki.status !== "done")) {
     if (!wiki || wiki.status === "error") {
-      void indexRepo(owner, repo, token).catch(() => {});
+      void indexRepo(owner, repo, token).catch((e) => {
+        console.error("indexRepo failed:", e);
+      });
     }
-    const statusUrl = `${new URL(req.url).origin}/api/wiki/${owner}/${repo}`;
+    const statusUrl = `${new URL(req.url).origin}/api/wiki/${owner}/${repo}/status`;
     return NextResponse.json(
       {
         status: "indexing",
-        message: "Repository indexing has started.",
+        message: "Repository indexing is in progress.",
         status_url: statusUrl,
       },
       { status: 202, headers: { Location: statusUrl } },
