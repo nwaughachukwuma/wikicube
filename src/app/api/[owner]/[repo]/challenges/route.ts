@@ -2,7 +2,7 @@
  * Parse `page=n` (single) or `page=x-y` (inclusive range) into a row window.
  */
 import { NextRequest, NextResponse } from "next/server";
-import { repoGuard } from "@shared/github";
+import { repoGuard, getBearerToken } from "@shared/github";
 import { extractError, HttpError } from "@shared/error";
 import { getWiki, getChallengesPage } from "@/lib/db";
 import { generateAndStoreChallenges } from "@/lib/challenges";
@@ -33,11 +33,6 @@ function parsePage(
   }
 
   return { error: "page must be a number (n) or a range (x-y)" };
-}
-
-function getBearerToken(req: NextRequest): string | undefined {
-  const header = req.headers.get("authorization") ?? "";
-  return header.startsWith("Bearer ") ? header.slice(7) : undefined;
 }
 
 /** Trigger indexing on the backend and resolve once it completes. */
@@ -105,7 +100,7 @@ export async function GET(
   }
 
   // Access control: public repos are open; private repos require a token.
-  const token = getBearerToken(req);
+  const token = getBearerToken(req.headers);
   const access = await repoGuard(owner, repo, token)
     .then(() => ({ ok: true as const }))
     .catch((err: unknown) => ({

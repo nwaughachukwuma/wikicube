@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getWiki } from "@/lib/db";
-import { repoGuard } from "@shared/github";
-
-function getBearerToken(req: NextRequest): string | undefined {
-  const header = req.headers.get("authorization") ?? "";
-  return header.startsWith("Bearer ") ? header.slice(7) : undefined;
-}
+import { repoGuard, getBearerToken } from "@shared/github";
 
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ owner: string; repo: string }> },
 ) {
   const { owner, repo } = await params;
-  const token = getBearerToken(req);
+  const token = getBearerToken(req.headers);
   const access = await repoGuard(owner, repo, token)
     .then(() => true)
     .catch(() => false);
