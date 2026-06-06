@@ -6,6 +6,13 @@ import { HttpError } from "./error";
 const log = logger("github");
 const GITHUB_API = "https://api.github.com";
 
+export function getBearerToken(
+  headers: { get(name: string): string | null },
+): string | undefined {
+  const header = headers.get("authorization") ?? "";
+  return header.startsWith("Bearer ") ? header.slice(7) : undefined;
+}
+
 const headers = (token?: string) => {
   const h: Record<string, string> = {
     Accept: "application/vnd.github.v3+json",

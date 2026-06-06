@@ -1,13 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
   getWiki,
-  getFeatures,
   getChallengesByWikiId,
-  insertChallenges,
   deleteChallenges,
 } from "@/lib/db";
-import { getRecentIssues, getRecentPullRequests } from "@shared/github";
-import { generateChallenges } from "@shared/genai/generate-challenges";
+import { generateAndStoreChallenges } from "@/lib/challenges";
 import { validateRepoAccess } from "@/lib/db.utils";
 import type { Challenge } from "@shared/types";
 
@@ -61,49 +58,16 @@ export async function POST(
     return NextResponse.json({ challenges: existing, wiki_id: wiki.id });
   }
 
-  // Gather context
-  const features = await getFeatures(wiki.id);
-  const [issues, pullRequests] = await Promise.all([
-    getRecentIssues(owner, repo),
-    getRecentPullRequests(owner, repo),
-  ]);
-
-  // Generate challenges
-  const generated = await generateChallenges({
-    owner,
-    repo,
-    overview: wiki.overview,
-    features: features.map((f) => ({
-      title: f.title,
-      summary: f.summary,
-      markdown_content: f.markdown_content,
-    })),
-    issues,
-    pullRequests,
-  });
+  const generated = await generateAndStoreChallenges(wiki, owner, repo);
 
   // First-time generation: nothing to consolidate against.
   if (existing.length === 0) {
-    const challenges = await insertChallenges(toRows(wiki.id, generated));
-    return NextResponse.json({ challenges, wiki_id: wiki.id });
+    return NextResponse.json({ challenges: generated, wiki_id: wiki.id });
   }
 
-  // Refresh: insert only genuinely new challenges, then consolidate the full
-  // set — dedupe and cap at MAX_CHALLENGES (keeping the most recent).
-  const existingKeys = new Set(existing.map(dedupeKey));
-  const freshSeen = new Set<string>();
-  const freshUnique = generated.filter((c) => {
-    const key = dedupeKey(c);
-    if (existingKeys.has(key) || freshSeen.has(key)) return false;
-    freshSeen.add(key);
-    return true;
-  });
-  const inserted = freshUnique.length
-    ? await insertChallenges(toRows(wiki.id, freshUnique))
-    : [];
-
-  // Newest first: just-generated, then existing from newest to oldest.
-  const merged = [...inserted, ...existing.slice().reverse()];
+  // Refresh: consolidate the full set — dedupe and cap at MAX_CHALLENGES
+  // (keeping the most recent); delete the trimmed/duplicate rows.
+  const merged = [...generated, ...existing.slice().reverse()];
   const seen = new Set<string>();
   const kept: Challenge[] = [];
   const dropIds: string[] = [];
@@ -118,18 +82,4 @@ export async function POST(
   await deleteChallenges(dropIds);
 
   return NextResponse.json({ challenges: kept, wiki_id: wiki.id });
-}
-
-function toRows(
-  wikiId: string,
-  challenges: Array<Pick<Challenge, "role" | "background" | "objective" | "task" | "acceptance_criteria">>,
-): Array<Omit<Challenge, "id" | "created_at">> {
-  return challenges.map((c) => ({
-    wiki_id: wikiId,
-    role: c.role,
-    background: c.background,
-    objective: c.objective,
-    task: c.task,
-    acceptance_criteria: c.acceptance_criteria,
-  }));
 }
