@@ -36,10 +36,10 @@ function parsePage(
     const from = Number(range[1]);
     const to = Number(range[2]);
     if (from < 1 || to < from) return { error: "invalid page range" };
-    return {
-      offset: (from - 1) * PAGE_SIZE,
-      limit: (to - from + 1) * PAGE_SIZE,
-    };
+
+    const offset = (from - 1) * PAGE_SIZE
+    const limit=  (to - from + 1) * PAGE_SIZE
+    return { offset, limit:  Math.min(limit, MAX_CHALLENGES-offset) };
   }
 
   return { error: "page must be a number (n) or a range (x-y)" };
@@ -169,16 +169,14 @@ export async function GET(
     );
   }
 
-  let { challenges, total } = await getChallengesPage(
+  let { challenges } = await getChallengesPage(
     wiki.id,
     pageWindow.offset,
     pageWindow.limit,
   );
 
-  if (total < pageWindow.offset + pageWindow.limit) {
-    const needed =
-      Math.min(pageWindow.offset + pageWindow.limit, MAX_CHALLENGES) - total;
-
+  if (challenges.length < pageWindow.limit) {
+    const needed = pageWindow.limit - challenges.length;
     const batches = Math.ceil(needed / PAGE_SIZE);
     const rangeN = new Array(batches).fill(0);
     await batchAll(rangeN, () =>
@@ -203,7 +201,7 @@ export async function GET(
     }
     await deleteChallenges(dropIds);
 
-    ({ challenges, total } = await getChallengesPage(
+    ({ challenges } = await getChallengesPage(
       wiki.id,
       pageWindow.offset,
       pageWindow.limit,
@@ -215,8 +213,8 @@ export async function GET(
     repo,
     wiki_id: wiki.id,
     page_size: PAGE_SIZE,
-    total,
-    total_pages: Math.ceil(total / PAGE_SIZE),
+    total: challenges.length,
+    total_pages: Math.ceil(challenges.length / PAGE_SIZE),
     challenges,
   });
 }
