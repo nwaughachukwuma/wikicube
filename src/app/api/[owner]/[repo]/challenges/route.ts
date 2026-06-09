@@ -4,10 +4,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { repoGuard, getBearerToken } from "@shared/github";
 import { extractError, HttpError } from "@shared/error";
-import { getWiki, getChallengesPage } from "@/lib/db";
+import {
+  getWiki,
+  getChallengesPage,
+  getChallengesByWikiId,
+  deleteChallenges,
+} from "@/lib/db";
 import { generateAndStoreChallenges } from "@/lib/challenges";
+import type { Challenge } from "@shared/types";
+import { batchAll } from "@shared/batch-ops";
 
 const PAGE_SIZE = 10;
+const MAX_CHALLENGES = 25;
+const dedupeKey = (c: Pick<Challenge, "objective" | "task">) =>
+  `${c.objective}\n${c.task}`.trim().toLowerCase();
 
 function parsePage(
   raw: string | null,
@@ -26,10 +36,10 @@ function parsePage(
     const from = Number(range[1]);
     const to = Number(range[2]);
     if (from < 1 || to < from) return { error: "invalid page range" };
-    return {
-      offset: (from - 1) * PAGE_SIZE,
-      limit: (to - from + 1) * PAGE_SIZE,
-    };
+
+    const offset = (from - 1) * PAGE_SIZE
+    const limit=  (to - from + 1) * PAGE_SIZE
+    return { offset, limit:  Math.min(limit, MAX_CHALLENGES-offset) };
   }
 
   return { error: "page must be a number (n) or a range (x-y)" };
@@ -127,7 +137,7 @@ export async function GET(
 
   // Optionally index the repo before reading its challenges.
   const preIndex = sp.get("pre-index") === "true";
-  let wiki = await getWiki(owner, repo);
+  const wiki = await getWiki(owner, repo);
   if (preIndex && (!wiki || wiki.status !== "done")) {
     if (!wiki || wiki.status === "error") {
       void indexRepo(owner, repo, token).catch((e) => {
@@ -159,15 +169,39 @@ export async function GET(
     );
   }
 
-  let { challenges, total } = await getChallengesPage(
+  let { challenges } = await getChallengesPage(
     wiki.id,
     pageWindow.offset,
     pageWindow.limit,
   );
 
-  if (total === 0) {
-    await generateAndStoreChallenges(wiki, owner, repo, token);
-    ({ challenges, total } = await getChallengesPage(
+  if (challenges.length < pageWindow.limit) {
+    const needed = pageWindow.limit - challenges.length;
+    const batches = Math.ceil(needed / PAGE_SIZE);
+    const rangeN = new Array(batches).fill(0);
+    await batchAll(rangeN, () =>
+      generateAndStoreChallenges(wiki, owner, repo, token),
+    );
+
+    const all = await getChallengesByWikiId(wiki.id);
+    const merged = [...all].reverse();
+
+    const seen = new Set<string>();
+    const kept: Challenge[] = [];
+    const dropIds: string[] = [];
+
+    for (const c of merged) {
+      const key = dedupeKey(c);
+      if (seen.has(key) || kept.length >= MAX_CHALLENGES) {
+        dropIds.push(c.id);
+        continue;
+      }
+      seen.add(key);
+      kept.push(c);
+    }
+    await deleteChallenges(dropIds);
+
+    ({ challenges } = await getChallengesPage(
       wiki.id,
       pageWindow.offset,
       pageWindow.limit,
@@ -179,8 +213,8 @@ export async function GET(
     repo,
     wiki_id: wiki.id,
     page_size: PAGE_SIZE,
-    total,
-    total_pages: Math.ceil(total / PAGE_SIZE),
+    total: challenges.length,
+    total_pages: Math.ceil(challenges.length / PAGE_SIZE),
     challenges,
   });
 }

@@ -396,8 +396,8 @@ export async function getChallengesPage(
   wikiId: string,
   offset: number,
   limit: number,
-): Promise<{ challenges: Challenge[]; total: number }> {
-  const { data, error, count } = await getServerClient()
+): Promise<{ challenges: Challenge[] }> {
+  const { data, error } = await getServerClient()
     .from("challenges")
     .select("*", { count: "exact" })
     .eq("wiki_id", wikiId)
@@ -405,7 +405,7 @@ export async function getChallengesPage(
     .range(offset, offset + limit - 1);
 
   if (error) throw error;
-  return { challenges: (data || []) as Challenge[], total: count ?? 0 };
+  return { challenges: (data || []) as Challenge[] };
 }
 
 export async function insertChallenges(

@@ -42,7 +42,7 @@ export function parseJsonResponse<T>(
 }
 
 export function toGeminiJsonSchema(schema: z.ZodType) {
-  const jsonSchema = z.toJSONSchema(schema as any);
+  const jsonSchema = z.toJSONSchema(schema);
   delete jsonSchema.$schema;
   return jsonSchema;
 }
