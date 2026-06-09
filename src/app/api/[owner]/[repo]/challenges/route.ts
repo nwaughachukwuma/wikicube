@@ -137,7 +137,7 @@ export async function GET(
 
   // Optionally index the repo before reading its challenges.
   const preIndex = sp.get("pre-index") === "true";
-  let wiki = await getWiki(owner, repo);
+  const wiki = await getWiki(owner, repo);
   if (preIndex && (!wiki || wiki.status !== "done")) {
     if (!wiki || wiki.status === "error") {
       void indexRepo(owner, repo, token).catch((e) => {
