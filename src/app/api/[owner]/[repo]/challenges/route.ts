@@ -4,10 +4,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { repoGuard, getBearerToken } from "@shared/github";
 import { extractError, HttpError } from "@shared/error";
-import { getWiki, getChallengesPage } from "@/lib/db";
+import {
+  getWiki,
+  getChallengesPage,
+  getChallengesByWikiId,
+  deleteChallenges,
+} from "@/lib/db";
 import { generateAndStoreChallenges } from "@/lib/challenges";
+import type { Challenge } from "@shared/types";
+import { batchAll } from "@shared/batch-ops";
 
 const PAGE_SIZE = 10;
+const MAX_CHALLENGES = 25;
+const dedupeKey = (c: Pick<Challenge, "objective" | "task">) =>
+  `${c.objective}\n${c.task}`.trim().toLowerCase();
 
 function parsePage(
   raw: string | null,
@@ -165,8 +175,34 @@ export async function GET(
     pageWindow.limit,
   );
 
-  if (total === 0) {
-    await generateAndStoreChallenges(wiki, owner, repo, token);
+  if (total < pageWindow.offset + pageWindow.limit) {
+    const needed =
+      Math.min(pageWindow.offset + pageWindow.limit, MAX_CHALLENGES) - total;
+
+    const batches = Math.ceil(needed / PAGE_SIZE);
+    const rangeN = new Array(batches).fill(0);
+    await batchAll(rangeN, () =>
+      generateAndStoreChallenges(wiki, owner, repo, token),
+    );
+
+    const all = await getChallengesByWikiId(wiki.id);
+    const merged = [...all].reverse();
+
+    const seen = new Set<string>();
+    const kept: Challenge[] = [];
+    const dropIds: string[] = [];
+
+    for (const c of merged) {
+      const key = dedupeKey(c);
+      if (seen.has(key) || kept.length >= MAX_CHALLENGES) {
+        dropIds.push(c.id);
+        continue;
+      }
+      seen.add(key);
+      kept.push(c);
+    }
+    await deleteChallenges(dropIds);
+
     ({ challenges, total } = await getChallengesPage(
       wiki.id,
       pageWindow.offset,
