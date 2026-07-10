@@ -38,7 +38,7 @@ create table if not exists public.chunks (
   content text not null,
   source_type text not null default 'wiki',
   source_file text,
-  embedding vector(768)
+  embedding vector(1536)
 );
 
 create index if not exists idx_chunks_wiki_id on public.chunks(wiki_id);
@@ -50,7 +50,7 @@ create index if not exists idx_chunks_embedding on public.chunks
 
 -- RPC function for semantic search
 create or replace function match_chunks(
-  query_embedding vector(768),
+  query_embedding vector(1536),
   p_wiki_id uuid,
   match_count int default 8,
   match_threshold float default 0.7

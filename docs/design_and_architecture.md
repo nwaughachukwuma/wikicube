@@ -1,6 +1,6 @@
 # Plan: GitHub Wiki Generator (Revised)
 
-> TL;DR: A Next.js 15 App Router app where a user pastes a GitHub repo URL and gets a comprehensive, AI-generated wiki organized by user-facing features. The analysis pipeline uses a multi-phase approach to handle very large codebases without overloading context windows: tree-based feature identification → targeted file fetching → per-feature page generation. All wiki content and source chunks are embedded (dim-768) into Supabase pgvector for RAG-powered Q&A and semantic search. Light-mode Bold Editorial design via superdesign.dev. Deploy to Vercel with Supabase integration.
+> TL;DR: A Next.js 15 App Router app where a user pastes a GitHub repo URL and gets a comprehensive, AI-generated wiki organized by user-facing features. The analysis pipeline uses a multi-phase approach to handle very large codebases without overloading context windows: tree-based feature identification → targeted file fetching → per-feature page generation. All wiki content and source chunks are embedded (dim-1536) into Supabase pgvector for RAG-powered Q&A and semantic search. Light-mode Bold Editorial design via superdesign.dev. Deploy to Vercel with Supabase integration.
 
 ## STEPS
 
@@ -9,14 +9,14 @@
 - npx create-next-app@latest wikicube --typescript --tailwind --app
 - Install: openai, @supabase/supabase-js, react-markdown, rehype-raw, remark-gfm, shiki, fuse.js (fallback client search)
 - Fonts: Anton (display headlines) + Inter (body/UI) via next/font/google
-- Set up .env.local: OPENROUTER_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GITHUB_TOKEN (optional, for rate limits)
+- Set up .env.local: OPENAI_API_KEY, NEXT_PUBLIC_SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, GITHUB_TOKEN (optional, for rate limits)
 - Push to nwaughachukwuma/wikicube repo on main branch; commit each logical step
 
 ## 2. Supabase Schema — run via Supabase SQL editor or migration file
 
 - Table wikis: id uuid PK, owner text, repo text, default_branch text, overview text, status text (pending/processing/done/error), created_at, updated_at. Unique constraint on (owner, repo).
 - Table features: id uuid PK, wiki_id uuid FK→wikis, slug text, title text, summary text, markdown_content text, entry_points jsonb, citations jsonb, sort_order int
-- Table chunks: id uuid PK, wiki_id uuid FK→wikis, feature_id uuid FK→features (nullable), content text, source_type text (wiki | code), source_file text (nullable), embedding vector(768). Index: CREATE INDEX ON chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
+- Table chunks: id uuid PK, wiki_id uuid FK→wikis, feature_id uuid FK→features (nullable), content text, source_type text (wiki | code), source_file text (nullable), embedding vector(1536). Index: CREATE INDEX ON chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
 - RPC function match_chunks: takes query embedding + wiki_id + match_count + match_threshold → returns top-k chunks ordered by cosine similarity (standard Supabase vector pattern)
 - Enable the vector extension in Supabase dashboard
 
@@ -76,8 +76,8 @@ This is the critical path. Designed to handle repos with 10k+ files without blow
 
 - Chunk all markdownContent into ~500-token passages (split on paragraph/heading boundaries to preserve context)
 - Also chunk important source files fetched in Phase C (same 500-token strategy, include file path + line range as metadata)
-- Generate embeddings via the external `embedding-service` (nomic-embed-text) — 768 dimensions
-- Batch embed (send groups of 8 to the embedding service)
+- Generate embeddings via openai.embeddings.create({ model: "text-embedding-3-small", input: chunkText }) — 1536 dimensions
+- Batch embed (OpenAI supports up to 2048 inputs per call; batch in groups of 100)
 - Upsert all chunks + embeddings into Supabase chunks table
 
 ## 6. API Routes
@@ -157,7 +157,7 @@ Design tokens adapted from the Bold Editorial Style to light mode:
 - Link nwaughachukwuma/wikicube to Vercel
 - Enable Vercel-Supabase integration (auto-injects env vars)
 - Set maxDuration = 300 on /api/analyze route (large repos can take a few minutes)
-- Additional env: OPENROUTER_API_KEY, GITHUB_TOKEN, EMBEDDINGS_BASE_URL
+- Additional env: OPENAI_API_KEY, GITHUB_TOKEN
 
 ---
 
@@ -177,7 +177,7 @@ Design tokens adapted from the Bold Editorial Style to light mode:
 - Supabase pgvector over plain KV: enables RAG for Q&A and semantic search — scales to large codebases
 - Tree-first feature identification: the file tree (paths only) fits in one prompt for any repo size, so feature ID never blows the context window
 - Per-feature file budget (30 files, 300 lines): keeps page generation under ~40k tokens per call
-- `nomic-embed-text` (768 dims): via the external `embedding-service`
+- `text-embedding-3-small` (1536 dims): matches Supabase dim-1536 requirement, cheaper and faster than ada-002
 - SSE for progress: real feedback during multi-minute analysis, no polling
 - Light-mode Bold Editorial: warm off-white + charcoal + golden yellow accent — adapted from superdesign.dev's "Bold Editorial Style" for a dev-docs context
 - Two-tier search: semantic (via embeddings) for accuracy, with fuse.js as instant client-side fallback for feature titles

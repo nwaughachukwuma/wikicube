@@ -113,7 +113,7 @@ src/
     │   ├── embedder.ts         # Phases E+F: overview generation + embedding
     │   └── index.ts            # Re-exports
     └── genai/                  # AI provider facade (OpenRouter-backed)
-      ├── embeddings.ts       # Batch embedding via the external embedding service
+      ├── embeddings.ts       # Batch embedding via gemini-embedding-001
         ├── generateFeatureFlag.ts # Per-feature wiki page generation
         ├── generateOverview.ts # Repo overview page generation
         ├── identifyFeatures.ts # Feature identification prompt
@@ -129,7 +129,7 @@ src/
 3. **Phase C — Targeted File Fetching** — Per-feature file fetch with a budget of 30 files / 300 lines each, prioritising entry points; keeps context under ~40k tokens
 4. **Phase D — Page Generation** — Parallel LLM calls (concurrency 3) generate wiki pages with inline GitHub citations; all run inside `Promise.allSettled()`
 5. **Phase E — Overview Generation** — Synthesises all feature titles + summaries into a repo overview page with a Mermaid architecture diagram
-6. **Phase F — Embedding** — Chunks all wiki content + source code into ~500-token passages, batch-embeds via the external embedding service, stores in Supabase pgvector
+6. **Phase F — Embedding** — Chunks all wiki content + source code into ~500-token passages, batch-embeds via Gemini embeddings, stores in Supabase pgvector
 
 Progress is streamed to the client via **SSE** throughout all phases.
 
@@ -158,6 +158,6 @@ Three tables in Supabase (see `supabase/migration.sql`):
 
 - **`wikis`** — one row per repo; tracks `status`, `overview`, timestamps
 - **`features`** — one row per identified feature; stores `markdown_content`, `entry_points`, `citations`, `sort_order`
-- **`chunks`** — one row per embedded passage; stores `embedding vector(768)`, `source_file`, `source_type` (`wiki` | `code`)
+- **`chunks`** — one row per embedded passage; stores `embedding vector(1536)`, `source_file`, `source_type` (`wiki` | `code`)
 
 Vector search uses the `match_chunks` RPC (cosine similarity via `ivfflat` index).

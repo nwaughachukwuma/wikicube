@@ -153,7 +153,7 @@ export default function HomePage() {
 
       {/* Footer */}
       <footer className="border-t border-border px-6 py-4 text-center text-xs text-text-muted">
-        Wikicube — powered by OpenRouter & Supabase
+        Wikicube — powered by Gemini & Supabase
       </footer>
     </main>
   );
