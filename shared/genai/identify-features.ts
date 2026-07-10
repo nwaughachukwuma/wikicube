@@ -5,10 +5,10 @@ import {
   MODELS,
   parseStructuredJson,
   retryGenerateContent,
-  toGeminiJsonSchema,
+  toJsonSchema,
 } from "./utils";
 
-const log = logger("gemini:identifyFeatures");
+const log = logger("openrouter:identifyFeatures");
 
 /* ─── Zod schemas for structured outputs ─── */
 const IdentifyFeaturesSchema = z.object({
@@ -87,8 +87,7 @@ export async function identifyFeatures(
     contents: userPrompt,
     config: {
       systemInstruction: systemPrompt,
-      responseMimeType: "application/json",
-      responseJsonSchema: toGeminiJsonSchema(IdentifyFeaturesSchema),
+      responseJsonSchema: toJsonSchema(IdentifyFeaturesSchema),
     },
   });
 

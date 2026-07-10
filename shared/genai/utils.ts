@@ -1,36 +1,83 @@
-import { GoogleGenAI } from "@google/genai";
+import OpenAI from "openai";
 import { z } from "zod";
 import { makeRetriable, type Options } from "p-retry";
 
 export const MODELS = {
-  "g31flash-lite": "gemini-3.1-flash-lite-preview",
-  g3flash: "gemini-3-flash-preview",
-  g31pro: "gemini-3.1-pro-preview",
-  g35flash: "gemini-3.5-flash",
+  "g31flash-lite": "google/gemini-3.1-flash-lite",
+  g3flash: "google/gemini-3-flash-preview",
+  g31pro: "google/gemini-3.1-pro-preview",
+  g35flash: "google/gemini-3.5-flash",
 } as const;
-
-export const EMBEDDING_MODEL = "gemini-embedding-001";
-export const EMBEDDING_DIMENSIONS = 1536;
 
 export type TaskType =
   | "RETRIEVAL_DOCUMENT"
   | "RETRIEVAL_QUERY"
   | "QUESTION_ANSWERING";
 
-let _client: GoogleGenAI | null = null;
+let _client: OpenAI | null = null;
 
-export function getGemini() {
-  return (_client ||= new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-  }));
+export function getClient() {
+  if (!_client) {
+    const apiKey = process.env.OPENROUTER_API_KEY;
+    _client = new OpenAI({
+      baseURL: "https://openrouter.ai/api/v1",
+      apiKey,
+    });
+  }
+  return _client;
 }
+
+export type GenerateContentResponse = { text: string };
+
+type GenerateContentParams = {
+  model: string;
+  contents: string;
+  config?: {
+    systemInstruction?: string;
+    responseJsonSchema?: Record<string, unknown>;
+  };
+};
+
+export async function generateContent(
+  params: GenerateContentParams,
+): Promise<GenerateContentResponse> {
+  const client = getClient();
+  const messages: OpenAI.ChatCompletionMessageParam[] = [];
+  if (params.config?.systemInstruction) {
+    messages.push({ role: "system", content: params.config.systemInstruction });
+  }
+  messages.push({ role: "user", content: params.contents });
+
+  const responseFormat = params.config?.responseJsonSchema
+    ? {
+        type: "json_schema" as const,
+        json_schema: {
+          name: "Response",
+          schema: params.config.responseJsonSchema,
+          strict: false,
+        },
+      }
+    : undefined;
+
+  const completion = await client.chat.completions.create({
+    model: params.model,
+    messages,
+    ...(responseFormat ? { response_format: responseFormat } : {}),
+  });
+
+  const text = completion.choices[0]?.message?.content ?? "";
+  return { text };
+}
+
+export const retryGenerateContent = (opt: Options) =>
+  makeRetriable(generateContent, opt);
 
 export function parseJsonResponse<T>(
   text: string | undefined,
   source: string,
 ): T {
   if (!text) {
-    throw new Error(`No response text from Gemini for ${source}`);
+    throw new Error(`No response text from model for ${source}`);
   }
 
   const trimmed = text.trim();
@@ -41,7 +88,7 @@ export function parseJsonResponse<T>(
   return JSON.parse(normalized) as T;
 }
 
-export function toGeminiJsonSchema(schema: z.ZodType) {
+export function toJsonSchema(schema: z.ZodType) {
   const jsonSchema = z.toJSONSchema(schema);
   delete jsonSchema.$schema;
   return jsonSchema;
@@ -54,9 +101,3 @@ export function parseStructuredJson<TSchema extends z.ZodTypeAny>(
 ): z.infer<TSchema> {
   return schema.parse(parseJsonResponse<unknown>(text, source));
 }
-
-export const retryGenerateContent = (opt: Options) =>
-  makeRetriable(getGemini().models.generateContent, {
-    retries: opt.retries,
-    onFailedAttempt: opt.onFailedAttempt,
-  });

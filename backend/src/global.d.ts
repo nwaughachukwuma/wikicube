@@ -4,7 +4,7 @@ declare namespace NodeJS {
     SUPABASE_URL: string;
     SUPABASE_PUBLISHABLE_DEFAULT_KEY: string;
     GITHUB_TOKEN: string;
-    GEMINI_API_KEY: string;
+    OPENROUTER_API_KEY: string;
     REDIS_PASSWORD: string;
   }
 }

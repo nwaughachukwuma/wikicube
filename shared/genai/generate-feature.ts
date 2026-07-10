@@ -5,7 +5,7 @@ import {
   MODELS,
   parseStructuredJson,
   retryGenerateContent,
-  toGeminiJsonSchema,
+  toJsonSchema,
 } from "./utils";
 import type {
   Citation,
@@ -16,7 +16,7 @@ import type {
 import { logger } from "../logger";
 import { buildGitHubUrl } from "../github";
 
-const log = logger("gemini:featureFlag");
+const log = logger("openrouter:featureFlag");
 
 const GeneratedPageSchema = z.object({
   markdownContent: z.string(),
@@ -130,8 +130,7 @@ export async function generateFeaturePage(
     contents: userPrompt,
     config: {
       systemInstruction: systemPrompt,
-      responseMimeType: "application/json",
-      responseJsonSchema: toGeminiJsonSchema(GeneratedPageSchema),
+      responseJsonSchema: toJsonSchema(GeneratedPageSchema),
     },
   });
 

@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@google/genai": "^1.44.0",
+    "openai": "^6.38.0",
     "github-slugger": "^2.0.0",
     "p-retry": "^7.1.1",
     "tiktoken": "^1.0.22",

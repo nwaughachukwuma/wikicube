@@ -4,10 +4,10 @@ import {
   MODELS,
   parseStructuredJson,
   retryGenerateContent,
-  toGeminiJsonSchema,
+  toJsonSchema,
 } from "./utils";
 
-const log = logger("gemini:challenges");
+const log = logger("openrouter:challenges");
 
 /* ─── Zod schema for structured output ─── */
 
@@ -108,8 +108,7 @@ ${pullRequests ? `## Recent Pull Requests\n${pullRequests.slice(0, 12000)}` : ""
     contents: userPrompt,
     config: {
       systemInstruction: systemPrompt,
-      responseMimeType: "application/json",
-      responseJsonSchema: toGeminiJsonSchema(ChallengesResponseSchema),
+      responseJsonSchema: toJsonSchema(ChallengesResponseSchema),
     },
   });
 
