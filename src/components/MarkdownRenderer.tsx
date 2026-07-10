@@ -1,11 +1,32 @@
 "use client";
 
+import { isValidElement, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
+import dynamic from "next/dynamic";
+
+const MermaidRenderer = dynamic(() => import("./MermaidRenderer"), {
+  ssr: false,
+});
 
 interface Props {
   content: string;
+}
+
+interface CodeElementProps {
+  className?: string;
+  children?: ReactNode;
+}
+
+function getText(node: ReactNode): string {
+  if (typeof node === "string") return node;
+  if (typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(getText).join("");
+  if (isValidElement<{ children?: ReactNode }>(node)) {
+    return getText(node.props.children);
+  }
+  return "";
 }
 
 export default function MarkdownRenderer({ content }: Props) {
@@ -44,9 +65,16 @@ export default function MarkdownRenderer({ content }: Props) {
               </a>
             );
           },
-          pre: ({ children }) => (
-            <pre className="overflow-x-auto">{children}</pre>
-          ),
+          pre: ({ children }) => {
+            if (
+              isValidElement<CodeElementProps>(children) &&
+              children.props.className?.includes("language-mermaid")
+            ) {
+              const chart = getText(children.props.children);
+              if (chart) return <MermaidRenderer chart={chart} />;
+            }
+            return <pre className="overflow-x-auto">{children}</pre>;
+          },
           code: ({ className, children, ...props }) => {
             const isBlock = className?.includes("language-");
             if (isBlock) {
