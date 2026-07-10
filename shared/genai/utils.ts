@@ -19,9 +19,6 @@ let _client: OpenAI | null = null;
 export function getClient() {
   if (!_client) {
     const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      throw new Error("Missing OPENROUTER_API_KEY environment variable");
-    }
     _client = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
       apiKey,
