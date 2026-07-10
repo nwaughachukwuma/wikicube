@@ -12,7 +12,6 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@google/genai": "^1.44.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.97.0",
     "@vercel/analytics": "^1.6.1",
@@ -21,6 +20,7 @@
     "github-slugger": "^2.0.0",
     "lucide-react": "^0.575.0",
     "next": "^15.1.0",
+    "openai": "^6.38.0",
     "p-retry": "^7.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -36,6 +36,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
+    "@rolldown/binding-linux-x64-gnu": "^1.0.1",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
@@ -43,7 +44,6 @@
     "@types/throttle-debounce": "^5.0.2",
     "eslint": "^9.39.4",
     "eslint-config-next": "^15.5.12",
-    "openai": "^6.38.0",
     "postcss": "^8.4.49",
     "supabase": "^2.98.2",
     "tailwindcss": "^4.0.0",

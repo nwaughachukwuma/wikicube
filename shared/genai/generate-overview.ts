@@ -3,7 +3,7 @@
 import { logger } from "../logger";
 import { MODELS, retryGenerateContent } from "./utils";
 
-const log = logger("gemini:overview");
+const log = logger("openrouter:overview");
 
 const retryable = retryGenerateContent({
   retries: 3,

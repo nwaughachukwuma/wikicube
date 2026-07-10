@@ -1,6 +1,6 @@
 # WikiCube — Instant Wiki for Any GitHub Repo
 
-<img width="1510" height="505" alt="Gemini_Generated_Image_7imigd7imigd7imi" src="https://github.com/user-attachments/assets/97bcdb79-59d9-4b88-917e-70a8e43f28c2" />
+<img width="1510" height="505" alt="WikiCube hero" src="https://github.com/user-attachments/assets/97bcdb79-59d9-4b88-917e-70a8e43f28c2" />
 
 Paste a GitHub URL and get a polished, AI-generated wiki organized by user-facing features. One click. Zero setup.
 
@@ -20,7 +20,7 @@ Paste a GitHub URL and get a polished, AI-generated wiki organized by user-facin
 - **Framework**: Next.js 15 (App Router)
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS 4
-- **AI**: Gemini `gemini-3.1-flash-lite-preview` + `gemini-embedding-001` (1536 dims)
+- **AI**: OpenRouter (`google/gemini-3.1-flash-lite`) via the `openai` SDK + `nomic-embed-text` (768 dims)
 - **Database**: Supabase (PostgreSQL + pgvector)
 - **Deployment**: Vercel
 
@@ -30,7 +30,7 @@ Paste a GitHub URL and get a polished, AI-generated wiki organized by user-facin
 
 - Node.js 18+
 - Supabase project (free tier works)
-- Gemini API key
+- OpenRouter API key
 
 ### Setup
 
@@ -112,12 +112,12 @@ src/
     │   ├── pageGenerator.ts    # Phases C+D: file fetch + page generation
     │   ├── embedder.ts         # Phases E+F: overview generation + embedding
     │   └── index.ts            # Re-exports
-    └── genai/                  # AI provider facade (Gemini-backed)
-      ├── embeddings.ts       # Batch embedding via gemini-embedding-001
+    └── genai/                  # AI provider facade (OpenRouter-backed)
+      ├── embeddings.ts       # Batch embedding via the external embedding service
         ├── generateFeatureFlag.ts # Per-feature wiki page generation
         ├── generateOverview.ts # Repo overview page generation
         ├── identifyFeatures.ts # Feature identification prompt
-      ├── utils.ts            # Shared Gemini client + model constants
+      ├── utils.ts            # Shared OpenRouter client + model constants
         ├── wikiChat.ts         # Streaming RAG chat
         └── index.ts            # Re-exports
 ```
@@ -129,7 +129,7 @@ src/
 3. **Phase C — Targeted File Fetching** — Per-feature file fetch with a budget of 30 files / 300 lines each, prioritising entry points; keeps context under ~40k tokens
 4. **Phase D — Page Generation** — Parallel LLM calls (concurrency 3) generate wiki pages with inline GitHub citations; all run inside `Promise.allSettled()`
 5. **Phase E — Overview Generation** — Synthesises all feature titles + summaries into a repo overview page with a Mermaid architecture diagram
-6. **Phase F — Embedding** — Chunks all wiki content + source code into ~500-token passages, batch-embeds via Gemini embeddings, stores in Supabase pgvector
+6. **Phase F — Embedding** — Chunks all wiki content + source code into ~500-token passages, batch-embeds via the external embedding service, stores in Supabase pgvector
 
 Progress is streamed to the client via **SSE** throughout all phases.
 
@@ -147,7 +147,7 @@ Progress is streamed to the client via **SSE** throughout all phases.
 
 | Variable                    | Description                                                      |
 | --------------------------- | ---------------------------------------------------------------- |
-| `GEMINI_API_KEY`            | Gemini API key                                                   |
+| `OPENROUTER_API_KEY`        | OpenRouter API key                                               |
 | `NEXT_PUBLIC_SUPABASE_URL`  | Supabase project URL                                             |
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (server-side only)                     |
 | `GITHUB_TOKEN`              | _(Optional)_ GitHub personal access token for higher rate limits |
@@ -158,6 +158,6 @@ Three tables in Supabase (see `supabase/migration.sql`):
 
 - **`wikis`** — one row per repo; tracks `status`, `overview`, timestamps
 - **`features`** — one row per identified feature; stores `markdown_content`, `entry_points`, `citations`, `sort_order`
-- **`chunks`** — one row per embedded passage; stores `embedding vector(1536)`, `source_file`, `source_type` (`wiki` | `code`)
+- **`chunks`** — one row per embedded passage; stores `embedding vector(768)`, `source_file`, `source_type` (`wiki` | `code`)
 
 Vector search uses the `match_chunks` RPC (cosine similarity via `ivfflat` index).
