@@ -8,7 +8,7 @@ interface MermaidRendererProps {
 
 export default function MermaidRenderer({ chart }: MermaidRendererProps) {
   const baseId = useId().replace(/:/g, "-");
-  const [svg, setSvg] = useState<string>("");
+  const [svg, setSvg] = useState<string | null>(null);
 
   useEffect(() => {
     const renderDiagram = async () => {
@@ -29,12 +29,35 @@ export default function MermaidRenderer({ chart }: MermaidRendererProps) {
         setSvg(renderedSvg);
       } catch {
         setSvg("");
-        document.querySelectorAll(`[id^="mermaid-${baseId}"]`).forEach((el) => el.remove());
+        document
+          .querySelectorAll(`[id^="mermaid-${baseId}"]`)
+          .forEach((el) => el.remove());
       }
     };
 
     void renderDiagram();
   }, [chart, baseId]);
+
+  if (svg === null) {
+    return (
+      <div
+        role="status"
+        aria-label="Rendering diagram"
+        className="mt-12 min-h-44 w-full animate-pulse space-y-6 py-6"
+      >
+        <div className="flex justify-center gap-6">
+          <div className="h-10 w-28 rounded-md bg-black/5" />
+          <div className="h-10 w-28 rounded-md bg-black/5" />
+        </div>
+        <div className="flex justify-center gap-6">
+          <div className="h-10 w-24 rounded-md bg-black/5" />
+          <div className="h-10 w-24 rounded-md bg-black/5" />
+          <div className="h-10 w-24 rounded-md bg-black/5" />
+        </div>
+        <span className="sr-only">Rendering diagram…</span>
+      </div>
+    );
+  }
 
   if (!svg) {
     return (

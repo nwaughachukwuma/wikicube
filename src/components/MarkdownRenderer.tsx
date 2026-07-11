@@ -1,10 +1,10 @@
 "use client";
 
 import { isValidElement, type ReactNode } from "react";
+import dynamic from "next/dynamic";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
-import dynamic from "next/dynamic";
 
 const MermaidRenderer = dynamic(() => import("./MermaidRenderer"), {
   ssr: false,
