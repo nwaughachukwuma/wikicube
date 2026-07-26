@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getWiki } from "@/lib/db";
 import { buildWikiMetadata } from "@/lib/wikiMetadata";
 import OverviewPage from "./OverviewPage";
+import type { Wiki } from "@shared/types";
 
 export async function generateMetadata({
   params,
@@ -10,12 +11,10 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { owner, repo } = await params;
 
-  let wiki = null;
+  let wiki: Wiki | null = null;
   try {
     wiki = await getWiki(owner, repo);
-  } catch {
-    // Fall through to generic metadata if the wiki lookup fails.
-  }
+  } catch {}
 
   return buildWikiMetadata({
     owner,
