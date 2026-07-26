@@ -1,9 +1,11 @@
 import { test, expect } from "@playwright/test";
-
-const PUBLIC_WIKI_OWNER = "marcelroed";
-const PUBLIC_WIKI_REPO = "gigatoken";
-const UNAUTHORIZED_OWNER = "nwaughachukwuma";
-const UNAUTHORIZED_REPO = "private-wikicube-e2e";
+import {
+  PUBLIC_WIKI_OWNER,
+  PUBLIC_WIKI_REPO,
+  PRIVATE_WIKI_OWNER,
+  PRIVATE_WIKI_REPO,
+  PRIVATE_WIKI_OVERVIEW,
+} from "./fixtures";
 
 test.describe("/wiki/[owner]/[repo] metadata", () => {
   test("public wiki renders dynamic owner/repo meta tags", async ({ page }) => {
@@ -46,7 +48,7 @@ test.describe("/wiki/[owner]/[repo] metadata", () => {
     // Private (or non-existent) repos are gated by auth and should redirect
     // before any wiki overview can be rendered in the response.
     const response = await context.request.get(
-      `/wiki/${UNAUTHORIZED_OWNER}/${UNAUTHORIZED_REPO}`,
+      `/wiki/${PRIVATE_WIKI_OWNER}/${PRIVATE_WIKI_REPO}`,
       { maxRedirects: 0 },
     );
 
@@ -55,24 +57,15 @@ test.describe("/wiki/[owner]/[repo] metadata", () => {
     expect(status).toBeLessThan(400);
   });
 
-  const privateOwner = process.env.E2E_PRIVATE_WIKI_OWNER;
-  const privateRepo = process.env.E2E_PRIVATE_WIKI_REPO;
-  const privateOverviewSnippet = process.env.E2E_PRIVATE_WIKI_OVERVIEW_SNIPPET;
-
   test("private indexed wiki does not leak overview in metadata", async ({
     context,
   }) => {
-    test.skip(
-      !privateOwner || !privateRepo || !privateOverviewSnippet,
-      "E2E_PRIVATE_WIKI_* env vars not set",
-    );
-
     const response = await context.request.get(
-      `/wiki/${privateOwner}/${privateRepo}`,
+      `/wiki/${PRIVATE_WIKI_OWNER}/${PRIVATE_WIKI_REPO}`,
       { maxRedirects: 0 },
     );
 
     const body = await response.text().catch(() => "");
-    expect(body).not.toContain(privateOverviewSnippet);
+    expect(body).not.toContain(PRIVATE_WIKI_OVERVIEW);
   });
 });
