@@ -1,14 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Wiki } from "@shared/types.js";
-import { buildApp } from "../app.js";
-import * as db from "../services/db.js";
-import * as auth from "../services/auth.js";
-import * as supabase from "../services/supabase.js";
-import * as queue from "../services/queue/index.js";
-import * as reindexService from "../services/reindex.js";
-import * as reindexUtils from "../utils/reindex.js";
+import { buildApp } from "../../src/app.js";
+import * as db from "../../src/services/db.js";
+import * as auth from "../../src/services/auth.js";
+import * as supabase from "../../src/services/supabase.js";
+import * as queue from "../../src/services/queue/index.js";
+import * as reindexService from "../../src/services/reindex.js";
+import * as reindexUtils from "../../src/utils/reindex.js";
 
-vi.mock("../services/db.js", () => ({
+vi.mock("../../src/services/db.js", () => ({
   getWiki: vi.fn(),
   upsertWiki: vi.fn(),
   updateWikiStatus: vi.fn(),
@@ -27,26 +27,26 @@ vi.mock("../services/db.js", () => ({
   insertChallenges: vi.fn(),
 }));
 
-vi.mock("../services/auth.js", () => ({
+vi.mock("../../src/services/auth.js", () => ({
   getBearerToken: vi.fn(),
   getProviderToken: vi.fn(),
   adminRouteGuard: vi.fn(),
 }));
 
-vi.mock("../services/supabase.js", () => ({
+vi.mock("../../src/services/supabase.js", () => ({
   getServerClient: vi.fn(),
   getSupabaseUser: vi.fn(),
 }));
 
-vi.mock("../services/queue/index.js", () => ({
+vi.mock("../../src/services/queue/index.js", () => ({
   queueJobs: vi.fn(),
 }));
 
-vi.mock("../services/reindex.js", () => ({
+vi.mock("../../src/services/reindex.js", () => ({
   reindexWikiAndCode: vi.fn(),
 }));
 
-vi.mock("../utils/reindex.js", () => ({
+vi.mock("../../src/utils/reindex.js", () => ({
   reindexAllHandler: vi.fn(),
 }));
 

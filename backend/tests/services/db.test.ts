@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import * as supabase from "./supabase.js";
-import { getWiki, getWikiById, upsertWiki } from "./db.js";
+import * as supabase from "../../src/services/supabase.js";
+import { getWiki, getWikiById, upsertWiki } from "../../src/services/db.js";
 
-vi.mock("./supabase.js", () => ({
+vi.mock("../../src/services/supabase.js", () => ({
   getServerClient: vi.fn(),
   getSupabaseUser: vi.fn(),
 }));

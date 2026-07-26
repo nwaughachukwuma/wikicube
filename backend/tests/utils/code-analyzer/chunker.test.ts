@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { chunkCodeFile, chunkWikiContent, chunkOverview } from "./chunker.js";
+import { chunkCodeFile, chunkWikiContent, chunkOverview } from "../../../src/utils/code-analyzer/chunker.js";
 
 describe("chunkCodeFile", () => {
   it("returns an empty array for empty content", () => {

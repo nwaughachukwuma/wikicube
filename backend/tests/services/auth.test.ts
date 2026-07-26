@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from "vitest";
-import { getBearerToken, getProviderToken, adminRouteGuard } from "./auth.js";
-import * as supabase from "./supabase.js";
+import { getBearerToken, getProviderToken, adminRouteGuard } from "../../src/services/auth.js";
+import * as supabase from "../../src/services/supabase.js";
 
-vi.mock("./supabase.js", () => ({
+vi.mock("../../src/services/supabase.js", () => ({
   getSupabaseUser: vi.fn(),
 }));
 

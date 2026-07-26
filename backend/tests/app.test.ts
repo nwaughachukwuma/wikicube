@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildApp } from "./app.js";
+import { buildApp } from "../src/app.js";
 
 describe("buildApp", () => {
   it("returns a fastify instance", () => {

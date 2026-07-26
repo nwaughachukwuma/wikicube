@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { buildApp } from "../app.js";
-import * as db from "../services/db.js";
-import * as auth from "../services/auth.js";
-import * as supabase from "../services/supabase.js";
-import * as analyzer from "../utils/code-analyzer/analyzer.js";
+import { buildApp } from "../../src/app.js";
+import * as db from "../../src/services/db.js";
+import * as auth from "../../src/services/auth.js";
+import * as supabase from "../../src/services/supabase.js";
+import * as analyzer from "../../src/utils/code-analyzer/analyzer.js";
 import * as github from "@shared/github.js";
 
 vi.mock("@shared/github.js", () => ({
@@ -23,7 +23,7 @@ vi.mock("@shared/github.js", () => ({
   getMultipleFiles: vi.fn(),
 }));
 
-vi.mock("../services/db.js", () => ({
+vi.mock("../../src/services/db.js", () => ({
   getWiki: vi.fn(),
   upsertWiki: vi.fn(),
   updateWikiStatus: vi.fn(),
@@ -42,18 +42,18 @@ vi.mock("../services/db.js", () => ({
   insertChallenges: vi.fn(),
 }));
 
-vi.mock("../services/auth.js", () => ({
+vi.mock("../../src/services/auth.js", () => ({
   getBearerToken: vi.fn(),
   getProviderToken: vi.fn(),
   adminRouteGuard: vi.fn(),
 }));
 
-vi.mock("../services/supabase.js", () => ({
+vi.mock("../../src/services/supabase.js", () => ({
   getServerClient: vi.fn(),
   getSupabaseUser: vi.fn(),
 }));
 
-vi.mock("../utils/code-analyzer/analyzer.js", () => ({
+vi.mock("../../src/utils/code-analyzer/analyzer.js", () => ({
   runAnalysisPipeline: vi.fn().mockResolvedValue("wiki-new-123"),
 }));
 
