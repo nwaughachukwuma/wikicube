@@ -4,7 +4,7 @@ import { batchAll } from "./batch-ops";
 import { HttpError } from "./error";
 
 const log = logger("github");
-const GITHUB_API = "https://api.github.com";
+const GITHUB_API = process.env.GITHUB_API_URL || "https://api.github.com";
 
 export function getBearerToken(
   headers: { get(name: string): string | null },
