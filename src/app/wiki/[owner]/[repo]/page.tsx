@@ -1,20 +1,7 @@
 import type { Metadata } from "next";
 import { getWiki } from "@/lib/db";
+import { buildWikiMetadata } from "@/lib/wikiMetadata";
 import OverviewPage from "./OverviewPage";
-
-const SITE_URL = "https://wikicube.vercel.app";
-
-function stripMarkdown(input: string): string {
-  return input
-    .replace(/```[\s\S]*?```/g, " ")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/^#{1,6}\s+/gm, "")
-    .replace(/[*_~|]/g, "")
-    .replace(/\n+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
 export async function generateMetadata({
   params,
@@ -23,37 +10,19 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { owner, repo } = await params;
 
-  let overviewText = "";
+  let wiki = null;
   try {
-    const wiki = await getWiki(owner, repo);
-    if (wiki?.overview) {
-      overviewText = stripMarkdown(wiki.overview);
-    }
+    wiki = await getWiki(owner, repo);
   } catch {
-    // Leave overviewText empty to fall back to default description.
+    // Fall through to generic metadata if the wiki lookup fails.
   }
 
-  const title = `${owner}/${repo} · WikiCube`;
-  const description = overviewText
-    ? `${overviewText.slice(0, 155).trimEnd()}${overviewText.length > 155 ? "…" : ""}`
-    : `AI-generated wiki for ${owner}/${repo}`;
-  const url = `${SITE_URL}/wiki/${owner}/${repo}`;
-
-  return {
-    title,
-    description,
-    openGraph: {
-      title,
-      description,
-      type: "website",
-      url,
-    },
-    twitter: {
-      card: "summary_large_image",
-      title,
-      description,
-    },
-  };
+  return buildWikiMetadata({
+    owner,
+    repo,
+    overview: wiki?.overview,
+    visibility: wiki?.visibility ?? null,
+  });
 }
 
 export default async function WikiOverviewRoute({

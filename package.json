@@ -9,7 +9,8 @@
     "start": "next start",
     "lint": "eslint .",
     "pregenerate": "npx tsx scripts/pregenerate.ts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
@@ -36,6 +37,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
+    "@playwright/test": "^1.62.0",
     "@rolldown/binding-linux-x64-gnu": "^1.0.1",
     "@tailwindcss/postcss": "^4.0.0",
     "@types/node": "^22.0.0",
