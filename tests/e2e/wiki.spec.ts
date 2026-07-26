@@ -2,7 +2,6 @@ import { test, expect } from "@playwright/test";
 
 const PUBLIC_WIKI_OWNER = "marcelroed";
 const PUBLIC_WIKI_REPO = "gigatoken";
-
 const UNAUTHORIZED_OWNER = "nwaughachukwuma";
 const UNAUTHORIZED_REPO = "private-wikicube-e2e";
 
