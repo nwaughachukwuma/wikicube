@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z, treeifyError } from "zod";
+import { extractError } from "@shared/error.js";
 import { getWiki } from "../services/db.js";
 import {
   adminRouteGuard,
@@ -39,7 +40,9 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
     const githubToken = getProviderToken(request);
     await reindexWikiAndCode(wiki, githubToken)
       .then(() => reply.send("Reindexing completed"))
-      .catch((err) => reply.status(400).send({ error: err }))
+      .catch((err) =>
+        reply.status(400).send({ error: extractError(err, "Reindexing failed") }),
+      )
       .finally(() => reply.raw.end());
   });
 
