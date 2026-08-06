@@ -20,14 +20,18 @@ export async function GET(
   return NextResponse.json(
     { wiki, features },
     {
-      // Only cache completed wikis
-      ...(wiki.status === "done" &&
-        features.length && {
-          headers: {
-            "Cache-Control":
-              "public, s-maxage=3600, stale-while-revalidate=300",
-          },
-        }),
+      // Only cache completed public wikis; private wikis must never land in
+      // shared caches since access depends on the caller's GitHub permission
+      ...(wiki.status === "done" && features.length
+        ? wiki.visibility === "public"
+          ? {
+              headers: {
+                "Cache-Control":
+                  "public, s-maxage=3600, stale-while-revalidate=300",
+              },
+            }
+          : { headers: { "Cache-Control": "private, no-store" } }
+        : {}),
     },
   );
 }
