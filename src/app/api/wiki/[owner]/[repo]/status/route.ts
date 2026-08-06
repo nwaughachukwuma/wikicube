@@ -26,11 +26,13 @@ export async function GET(
   return NextResponse.json(
     { status: wiki.status },
     {
-      ...(wiki.status === "done" && {
-        headers: {
-          "Cache-Control": "public, s-maxage=3600, stale-while-revalidate=300",
-        },
-      }),
+      ...(wiki.status === "done" &&
+        wiki.visibility === "public" && {
+          headers: {
+            "Cache-Control":
+              "public, s-maxage=3600, stale-while-revalidate=300",
+          },
+        }),
     },
   );
 }
