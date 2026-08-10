@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerClient, getSupabaseUser } from "@/lib/supabase/server";
-import { ADMIN_EMAILS } from "@shared/constants";
+import { isAdminEmail } from "@shared/constants";
 
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: Promise<{ owner: string; repo: string }> },
 ) {
   const user = await getSupabaseUser();
-  if (!user?.email || !ADMIN_EMAILS.has(user.email)) {
+  if (!user?.email || !isAdminEmail(user.email)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
