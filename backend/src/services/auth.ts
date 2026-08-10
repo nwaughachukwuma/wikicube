@@ -1,6 +1,6 @@
 import type { FastifyRequest } from "fastify";
 import { getSupabaseUser } from "./supabase.js";
-import { ADMIN_EMAILS } from "@shared/constants.js";
+import { isAdminEmail } from "@shared/constants.js";
 
 export function getBearerToken(request: FastifyRequest) {
   const authHeader = request.headers.authorization ?? "";
@@ -16,7 +16,7 @@ export const getProviderToken = (request: FastifyRequest) =>
 
 export async function adminRouteGuard(token?: string) {
   const user = await getSupabaseUser(token);
-  if (!user?.email || !ADMIN_EMAILS.has(user.email)) {
+  if (!user?.email || !isAdminEmail(user.email)) {
     return null;
   }
   return user;

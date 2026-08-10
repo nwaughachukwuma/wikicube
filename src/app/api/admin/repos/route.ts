@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 import { getServerClient, getSupabaseUser } from "@/lib/supabase/server";
-import { ADMIN_EMAILS } from "@shared/constants";
+import { isAdminEmail } from "@shared/constants";
 import type { Wiki } from "@shared/types";
 import { HttpError } from "@shared/error";
 import { batchAll } from "@shared/batch-ops";
 
 export async function GET() {
   const user = await getSupabaseUser();
-  if (!user?.email || !ADMIN_EMAILS.has(user.email)) {
+  if (!user?.email || !isAdminEmail(user.email)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

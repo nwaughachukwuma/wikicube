@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getBearerToken, getProviderToken, adminRouteGuard } from "../../src/services/auth.js";
 import * as supabase from "../../src/services/supabase.js";
 
@@ -36,16 +36,20 @@ describe("getProviderToken", () => {
 });
 
 describe("adminRouteGuard", () => {
+  beforeEach(() => {
+    vi.stubEnv("ADMIN_EMAILS", "admin@example.com");
+  });
+
   it("returns the user when they are an admin", async () => {
     vi.mocked(supabase.getSupabaseUser).mockResolvedValue({
       id: "admin-1",
-      email: "nwaughac@gmail.com",
+      email: "admin@example.com",
     } as any);
 
     const user = await adminRouteGuard("admin-token");
     expect(user).toEqual({
       id: "admin-1",
-      email: "nwaughac@gmail.com",
+      email: "admin@example.com",
     });
   });
 
