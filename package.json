@@ -9,7 +9,6 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "pregenerate": "npx tsx scripts/pregenerate.ts",
     "test": "vitest run",
     "test:e2e": "playwright test"
   },
