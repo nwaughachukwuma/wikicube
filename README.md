@@ -178,6 +178,16 @@ Five tables in Supabase (see `supabase/`):
 
 Vector search uses the `match_chunks` RPC (cosine similarity via `ivfflat` index).
 
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](./CONTRIBUTING.md) for dev
+setup, the checks CI runs, and repo conventions.
+
+## Security
+
+Please report vulnerabilities privately — see [SECURITY.md](./SECURITY.md).
+Do not open public issues for security problems.
+
 ## License
 
 [Apache-2.0](./LICENSE)
