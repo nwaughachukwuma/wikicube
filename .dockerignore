@@ -1,0 +1,13 @@
+.git
+.next
+node_modules
+backend/node_modules
+backend/dist
+shared/dist
+embedding-service/.venv
+test-results
+playwright-report
+coverage
+*.env
+.env*
+!.env*.example

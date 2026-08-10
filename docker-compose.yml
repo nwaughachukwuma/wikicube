@@ -1,0 +1,70 @@
+# Full-stack WikiCube: frontend (web), analysis backend, embedding service, Redis.
+#
+# Supabase is external — create a project and run the migrations first
+# (see README "Getting Started").
+#
+# Configuration comes from the same files as local development:
+#   - .env.local      → web       (cp .env.local.example .env.local)
+#   - backend/.env    → backend   (cp backend/.env.example backend/.env)
+#   - a root .env with REDIS_PASSWORD=... for the Redis container
+#     (compose interpolates ${REDIS_PASSWORD} from it; backend/.env must
+#     use the same value)
+#
+# Service-to-service URLs (BACKEND_BASE_URL, EMBEDDINGS_BASE_URL, REDIS_HOST)
+# are pinned below and override the env files.
+#
+#   docker compose up --build
+#
+# The web container runs `next build` on startup so NEXT_PUBLIC_* values from
+# .env.local are inlined without baking secrets into the image; first start
+# takes a couple of minutes. The embedding model (~500 MB) downloads on first
+# run and is cached in the hf-cache volume.
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env_file: .env.local
+    environment:
+      BACKEND_BASE_URL: http://backend:3031
+      EMBEDDINGS_BASE_URL: http://embeddings:8000
+    depends_on:
+      - backend
+      - embeddings
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "3031:3031"
+    env_file: backend/.env
+    environment:
+      HOST: 0.0.0.0
+      PORT: "3031"
+      REDIS_HOST: redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      EMBEDDINGS_BASE_URL: http://embeddings:8000
+    depends_on:
+      - redis
+      - embeddings
+
+  embeddings:
+    build:
+      context: embedding-service
+    ports:
+      - "8000:8000"
+    environment:
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-http://localhost:3000}
+    volumes:
+      - hf-cache:/root/.cache/huggingface
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --requirepass ${REDIS_PASSWORD:?Set REDIS_PASSWORD in a root .env file}
+
+volumes:
+  hf-cache:
