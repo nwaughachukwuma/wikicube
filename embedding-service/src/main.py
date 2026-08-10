@@ -1,3 +1,5 @@
+import os
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -7,14 +9,18 @@ from typing import Literal
 
 app = FastAPI()
 
+# Comma-separated list of allowed origins, e.g.
+# CORS_ALLOW_ORIGINS="https://wiki.example.com,http://localhost:3000"
+DEFAULT_CORS_ALLOW_ORIGINS = "http://localhost,http://localhost:3000,http://localhost:3031"
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://wikicube.vercel.app",
-        "http://localhost:3000",
-        "http://localhost:3031",
-        "http://195.201.23.25:3031",
-        "http://localhost",
+        origin.strip()
+        for origin in os.environ.get(
+            "CORS_ALLOW_ORIGINS", DEFAULT_CORS_ALLOW_ORIGINS
+        ).split(",")
+        if origin.strip()
     ],
     allow_credentials=True,
     allow_methods=["*"],
