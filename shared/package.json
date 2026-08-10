@@ -2,6 +2,7 @@
   "name": "@wikicube/shared",
   "version": "1.0.1",
   "type": "module",
+  "license": "Apache-2.0",
   "exports": {
     "./*": {
       "types": "./dist/*.d.ts",
