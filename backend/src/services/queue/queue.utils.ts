@@ -25,8 +25,8 @@ export const REDIS_MAX_RETRIES = 5;
 const backoff = (times: number) => Math.min(times * 200, 2000);
 
 export const WorkerRedisOptions = {
-  host: "localhost",
-  port: 6379,
+  host: process.env.REDIS_HOST || "localhost",
+  port: Number(process.env.REDIS_PORT || 6379),
   maxRetriesPerRequest: null,
   password: process.env.REDIS_PASSWORD,
   retryStrategy: backoff,

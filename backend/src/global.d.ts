@@ -6,5 +6,7 @@ declare namespace NodeJS {
     GITHUB_TOKEN: string;
     OPENROUTER_API_KEY: string;
     REDIS_PASSWORD: string;
+    REDIS_HOST?: string;
+    REDIS_PORT?: string;
   }
 }
