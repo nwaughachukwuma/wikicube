@@ -19,6 +19,18 @@ test.describe("GitHub shortcut", () => {
       `/wiki/${PUBLIC_WIKI_OWNER}/${PUBLIC_WIKI_REPO}`,
     );
   });
+
+  test("strips .git from clone-form repository paths", async ({ request }) => {
+    const response = await request.get(
+      `/github.com/${PUBLIC_WIKI_OWNER}/${PUBLIC_WIKI_REPO}.git`,
+      { maxRedirects: 0 },
+    );
+
+    expect(response.status()).toBe(307);
+    expect(new URL(response.headers().location).pathname).toBe(
+      `/wiki/${PUBLIC_WIKI_OWNER}/${PUBLIC_WIKI_REPO}`,
+    );
+  });
 });
 
 test.describe("/wiki/[owner]/[repo] metadata", () => {
