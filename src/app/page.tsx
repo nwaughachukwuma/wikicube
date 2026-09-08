@@ -6,7 +6,7 @@ import { OptimLink } from "@/components/OptimisticLink";
 import AppHeader from "@/components/AppHeader";
 import { PageLoading } from "@/components/PageLoading";
 import { useUser } from "@/lib/supabase/useUser";
-import { GITHUB_REPO_RE } from "@shared/github";
+import { GITHUB_REPO_RE, parseRepoUrl } from "@shared/github";
 
 const EXAMPLE_REPOS = [
   {
@@ -50,22 +50,22 @@ export default function HomePage() {
     setError("");
 
     try {
-      // Extract owner/repo
-      const match = url
-        .trim()
-        .replace(/\/+$/, "")
-        .replace(/\.git$/, "")
-        .match(/(?:github\.com\/)?([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)$/);
+      const { owner, repo } = parseRepoUrl(url);
+      const response = await fetch("/api/wikis/check", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ repos: [{ owner, repo }] }),
+      });
+      if (!response.ok) throw new Error("Failed to check wiki");
 
-      if (!match) {
-        setError(
-          "Please enter a valid GitHub URL (e.g. github.com/owner/repo)",
-        );
+      const [result] = (await response.json()) as Array<{ hasWiki: boolean }>;
+      if (result?.hasWiki) {
+        setError(`A wiki for ${owner}/${repo} already exists.`);
         setLoading(false);
         return;
       }
 
-      router.push(`/wiki/${match[1]}/${match[2]}`);
+      router.push(`/wiki/${owner}/${repo}`);
     } catch {
       setError("Something went wrong. Please try again.");
       setLoading(false);

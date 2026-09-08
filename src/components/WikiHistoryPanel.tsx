@@ -15,7 +15,10 @@ export default function WikiHistoryPanel() {
   // Prefetch on mount
   useEffect(() => {
     let cancelled = false;
-    fetchWithSWR<WikiEntry[]>("/api/wikis", {}, { maxAge: 300 })
+    fetchWithSWR<WikiEntry[]>("/api/wikis", {}, {
+      maxAge: 300,
+      onRevalidate: (data) => !cancelled && setWikis(data),
+    })
       .then((data) => !cancelled && setWikis(data))
       .catch(() => !cancelled && setWikis([]))
       .finally(() => !cancelled && setLoading(false));
