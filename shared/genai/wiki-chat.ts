@@ -34,7 +34,7 @@ ${context}`,
 
   const chatStream = async (question: string) =>
     getClient().chat.completions.create({
-      model: MODELS["g31flash-lite"],
+      model: MODELS["g35flash-lite"],
       messages: [...messages, { role: "user", content: question }],
       stream: true,
     });

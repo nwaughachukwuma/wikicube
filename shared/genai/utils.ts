@@ -3,10 +3,8 @@ import { z } from "zod";
 import { makeRetriable, type Options } from "p-retry";
 
 export const MODELS = {
-  "g31flash-lite": "google/gemini-3.1-flash-lite",
-  g3flash: "google/gemini-3-flash-preview",
-  g31pro: "google/gemini-3.1-pro-preview",
-  g35flash: "google/gemini-3.5-flash",
+  "g35flash-lite": "google/gemini-3.5-flash-lite",
+  g37flash: "google/gemini-3.7-flash",
 } as const;
 
 export type TaskType =
@@ -22,6 +20,10 @@ export function getClient() {
     _client = new OpenAI({
       baseURL: "https://openrouter.ai/api/v1",
       apiKey,
+      defaultHeaders: {
+        "HTTP-Referer": "https://wikicube.app",
+        "X-OpenRouter-Title": "Wikicube",
+      },
     });
   }
   return _client;
