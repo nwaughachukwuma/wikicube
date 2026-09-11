@@ -82,7 +82,7 @@ a public issue** — see [SECURITY.md](./SECURITY.md).
 
 Running the analysis pipeline calls OpenRouter models on your own key. A
 single wiki generation for a mid-sized repo typically costs a few cents, with
-`google/gemini-3.1-pro-preview` (feature identification, challenges) the main
+`google/gemini-3.7-flash` (feature identification, challenges) the main
 driver. Keep experiments on small repos while iterating.
 
 ## License

@@ -126,7 +126,7 @@ export async function generateFeaturePage(
 
   const done = log.time(`generateFeaturePage:${feature.title}`);
   const res = await retryable({
-    model: MODELS["g31flash-lite"],
+    model: MODELS["g35flash-lite"],
     contents: userPrompt,
     config: {
       systemInstruction: systemPrompt,
@@ -142,7 +142,7 @@ export async function generateFeaturePage(
 
   done({
     feature: feature.title,
-    model: MODELS["g31flash-lite"],
+    model: MODELS["g35flash-lite"],
   });
 
   const {

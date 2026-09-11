@@ -30,7 +30,7 @@ WikiCube is three services plus a shared library:
 
 Other pieces:
 
-- **LLM**: OpenRouter via the `openai` SDK — `google/gemini-3.1-pro-preview` for feature identification and challenge generation, `google/gemini-3.1-flash-lite` for page generation, overviews, and chat (`shared/genai/`)
+- **LLM**: OpenRouter via the `openai` SDK — `google/gemini-3.7-flash` for feature identification and challenge generation, `google/gemini-3.5-flash-lite` for page generation, overviews, and chat (`shared/genai/`)
 - **Database & auth**: Supabase (PostgreSQL + pgvector; GitHub OAuth for sign-in and private-repo access)
 - **Deployment**: Vercel (frontend); the backend, Redis, and embedding service run on any Node/Python host
 
