@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 const PARAM = "page";
 
@@ -10,7 +10,6 @@ const PARAM = "page";
  * reloads and navigation. Page 1 is represented by omitting the param.
  */
 export function usePageParam() {
-  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -23,11 +22,11 @@ export function usePageParam() {
       if (value > 1) params.set(PARAM, String(value));
       else params.delete(PARAM);
       const query = params.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, {
-        scroll: false,
-      });
+      // Shallow update: Next.js syncs useSearchParams with the History API
+      // without a server round trip.
+      window.history.replaceState(null, "", query ? `${pathname}?${query}` : pathname);
     },
-    [page, pathname, router, searchParams],
+    [page, pathname, searchParams],
   );
 
   return [page, setPage] as const;

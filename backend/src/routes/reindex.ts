@@ -17,7 +17,7 @@ const ReindexReq = z.object({
   repo: z.string().nonempty("Repo is required"),
 });
 
-export default async function reindexRoutes(fastify: FastifyInstance) {
+export default function reindexRoutes(fastify: FastifyInstance) {
   fastify.post("/reindex", async (request, reply) => {
     const parsed = ReindexReq.safeParse(request.body);
     if (!parsed.success) {
@@ -83,7 +83,7 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    reindexHandler.addBulk([
+    await reindexHandler.addBulk([
       { name: "dummy", data: { foo: "bar" } },
       { name: "dummy", data: { qux: "baz" } },
     ]);
