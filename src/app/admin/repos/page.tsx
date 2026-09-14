@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { Suspense, useState, useEffect, useCallback, useMemo } from "react";
 import AppHeader from "@/components/AppHeader";
 import {
   Lock,
@@ -16,6 +16,8 @@ import type { Wiki } from "@shared/types";
 import { dayAgo } from "@/lib/timing";
 import { toast } from "sonner";
 import { HttpError } from "@shared/error";
+import { usePageParam } from "@/lib/hooks/pageParam";
+import { PageLoading } from "@/components/PageLoading";
 
 const PAGE_SIZE = 10;
 
@@ -25,6 +27,14 @@ interface EnrichedWiki extends Wiki {
 }
 
 export default function AdminReposPage() {
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <AdminReposContent />
+    </Suspense>
+  );
+}
+
+function AdminReposContent() {
   const [wikis, setWikis] = useState<EnrichedWiki[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -32,7 +42,7 @@ export default function AdminReposPage() {
   const [reindexing, setReindexing] = useState<string | null>(null);
   const [detailWiki, setDetailWiki] = useState<EnrichedWiki | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [page, setPage] = useState(1);
+  const [pageParam, setPage] = usePageParam();
   const [search, setSearch] = useState("");
   const [filterVisibility, setFilterVisibility] = useState<string>("all");
   const [filterWikiStatus, setFilterWikiStatus] = useState<string>("all");
@@ -72,11 +82,8 @@ export default function AdminReposPage() {
   }, [wikis, search, filterVisibility, filterWikiStatus]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const page = Math.min(pageParam, totalPages);
   const pageItems = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, filterVisibility, filterWikiStatus]);
 
   const handleDelete = async (wiki: Wiki) => {
     setDeleting(wiki.id);
@@ -108,8 +115,8 @@ export default function AdminReposPage() {
     })
       .then(async (res) => {
         if (res.ok) return res.json();
-        const orignalError = `GitHub API error ${res.status}: ${await res.text()}`;
-        throw new HttpError(res, orignalError);
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || HttpError.getHumanReadableMessage(res));
       })
       .then(() => {
         toast.success("Reindexing completed");
@@ -182,7 +189,10 @@ export default function AdminReposPage() {
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               placeholder="Search repo…"
               className="w-full pl-8 pr-3 py-1.5 text-xs bg-bg-alt border border-border
                          focus:outline-none focus:border-border-strong placeholder:text-text-muted/50"
@@ -190,7 +200,10 @@ export default function AdminReposPage() {
           </div>
           <select
             value={filterVisibility}
-            onChange={(e) => setFilterVisibility(e.target.value)}
+            onChange={(e) => {
+              setFilterVisibility(e.target.value);
+              setPage(1);
+            }}
             className="px-3 py-1.5 text-xs bg-bg-alt border border-border focus:outline-none"
           >
             <option value="all">All visibility</option>
@@ -199,7 +212,10 @@ export default function AdminReposPage() {
           </select>
           <select
             value={filterWikiStatus}
-            onChange={(e) => setFilterWikiStatus(e.target.value)}
+            onChange={(e) => {
+              setFilterWikiStatus(e.target.value);
+              setPage(1);
+            }}
             className="px-3 py-1.5 text-xs bg-bg-alt border border-border focus:outline-none"
           >
             <option value="all">All status</option>
@@ -332,7 +348,7 @@ export default function AdminReposPage() {
               </span>
               <div className="flex items-center gap-1">
                 <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  onClick={() => setPage(page - 1)}
                   disabled={page === 1}
                   className="p-1 hover:text-text transition disabled:opacity-30 disabled:cursor-not-allowed"
                 >
@@ -342,7 +358,7 @@ export default function AdminReposPage() {
                   {page} / {totalPages}
                 </span>
                 <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() => setPage(page + 1)}
                   disabled={page === totalPages}
                   className="p-1 hover:text-text transition disabled:opacity-30 disabled:cursor-not-allowed"
                 >

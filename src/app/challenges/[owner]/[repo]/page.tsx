@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { Suspense, useEffect, useState, useCallback } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -17,6 +17,8 @@ import {
 import { toast } from "sonner";
 import type { Challenge } from "@shared/types";
 import { LinkifyGitHubRefs } from "./LinkifyGitHubRefs";
+import { usePageParam } from "@/lib/hooks/pageParam";
+import { PageLoading } from "@/components/PageLoading";
 
 const PREVIEW_LENGTH = 240;
 const OBJECTIVE_PREVIEW_LENGTH = 100;
@@ -112,6 +114,14 @@ function ChallengeCard({
 }
 
 export default function ChallengesPage() {
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <ChallengesContent />
+    </Suspense>
+  );
+}
+
+function ChallengesContent() {
   const params = useParams<{ owner: string; repo: string }>();
   const { owner, repo } = params;
   const [challenges, setChallenges] = useState<Challenge[]>([]);
@@ -119,7 +129,7 @@ export default function ChallengesPage() {
   const [generating, setGenerating] = useState(false);
   const [fetchingNew, setFetchingNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
+  const [pageParam, setPage] = usePageParam();
 
   const fetchChallenges = useCallback(async () => {
     setLoading(true);
@@ -187,13 +197,14 @@ export default function ChallengesPage() {
     } finally {
       setFetchingNew(false);
     }
-  }, [owner, repo, challenges]);
+  }, [owner, repo, challenges, setPage]);
 
   useEffect(() => {
     fetchChallenges();
   }, [fetchChallenges]);
 
   const totalPages = Math.max(1, Math.ceil(challenges.length / PAGE_SIZE));
+  const page = Math.min(pageParam, totalPages);
   const pageStart = (page - 1) * PAGE_SIZE;
   const pageChallenges = challenges.slice(pageStart, pageStart + PAGE_SIZE);
 
@@ -273,7 +284,7 @@ export default function ChallengesPage() {
             {totalPages > 1 && (
               <div className="mt-8 flex items-center justify-between">
                 <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  onClick={() => setPage(page - 1)}
                   disabled={page <= 1}
                   className="inline-flex items-center gap-1 text-xs uppercase tracking-wider
                              text-text-muted hover:text-text transition
@@ -286,7 +297,7 @@ export default function ChallengesPage() {
                   Page {page} / {totalPages}
                 </span>
                 <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() => setPage(page + 1)}
                   disabled={page >= totalPages}
                   className="inline-flex items-center gap-1 text-xs uppercase tracking-wider
                              text-text-muted hover:text-text transition

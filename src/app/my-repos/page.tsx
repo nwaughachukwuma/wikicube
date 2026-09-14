@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { Suspense, useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import AppHeader from "@/components/AppHeader";
 import { useUser } from "@/lib/supabase/useUser";
@@ -17,23 +17,31 @@ import { OptimLink } from "@/components/OptimisticLink";
 import type { RepoWithWiki } from "@/app/api/my-repos/route";
 import { dayAgo } from "@/lib/timing";
 import { signIn } from "@/components/AuthButton";
+import { usePageParam } from "@/lib/hooks/pageParam";
 
 const PAGE_SIZE = 10;
 const CACHE_TTL = 600;
 
 export default function MyReposPage() {
+  return (
+    <Suspense fallback={<PageLoading />}>
+      <MyReposContent />
+    </Suspense>
+  );
+}
+
+function MyReposContent() {
   const router = useRouter();
   const { user, authLoading } = useUser();
   const [repos, setRepos] = useState<RepoWithWiki[]>([]);
   const [reposLoading, setReposLoading] = useState(false);
   const [error, setError] = useState("");
-  const [page, setPage] = useState(1);
+  const [pageParam, setPage] = usePageParam();
 
   useEffect(() => {
     if (!user) return;
 
     setReposLoading(true);
-    setPage(1);
 
     // Single server-side call: fetches GitHub repos + wiki check in parallel,
     // with providerToken read from the session cookie, never exposed to client network tab.
@@ -48,6 +56,7 @@ export default function MyReposPage() {
   }, [user]);
 
   const totalPages = Math.max(1, Math.ceil(repos.length / PAGE_SIZE));
+  const page = Math.min(pageParam, totalPages);
   const pageRepos = useMemo(
     () => repos.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [repos, page],
@@ -210,7 +219,7 @@ export default function MyReposPage() {
                   </span>
                   <div className="flex items-center gap-1">
                     <button
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      onClick={() => setPage(page - 1)}
                       disabled={page === 1}
                       className="p-1 hover:text-text transition disabled:opacity-30 disabled:cursor-not-allowed"
                       aria-label="Previous page"
@@ -221,9 +230,7 @@ export default function MyReposPage() {
                       {page} / {totalPages}
                     </span>
                     <button
-                      onClick={() =>
-                        setPage((p) => Math.min(totalPages, p + 1))
-                      }
+                      onClick={() => setPage(page + 1)}
                       disabled={page === totalPages}
                       className="p-1 hover:text-text transition disabled:opacity-30 disabled:cursor-not-allowed"
                       aria-label="Next page"
