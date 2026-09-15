@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 import { getSupabaseUser, getSupabaseSession } from "@/lib/supabase/server";
 import { isAdminEmail } from "@shared/constants";
 
@@ -12,21 +12,23 @@ export async function POST() {
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  // fire and forget
-  void fetch(`${process.env.BACKEND_BASE_URL}/reindex-all`, {
-    method: "POST",
-    body: JSON.stringify({}),
-    headers: {
-      "content-type": "application/json",
-      "User-Agent": "wikicube/1.0",
-      ...(session?.access_token
-        ? { Authorization: `Bearer ${session.access_token}` }
-        : {}),
-      ...(session?.provider_token
-        ? { "X-Provider-Token": session.provider_token }
-        : {}),
-    },
-  });
+  // fire and forget, but keep the function alive until the request is sent
+  after(() =>
+    fetch(`${process.env.BACKEND_BASE_URL}/reindex-all`, {
+      method: "POST",
+      body: JSON.stringify({}),
+      headers: {
+        "content-type": "application/json",
+        "User-Agent": "wikicube/1.0",
+        ...(session?.access_token
+          ? { Authorization: `Bearer ${session.access_token}` }
+          : {}),
+        ...(session?.provider_token
+          ? { "X-Provider-Token": session.provider_token }
+          : {}),
+      },
+    }).catch((err) => console.error("reindex-all request failed", err)),
+  );
 
   return NextResponse.json({ ok: true, message: "Reindexing in progress" });
 }

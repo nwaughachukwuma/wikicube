@@ -52,10 +52,12 @@ export async function POST(req: NextRequest) {
   });
 
   if (!response.ok || response.status >= 300) {
-    return NextResponse.json(
-      { error: HttpError.getHumanReadableMessage(response) },
-      { status: response.status },
-    );
+    const body = await response.json().catch(() => null);
+    const error =
+      typeof body?.error === "string"
+        ? body.error
+        : HttpError.getHumanReadableMessage(response);
+    return NextResponse.json({ error }, { status: response.status });
   }
 
   return NextResponse.json(await response.text(), { status: 200 });

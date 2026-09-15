@@ -22,8 +22,8 @@ export const SearchReindexButton = ({ owner, repo }: Props) => {
     })
       .then(async (res) => {
         if (res.ok) return res.json();
-        const orignalError = `GitHub API error ${res.status}: ${await res.text()}`;
-        throw new HttpError(res, orignalError);
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || HttpError.getHumanReadableMessage(res));
       })
       .then(() => {
         toast.success("Reindexing completed.", {

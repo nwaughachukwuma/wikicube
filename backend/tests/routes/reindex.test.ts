@@ -139,7 +139,7 @@ describe("POST /api/reindex", () => {
     );
   });
 
-  it("returns 400 when reindexing fails", async () => {
+  it("returns 500 when reindexing fails", async () => {
     vi.mocked(db.getWiki).mockResolvedValue(makeWiki());
     vi.mocked(reindexService.reindexWikiAndCode).mockRejectedValue(
       new Error("Embedding failed"),
@@ -150,7 +150,7 @@ describe("POST /api/reindex", () => {
       url: "/api/reindex",
       payload: { owner: "marcelroed", repo: "gigatoken" },
     });
-    expect(res.statusCode).toBe(400);
+    expect(res.statusCode).toBe(500);
     expect(JSON.parse(res.payload)).toEqual({ error: "Embedding failed" });
   });
 });

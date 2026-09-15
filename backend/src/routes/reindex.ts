@@ -17,7 +17,7 @@ const ReindexReq = z.object({
   repo: z.string().nonempty("Repo is required"),
 });
 
-export default async function reindexRoutes(fastify: FastifyInstance) {
+export default function reindexRoutes(fastify: FastifyInstance) {
   fastify.post("/reindex", async (request, reply) => {
     const parsed = ReindexReq.safeParse(request.body);
     if (!parsed.success) {
@@ -41,7 +41,7 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
     await reindexWikiAndCode(wiki, githubToken)
       .then(() => reply.send("Reindexing completed"))
       .catch((err) =>
-        reply.status(400).send({ error: extractError(err, "Reindexing failed") }),
+        reply.status(500).send({ error: extractError(err, "Reindexing failed") }),
       )
       .finally(() => reply.raw.end());
   });
@@ -67,7 +67,7 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
 
     const reindexHandler = (await queueJobs()).reindex;
     if (reindexHandler) {
-      reindexHandler.add("reindex-all", { wikis, githubToken });
+      await reindexHandler.add("reindex-all", { wikis, githubToken });
       reply.send("Reindex-all operation is queued");
       return;
     }
@@ -83,7 +83,7 @@ export default async function reindexRoutes(fastify: FastifyInstance) {
       return;
     }
 
-    reindexHandler.addBulk([
+    await reindexHandler.addBulk([
       { name: "dummy", data: { foo: "bar" } },
       { name: "dummy", data: { qux: "baz" } },
     ]);
