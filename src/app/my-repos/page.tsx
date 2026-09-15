@@ -103,6 +103,11 @@ function MyReposContent() {
               </span>
             </p>
 
+            <p className="mt-3 text-xs text-text-muted">
+              Only one member of a shared private repo needs to index it — all
+              collaborators will then be able to access the wiki.
+            </p>
+
             {reposLoading && (
               <div className="mt-12 flex items-center gap-2 text-text-muted text-sm">
                 <div className="w-2 h-2 bg-accent rounded-full animate-pulse" />
@@ -239,11 +244,6 @@ function MyReposContent() {
                     </button>
                   </div>
                 </div>
-
-                <p className="mt-3 text-xs text-text-muted">
-                  Only one member of a shared private repo needs to index it —
-                  all collaborators will then be able to access the wiki.
-                </p>
               </>
             )}
           </>
