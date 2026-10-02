@@ -39,6 +39,13 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${anton.variable} ${jetbrainsMono.variable}`}
     >
+      <head>
+        <script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9889260593378643"
+          crossOrigin="anonymous"
+        />
+      </head>
       <body className="bg-bg text-text antialiased" suppressHydrationWarning>
         {children}
         <Toaster />
