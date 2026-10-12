@@ -164,6 +164,18 @@ export async function markSearchFailed(
   });
 }
 
+/** Store the default-branch HEAD seen by a freshness check */
+export async function recordLatestCommit(wikiId: string, sha: string) {
+  const { error } = await getServerClient()
+    .from("wikis")
+    .update({
+      latest_commit_sha: sha,
+      checked_at: new Date().toISOString(),
+    })
+    .eq("id", wikiId);
+  if (error) throw error;
+}
+
 export async function getWiki(
   owner: string,
   repo: string,

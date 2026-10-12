@@ -38,6 +38,12 @@ export async function fetchWithSWR<T>(
   return fetchAndCache<T>(url, options, cache);
 }
 
+/** Drop a cached response so the next fetchWithSWR goes to the network */
+export async function purgeCached(url: string) {
+  const cache = await caches.open(CACHE_NAME);
+  await cache.delete(url);
+}
+
 async function fetchAndCache<T>(
   url: string,
   options: RequestInit,
