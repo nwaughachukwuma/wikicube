@@ -1,6 +1,11 @@
 import { describe, it, expect, vi } from "vitest";
 import * as supabase from "../../src/services/supabase.js";
-import { getWiki, getWikiById, upsertWiki } from "../../src/services/db.js";
+import {
+  claimRefresh,
+  getWiki,
+  getWikiById,
+  upsertWiki,
+} from "../../src/services/db.js";
 
 vi.mock("../../src/services/supabase.js", () => ({
   getServerClient: vi.fn(),
@@ -94,5 +99,43 @@ describe("upsertWiki", () => {
 
     const result = await upsertWiki("marcelroed", "gigatoken", "main");
     expect(result).toEqual(wiki);
+  });
+});
+
+describe("claimRefresh", () => {
+  function makeUpdateChain(finalResult: { data?: any; error?: any }) {
+    const maybeSingle = vi.fn().mockResolvedValue(finalResult);
+    const chain: Record<string, any> = {};
+    chain.eq = vi.fn(() => chain);
+    chain.or = vi.fn(() => chain);
+    chain.select = vi.fn(() => ({ maybeSingle }));
+    const update = vi.fn(() => chain);
+    return { update, chain, client: { from: vi.fn(() => ({ update })) } };
+  }
+
+  it("only locks finished wikis that no live refresh holds", async () => {
+    const { client, update, chain } = makeUpdateChain({ data: wiki });
+    vi.mocked(supabase.getServerClient).mockReturnValue(client as any);
+
+    const result = await claimRefresh("wiki-1");
+
+    expect(result).toEqual(wiki);
+    expect(update).toHaveBeenCalledWith(
+      expect.objectContaining({ refresh_started_at: expect.any(String) }),
+    );
+    expect(chain.eq).toHaveBeenCalledWith("id", "wiki-1");
+    expect(chain.eq).toHaveBeenCalledWith("status", "done");
+    expect(chain.or).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^refresh_started_at\.is\.null,refresh_started_at\.lt\."[^"]+"$/,
+      ),
+    );
+  });
+
+  it("returns null when the lock is held", async () => {
+    const { client } = makeUpdateChain({ data: null });
+    vi.mocked(supabase.getServerClient).mockReturnValue(client as any);
+
+    expect(await claimRefresh("wiki-1")).toBeNull();
   });
 });

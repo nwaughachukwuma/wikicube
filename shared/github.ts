@@ -76,6 +76,26 @@ export async function getRepoMeta(
   } satisfies RepoMeta;
 }
 
+/** Fetch the SHA of the commit at the tip of a branch */
+export async function getBranchHeadSha(
+  owner: string,
+  repo: string,
+  branch: string,
+  token?: string,
+): Promise<string> {
+  const res = await fetch(
+    `${GITHUB_API}/repos/${owner}/${repo}/commits/${branch}`,
+    { headers: { ...headers(token), Accept: "application/vnd.github.sha" } },
+  );
+  if (!res.ok) {
+    throw new HttpError(
+      res,
+      `GitHub API error ${res.status}: ${await res.text()}`,
+    );
+  }
+  return (await res.text()).trim();
+}
+
 /** Fetch full file tree */
 export async function getRepoTree(
   owner: string,

@@ -43,7 +43,7 @@ wikicube/
 │   └── components/         #   UI components
 ├── backend/
 │   └── src/
-│       ├── routes/         #   /analyze, /reindex, /reindex-all
+│       ├── routes/         #   /analyze, /reindex, /reindex-all, /refresh
 │       ├── services/       #   auth, supabase, BullMQ queue
 │       └── utils/code-analyzer/  # The analysis pipeline (phases A–F)
 ├── shared/
@@ -152,6 +152,10 @@ Runs in the Fastify backend as BullMQ jobs (`backend/src/utils/code-analyzer/`):
 
 The frontend polls analysis status and streams progress to the client.
 
+### Keeping wikis fresh
+
+Each wiki records the default-branch commit it was generated from. A regeneration builds the new pages alongside the live ones (`features.generation`) and switches over in one update, so the current wiki stays readable throughout and a failed run changes nothing. The search index is rebuilt right after the switch. Admins can regenerate any wiki from the admin console.
+
 ## API Routes (frontend)
 
 | Method | Route | Description |
@@ -165,13 +169,14 @@ The frontend polls analysis status and streams progress to the client.
 | `GET` | `/api/[owner]/[repo]/challenges` | Public Agent Challenges API (paginated) |
 | `GET` | `/api/my-repos` | List the signed-in user's GitHub repos (private indexing) |
 | `POST` | `/api/reindex`, `/api/reindex-all` | Re-run analysis (admin only) |
+| `POST` | `/api/wiki/[owner]/[repo]/refresh` | Regenerate a wiki in place (admins; anyone with GitHub access for private wikis) |
 
 ## Database Schema
 
 Five tables in Supabase (see `supabase/`):
 
-- **`wikis`** — one row per repo; tracks `status`, `overview`, `visibility`, timestamps
-- **`features`** — one row per identified feature; stores `markdown_content`, `entry_points`, `citations`, `sort_order`
+- **`wikis`** — one row per repo; tracks `status`, `overview`, `visibility`, the live `generation`, the commit it was generated from, and timestamps
+- **`features`** — one row per identified feature per `generation`; stores `markdown_content`, `entry_points`, `citations`, `sort_order`
 - **`chunks`** — one row per embedded passage; stores `embedding vector(768)`, `source_file`, `source_type` (`wiki` | `code`)
 - **`wiki_chats`** — per-user chat sessions (RLS-scoped to the owner)
 - **`challenges`** — generated Agent Challenge task specs

@@ -16,7 +16,7 @@ export async function GET(
   const error = await validateRepoAccess(wiki.owner, wiki.repo);
   if (error) return error;
 
-  const features = await getFeatures(wiki.id);
+  const features = await getFeatures(wiki.id, wiki.generation);
   return NextResponse.json(
     { wiki, features },
     {

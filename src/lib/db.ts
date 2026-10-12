@@ -202,11 +202,15 @@ export async function insertFeature(
   return data as Feature;
 }
 
-export async function getFeatures(wikiId: string): Promise<Feature[]> {
+export async function getFeatures(
+  wikiId: string,
+  generation: number,
+): Promise<Feature[]> {
   const { data, error } = await getServerClient()
     .from("features")
     .select("*")
     .eq("wiki_id", wikiId)
+    .eq("generation", generation)
     .order("sort_order", { ascending: true });
 
   if (error) throw error;
@@ -216,12 +220,14 @@ export async function getFeatures(wikiId: string): Promise<Feature[]> {
 
 export async function getFeatureBySlug(
   wikiId: string,
+  generation: number,
   slug: string,
 ): Promise<Feature | null> {
   const { data } = await getServerClient()
     .from("features")
     .select("*")
     .eq("wiki_id", wikiId)
+    .eq("generation", generation)
     .eq("slug", slug)
     .single();
 

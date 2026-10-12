@@ -26,6 +26,8 @@ interface EnrichedWiki extends Wiki {
   github_updated_at: string | null;
 }
 
+const shortSha = (sha: string | null) => (sha ? sha.slice(0, 7) : "—");
+
 export default function AdminReposPage() {
   return (
     <Suspense fallback={<PageLoading />}>
@@ -47,6 +49,7 @@ function AdminReposContent() {
   const [filterVisibility, setFilterVisibility] = useState<string>("all");
   const [filterWikiStatus, setFilterWikiStatus] = useState<string>("all");
   const [reindexingAll, setReindexingAll] = useState(false);
+  const [regenerating, setRegenerating] = useState<string | null>(null);
 
   const fetchWikis = useCallback(async () => {
     setLoading(true);
@@ -153,6 +156,33 @@ function AdminReposContent() {
         });
       })
       .finally(() => setReindexingAll(false));
+  };
+
+  const handleRegenerate = async (wiki: Wiki) => {
+    setRegenerating(wiki.id);
+
+    return fetch(`/api/wiki/${wiki.owner}/${wiki.repo}/refresh`, {
+      method: "POST",
+    })
+      .then(async (res) => {
+        if (res.ok) return;
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || HttpError.getHumanReadableMessage(res));
+      })
+      .then(() => {
+        toast.success("Regeneration started", {
+          description:
+            "The current wiki stays live until the new one is ready.",
+        });
+        return fetchWikis();
+      })
+      .catch((err) => {
+        toast.error("Regeneration failed", { description: err.message });
+      })
+      .finally(() => {
+        setRegenerating(null);
+        setDetailWiki(null);
+      });
   };
 
   return (
@@ -321,6 +351,15 @@ function AdminReposContent() {
                         >
                           {wiki.status}
                         </span>
+                        {wiki.refresh_started_at ? (
+                          <span className="block text-[10px] uppercase tracking-wider text-text-muted">
+                            regenerating
+                          </span>
+                        ) : wiki.refresh_error ? (
+                          <span className="block text-[10px] uppercase tracking-wider text-red-500">
+                            refresh failed
+                          </span>
+                        ) : null}
                       </td>
                       <td className="px-5 py-3 shrink-0">
                         {wiki.search_error ? (
@@ -459,6 +498,16 @@ function AdminReposContent() {
                   {new Date(detailWiki.created_at).toLocaleDateString()}
                 </p>
               </div>
+              <div>
+                <span className="text-[10px] uppercase tracking-wider text-text-muted">
+                  Generated from
+                </span>
+                <p className="mt-0.5 font-mono text-xs">
+                  {shortSha(detailWiki.source_commit_sha)}
+                  {detailWiki.generated_at &&
+                    ` · ${dayAgo(detailWiki.generated_at)}`}
+                </p>
+              </div>
             </div>
 
             {detailWiki.search_error && (
@@ -467,8 +516,35 @@ function AdminReposContent() {
               </div>
             )}
 
+            {detailWiki.refresh_error && (
+              <div className="mx-6 mb-4 px-3 py-2 bg-red-500/5 border border-red-500/20 rounded text-[10px] text-text-muted break-all font-mono leading-relaxed max-h-20 overflow-y-auto">
+                Last regeneration failed: {detailWiki.refresh_error}
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border">
+              <button
+                onClick={() => handleRegenerate(detailWiki)}
+                disabled={
+                  detailWiki.status !== "done" ||
+                  !!detailWiki.refresh_started_at ||
+                  regenerating === detailWiki.id
+                }
+                className="flex items-center gap-1.5 px-3 py-1.5 border border-border text-xs font-display
+                           uppercase tracking-wide hover:border-border-strong transition
+                           disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <RefreshCw
+                  className={`w-3.5 h-3.5 ${
+                    regenerating === detailWiki.id ||
+                    detailWiki.refresh_started_at
+                      ? "animate-spin"
+                      : ""
+                  }`}
+                />
+                {detailWiki.refresh_started_at ? "Regenerating…" : "Regenerate"}
+              </button>
               <button
                 onClick={() => handleReindex(detailWiki)}
                 disabled={reindexing === detailWiki.id}

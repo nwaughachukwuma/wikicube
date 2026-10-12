@@ -12,7 +12,7 @@ export async function reindexWikiAndCode(wiki: Wiki, githubToken?: string) {
     type: "status",
     status: "embedding",
   });
-  const features = await getFeatures(wiki.id);
+  const features = await getFeatures(wiki.id, wiki.generation);
 
   // delete previous partial chunks
   await deleteChunks(wiki.id);
