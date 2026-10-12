@@ -6,6 +6,7 @@ import { MenuIcon, XIcon } from "lucide-react";
 import WikiSidebar from "@/components/WikiSidebar";
 import ChatPanel from "@/components/ChatPanel";
 import GenerateWiki from "@/components/GenerateWiki";
+import WikiFreshnessBanner from "@/components/WikiFreshnessBanner";
 import { PageLoading } from "./PageLoading";
 import { WikiData, wikiStore } from "@/lib/stores/wikiStore";
 import { useMounted } from "@/lib/hooks/mounted";
@@ -124,7 +125,10 @@ export default function WikiShell({
       )}
 
       {/* Main content */}
-      <main className="flex-1 min-w-0">{children}</main>
+      <main className="flex-1 min-w-0">
+        <WikiFreshnessBanner owner={owner} repo={repo} wiki={wiki} />
+        {children}
+      </main>
 
       {/* Chat panel — pass current page context */}
       <ChatPanel wiki={wiki} pageContext={getPageContext(data)} />
