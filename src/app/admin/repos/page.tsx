@@ -26,6 +26,12 @@ interface EnrichedWiki extends Wiki {
   github_updated_at: string | null;
 }
 
+/** The repo's default branch has moved past the commit the wiki was built from */
+const isStale = (wiki: Wiki) =>
+  !!wiki.source_commit_sha &&
+  !!wiki.latest_commit_sha &&
+  wiki.source_commit_sha !== wiki.latest_commit_sha;
+
 const shortSha = (sha: string | null) => (sha ? sha.slice(0, 7) : "—");
 
 export default function AdminReposPage() {
@@ -50,6 +56,7 @@ function AdminReposContent() {
   const [filterWikiStatus, setFilterWikiStatus] = useState<string>("all");
   const [reindexingAll, setReindexingAll] = useState(false);
   const [regenerating, setRegenerating] = useState<string | null>(null);
+  const [checkingStale, setCheckingStale] = useState(false);
 
   const fetchWikis = useCallback(async () => {
     setLoading(true);
@@ -185,6 +192,26 @@ function AdminReposContent() {
       });
   };
 
+  const handleCheckStale = async () => {
+    setCheckingStale(true);
+
+    return fetch("/api/admin/refresh-stale", { method: "POST" })
+      .then(async (res) => {
+        if (res.ok) return;
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || res.statusText);
+      })
+      .then(() =>
+        toast.success("Checking repos for changes", {
+          description: "Stale public wikis regenerate in the background.",
+        }),
+      )
+      .catch((err) => {
+        toast.error("Check failed", { description: err.message });
+      })
+      .finally(() => setCheckingStale(false));
+  };
+
   return (
     <main className="min-h-screen flex flex-col">
       <AppHeader />
@@ -194,18 +221,32 @@ function AdminReposContent() {
           <h1 className="font-display text-3xl uppercase tracking-tight">
             Admin — Indexed Repos
           </h1>
-          <button
-            onClick={handleReindexAll}
-            disabled={reindexingAll || wikis.length === 0}
-            className="flex cursor-pointer items-center gap-2 px-4 py-2 border border-border text-xs font-display
-                       uppercase tracking-wide hover:border-border-strong transition
-                       disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {reindexingAll && (
-              <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-            )}
-            Reindex All
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCheckStale}
+              disabled={checkingStale || wikis.length === 0}
+              className="flex cursor-pointer items-center gap-2 px-4 py-2 border border-border text-xs font-display
+                         uppercase tracking-wide hover:border-border-strong transition
+                         disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {checkingStale && (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              )}
+              Check for updates
+            </button>
+            <button
+              onClick={handleReindexAll}
+              disabled={reindexingAll || wikis.length === 0}
+              className="flex cursor-pointer items-center gap-2 px-4 py-2 border border-border text-xs font-display
+                         uppercase tracking-wide hover:border-border-strong transition
+                         disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {reindexingAll && (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              )}
+              Reindex All
+            </button>
+          </div>
         </div>
 
         <p className="mt-2 text-text-muted text-sm">
@@ -359,7 +400,13 @@ function AdminReposContent() {
                           <span className="block text-[10px] uppercase tracking-wider text-red-500">
                             refresh failed
                           </span>
-                        ) : null}
+                        ) : (
+                          isStale(wiki) && (
+                            <span className="block text-[10px] uppercase tracking-wider text-amber-500">
+                              stale
+                            </span>
+                          )
+                        )}
                       </td>
                       <td className="px-5 py-3 shrink-0">
                         {wiki.search_error ? (
@@ -506,6 +553,20 @@ function AdminReposContent() {
                   {shortSha(detailWiki.source_commit_sha)}
                   {detailWiki.generated_at &&
                     ` · ${dayAgo(detailWiki.generated_at)}`}
+                </p>
+              </div>
+              <div>
+                <span className="text-[10px] uppercase tracking-wider text-text-muted">
+                  Latest commit
+                </span>
+                <p
+                  className={`mt-0.5 font-mono text-xs ${
+                    isStale(detailWiki) ? "text-amber-500" : ""
+                  }`}
+                >
+                  {shortSha(detailWiki.latest_commit_sha)}
+                  {detailWiki.checked_at &&
+                    ` · checked ${dayAgo(detailWiki.checked_at)}`}
                 </p>
               </div>
             </div>

@@ -43,7 +43,7 @@ wikicube/
 │   └── components/         #   UI components
 ├── backend/
 │   └── src/
-│       ├── routes/         #   /analyze, /reindex, /reindex-all, /refresh
+│       ├── routes/         #   /analyze, /reindex, /reindex-all, /refresh, /refresh-stale
 │       ├── services/       #   auth, supabase, BullMQ queue
 │       └── utils/code-analyzer/  # The analysis pipeline (phases A–F)
 ├── shared/
@@ -154,7 +154,9 @@ The frontend polls analysis status and streams progress to the client.
 
 ### Keeping wikis fresh
 
-Each wiki records the default-branch commit it was generated from. A regeneration builds the new pages alongside the live ones (`features.generation`) and switches over in one update, so the current wiki stays readable throughout and a failed run changes nothing. The search index is rebuilt right after the switch. Admins can regenerate any wiki from the admin console.
+Each wiki records the default-branch commit it was generated from. A daily BullMQ job (03:00 UTC, needs Redis) compares every public wiki with its repo's current `HEAD` and regenerates it when at least 10 relevant source files changed, or any changed and the wiki is 30+ days old. A wiki is regenerated at most once a week, and at most 10 per run. Set `GITHUB_TOKEN` on the backend so the checks aren't limited to 60 GitHub requests an hour.
+
+A regeneration builds the new pages alongside the live ones (`features.generation`) and switches over in one update, so the current wiki stays readable throughout and a failed run changes nothing. The search index is rebuilt right after the switch. Private wikis aren't checked on the schedule, since the server's token can't read them.
 
 ## API Routes (frontend)
 
@@ -170,6 +172,7 @@ Each wiki records the default-branch commit it was generated from. A regeneratio
 | `GET` | `/api/my-repos` | List the signed-in user's GitHub repos (private indexing) |
 | `POST` | `/api/reindex`, `/api/reindex-all` | Re-run analysis (admin only) |
 | `POST` | `/api/wiki/[owner]/[repo]/refresh` | Regenerate a wiki in place (admins; anyone with GitHub access for private wikis) |
+| `POST` | `/api/admin/refresh-stale` | Run the scheduled freshness check now (admin only) |
 
 ## Database Schema
 

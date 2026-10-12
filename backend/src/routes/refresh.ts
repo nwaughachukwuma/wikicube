@@ -3,9 +3,14 @@ import { z, treeifyError } from "zod";
 import { repoGuard } from "@shared/github.js";
 import { isAdminEmail } from "@shared/constants.js";
 import { claimRefresh, getWiki } from "../services/db.js";
-import { getBearerToken, getProviderToken } from "../services/auth.js";
+import {
+  adminRouteGuard,
+  getBearerToken,
+  getProviderToken,
+} from "../services/auth.js";
 import { getSupabaseUser } from "../services/supabase.js";
 import { runRefresh } from "../services/refresh.js";
+import { triggerFreshnessSweep } from "../services/queue/refresh.queue.js";
 
 const RefreshReq = z.object({
   owner: z.string().nonempty("Owner is required"),
@@ -59,5 +64,15 @@ export default function refreshRoutes(fastify: FastifyInstance) {
     // runRefresh records failures on the wiki row
     void runRefresh(claimed, githubToken).catch(() => {});
     return reply.status(202).send({ status: "refreshing" });
+  });
+
+  fastify.post("/refresh-stale", async (request, reply) => {
+    const user = await adminRouteGuard(getBearerToken(request));
+    if (!user) {
+      return reply.status(403).send({ error: "Forbidden" });
+    }
+
+    await triggerFreshnessSweep();
+    return reply.status(202).send({ status: "checking" });
   });
 }
