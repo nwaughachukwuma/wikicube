@@ -146,6 +146,83 @@ export async function markSearchFailed(
   });
 }
 
+/** Make a finished generation the live one and record its source commit */
+export async function completeGeneration(
+  wikiId: string,
+  params: {
+    generation: number;
+    overview: string;
+    defaultBranch: string;
+    commitSha: string | null;
+  },
+): Promise<void> {
+  const now = new Date().toISOString();
+  await withRetry("complete generation", async () => {
+    const { error } = await getServerClient()
+      .from("wikis")
+      .update({
+        status: "done" as WikiStatus,
+        overview: stripNullBytes(params.overview),
+        generation: params.generation,
+        default_branch: params.defaultBranch,
+        source_commit_sha: params.commitSha,
+        latest_commit_sha: params.commitSha,
+        generated_at: now,
+        checked_at: now,
+        // the search index is rebuilt for the new generation right after
+        search_ready: false,
+        search_error: null,
+        refresh_started_at: null,
+        refresh_error: null,
+        updated_at: now,
+      })
+      .eq("id", wikiId);
+    if (error) throw error;
+  });
+}
+
+// A refresh that dies without releasing its lock stops blocking after this
+const REFRESH_LOCK_TTL_MS = 3 * 60 * 60 * 1000;
+
+/**
+ * Take the refresh lock on a finished wiki. Returns the locked wiki, or null
+ * when it isn't finished or another refresh holds the lock.
+ */
+export async function claimRefresh(wikiId: string): Promise<Wiki | null> {
+  const now = Date.now();
+  const expired = new Date(now - REFRESH_LOCK_TTL_MS).toISOString();
+  const { data, error } = await getServerClient()
+    .from("wikis")
+    .update({
+      refresh_started_at: new Date(now).toISOString(),
+      refresh_error: null,
+    })
+    .eq("id", wikiId)
+    .eq("status", "done")
+    .or(`refresh_started_at.is.null,refresh_started_at.lt."${expired}"`)
+    .select()
+    .maybeSingle();
+  if (error) throw error;
+  return data as Wiki | null;
+}
+
+/** Release the refresh lock after a failed refresh */
+export async function failRefresh(
+  wikiId: string,
+  errorMessage: string,
+): Promise<void> {
+  await withRetry("fail refresh", async () => {
+    const { error } = await getServerClient()
+      .from("wikis")
+      .update({
+        refresh_started_at: null,
+        refresh_error: stripNullBytes(errorMessage),
+      })
+      .eq("id", wikiId);
+    if (error) throw error;
+  });
+}
+
 export async function deleteChunks(wikiId: string) {
   await withRetry("delete chunks", async () => {
     const { error } = await getServerClient()
@@ -192,14 +269,48 @@ export async function insertFeature(
   return data as Feature;
 }
 
-export async function getFeatures(wikiId: string): Promise<Feature[]> {
+export async function getFeatures(
+  wikiId: string,
+  generation: number,
+): Promise<Feature[]> {
   const { data, error } = await getServerClient()
     .from("features")
     .select("*")
     .eq("wiki_id", wikiId)
+    .eq("generation", generation)
     .order("sort_order", { ascending: true });
   if (error) throw error;
   return (data || []) as Feature[];
+}
+
+/** Drop pages left by an unfinished refresh (generations above the live one) */
+export async function deleteFeaturesAboveGeneration(
+  wikiId: string,
+  generation: number,
+): Promise<void> {
+  await withRetry("delete unfinished features", async () => {
+    const { error } = await getServerClient()
+      .from("features")
+      .delete()
+      .eq("wiki_id", wikiId)
+      .gt("generation", generation);
+    if (error) throw error;
+  });
+}
+
+/** Drop feature generations older than `generation` */
+export async function deleteFeaturesBelowGeneration(
+  wikiId: string,
+  generation: number,
+): Promise<void> {
+  await withRetry("delete old features", async () => {
+    const { error } = await getServerClient()
+      .from("features")
+      .delete()
+      .eq("wiki_id", wikiId)
+      .lt("generation", generation);
+    if (error) throw error;
+  });
 }
 
 /* ─── Chunks & Embeddings ─── */

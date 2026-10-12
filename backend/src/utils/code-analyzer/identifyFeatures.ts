@@ -5,7 +5,6 @@ import type {
   IdentifiedFeature,
   RepoMeta,
 } from "@shared/types.js";
-import { updateWikiStatus } from "../../services/db.js";
 import { identifyFeatures } from "@shared/genai/index.js";
 
 const log = logger("feature-identifier");
@@ -52,7 +51,6 @@ function validateFilePaths(
 export async function identifyRepoFeatures(params: {
   owner: string;
   repo: string;
-  wikiId: string;
   treeString: string;
   readme: string;
   manifests: string;
@@ -61,7 +59,6 @@ export async function identifyRepoFeatures(params: {
   treePaths: string[];
 }): Promise<IdentifiedFeature[]> {
   const {
-    wikiId,
     repo,
     owner,
     treeString,
@@ -72,7 +69,6 @@ export async function identifyRepoFeatures(params: {
     meta,
   } = params;
 
-  await updateWikiStatus(wikiId, "identifying_features");
   onEvent({
     type: "status",
     status: "identifying_features",

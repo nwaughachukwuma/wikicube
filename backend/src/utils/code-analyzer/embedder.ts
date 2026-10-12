@@ -3,17 +3,12 @@ import { logger } from "@shared/logger.js";
 import { generateOverview } from "@shared/genai/index.js";
 import { generateEmbeddings } from "@shared/embeddings.js";
 import type { AnalysisEvent, Feature } from "@shared/types.js";
-import {
-  updateWikiStatus,
-  insertChunks,
-  markSearchReady,
-} from "../../services/db.js";
+import { insertChunks, markSearchReady } from "../../services/db.js";
 import { chunkCodeFile, chunkOverview, chunkWikiContent } from "./chunker.js";
 
 const log = logger("embedder");
 
 export async function generateOverviewPage(params: {
-  wikiId: string;
   owner: string;
   repo: string;
   description: string;
@@ -21,8 +16,7 @@ export async function generateOverviewPage(params: {
   features: Feature[];
   onEvent: (event: AnalysisEvent) => void;
 }): Promise<string> {
-  const { wikiId, owner, repo, description, readme, features, onEvent } =
-    params;
+  const { owner, repo, description, readme, features, onEvent } = params;
   onEvent({
     type: "status",
     status: "generating_pages",
@@ -37,7 +31,6 @@ export async function generateOverviewPage(params: {
     features.map((f) => ({ title: f.title, summary: f.summary })),
   );
 
-  await updateWikiStatus(wikiId, "embedding", overview);
   overviewDone({ overviewLength: overview.length });
   return overview;
 }

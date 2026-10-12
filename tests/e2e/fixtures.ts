@@ -27,6 +27,13 @@ export function makeWiki(
     indexed_by: visibility === "private" ? "user-1" : null,
     search_ready: true,
     search_error: null,
+    generation: 0,
+    source_commit_sha: null,
+    latest_commit_sha: null,
+    generated_at: "2024-01-01T00:00:00Z",
+    checked_at: null,
+    refresh_started_at: null,
+    refresh_error: null,
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
   };

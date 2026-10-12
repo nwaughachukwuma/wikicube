@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
 
   // Fallback: inject feature summaries if semantic search returned nothing
   if (contextChunks.length <= (pageContext ? 1 : 0)) {
-    const features = await getFeatures(wikiId);
+    const features = await getFeatures(wikiId, wiki.generation);
     // .slice(0, 15)
     for (const f of features) {
       contextChunks.push(

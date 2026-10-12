@@ -26,6 +26,7 @@ export async function generateAllPages(
   repo: string,
   meta: RepoMeta,
   wikiId: string,
+  generation: number,
   onEvent: (event: AnalysisEvent) => void,
   githubToken?: string,
 ): Promise<{ features: Feature[]; sourceFiles: Map<string, string> }> {
@@ -41,6 +42,7 @@ export async function generateAllPages(
         repo,
         meta,
         wikiId,
+        generation,
         onEvent,
         githubToken,
       }),
@@ -70,11 +72,21 @@ async function fetchFilesAndGeneratePage(params: {
   repo: string;
   meta: RepoMeta;
   wikiId: string;
+  generation: number;
   onEvent: (event: AnalysisEvent) => void;
   githubToken?: string;
 }): Promise<PageGenResult | null> {
-  const { order, owner, repo, meta, wikiId, onEvent, identified, githubToken } =
-    params;
+  const {
+    order,
+    owner,
+    repo,
+    meta,
+    wikiId,
+    generation,
+    onEvent,
+    identified,
+    githubToken,
+  } = params;
   const sourceFiles = new Map<string, string>();
   onEvent({ type: "feature_started", featureTitle: identified.title });
 
@@ -115,6 +127,7 @@ async function fetchFilesAndGeneratePage(params: {
       entry_points: page.entryPoints,
       citations: page.citations,
       sort_order: order,
+      generation,
     });
 
     onEvent({ type: "feature_done", featureTitle: identified.title });
