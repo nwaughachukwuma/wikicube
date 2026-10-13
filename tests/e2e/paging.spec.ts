@@ -1,48 +1,5 @@
-import { test, expect, type Page, type BrowserContext } from "@playwright/test";
-import { PUBLIC_WIKI_OWNER, PUBLIC_WIKI_REPO } from "./fixtures";
-
-const USER = {
-  id: "user-1",
-  aud: "authenticated",
-  role: "authenticated",
-  email: "e2e@example.com",
-  app_metadata: { provider: "github", providers: ["github"] },
-  user_metadata: { user_name: "e2e-user" },
-  created_at: "2024-01-01T00:00:00Z",
-};
-
-const b64url = (v: unknown) =>
-  Buffer.from(JSON.stringify(v)).toString("base64url");
-
-/** Seed the @supabase/ssr browser cookie with a non-expiring fake session. */
-async function signIn(context: BrowserContext) {
-  const exp = Math.floor(Date.now() / 1000) + 365 * 24 * 3600;
-  const jwt = `${b64url({ alg: "HS256", typ: "JWT" })}.${b64url({
-    sub: USER.id,
-    aud: USER.aud,
-    role: USER.role,
-    email: USER.email,
-    exp,
-  })}.sig`;
-  const session = {
-    access_token: jwt,
-    refresh_token: "refresh-token",
-    token_type: "bearer",
-    expires_in: 365 * 24 * 3600,
-    expires_at: exp,
-    provider_token: "gh-token",
-    user: USER,
-  };
-  // NEXT_PUBLIC_SUPABASE_URL is http://localhost:<mock port>, so the storage
-  // key derived by supabase-js is `sb-localhost-auth-token`.
-  await context.addCookies([
-    {
-      name: "sb-localhost-auth-token",
-      value: `base64-${b64url(session)}`,
-      url: "http://localhost:3000",
-    },
-  ]);
-}
+import { test, expect, type Page } from "@playwright/test";
+import { PUBLIC_WIKI_OWNER, PUBLIC_WIKI_REPO, USER, signIn } from "./fixtures";
 
 const repos = Array.from({ length: 25 }, (_, i) => ({
   id: i + 1,
@@ -81,7 +38,9 @@ test.describe("URL-backed paging", () => {
     context,
   }) => {
     await signIn(context);
-    await page.route("**/auth/v1/user", (route) => route.fulfill({ json: USER }));
+    await page.route("**/auth/v1/user", (route) =>
+      route.fulfill({ json: USER }),
+    );
     await page.route("**/api/my-repos**", (route) =>
       route.fulfill({ json: repos }),
     );
@@ -116,7 +75,9 @@ test.describe("URL-backed paging", () => {
     context,
   }) => {
     await signIn(context);
-    await page.route("**/auth/v1/user", (route) => route.fulfill({ json: USER }));
+    await page.route("**/auth/v1/user", (route) =>
+      route.fulfill({ json: USER }),
+    );
     await page.route("**/api/my-repos**", (route) =>
       route.fulfill({ json: repos }),
     );

@@ -12,6 +12,11 @@ export const PRIVATE_WIKI_OWNER = "nwaughachukwuma";
 export const PRIVATE_WIKI_REPO = "private-wikicube-e2e";
 export const PRIVATE_WIKI_OVERVIEW =
   "This private overview must never appear in page metadata.";
+// The private wiki was generated from SOURCE_SHA; the repo has since moved on
+const PRIVATE_WIKI_SOURCE_SHA = "a".repeat(40);
+const PRIVATE_WIKI_HEAD_SHA = "b".repeat(40);
+// provider_token of the session seeded by signIn() in fixtures.ts
+const E2E_GITHUB_AUTH = "Bearer gh-token";
 
 function makeWiki(owner, repo, overview, visibility) {
   return {
@@ -37,12 +42,15 @@ export const publicWiki = makeWiki(
   "public",
 );
 
-export const privateWiki = makeWiki(
-  PRIVATE_WIKI_OWNER,
-  PRIVATE_WIKI_REPO,
-  PRIVATE_WIKI_OVERVIEW,
-  "private",
-);
+export const privateWiki = {
+  ...makeWiki(
+    PRIVATE_WIKI_OWNER,
+    PRIVATE_WIKI_REPO,
+    PRIVATE_WIKI_OVERVIEW,
+    "private",
+  ),
+  source_commit_sha: PRIVATE_WIKI_SOURCE_SHA,
+};
 
 function sendJson(res, status, data) {
   res.writeHead(status, { "Content-Type": "application/json" });
@@ -72,9 +80,34 @@ export function startMockServer(port = MOCK_PORT) {
     const pathname = url.pathname;
 
     if (pathname.startsWith("/github/repos/")) {
+      const commit = pathname.match(
+        /^\/github\/repos\/([^/]+)\/([^/]+)\/commits\/[^/]+$/,
+      );
+      if (
+        commit &&
+        commit[1] === privateWiki.owner &&
+        commit[2] === privateWiki.repo &&
+        req.headers.authorization === E2E_GITHUB_AUTH
+      ) {
+        res.writeHead(200, { "Content-Type": "text/plain" });
+        res.end(PRIVATE_WIKI_HEAD_SHA);
+        return;
+      }
+
       const match = pathname.match(/^\/github\/repos\/([^/]+)\/([^/]+)$/);
       if (match) {
         const [, owner, repo] = match;
+        if (
+          owner === privateWiki.owner &&
+          repo === privateWiki.repo &&
+          req.headers.authorization === E2E_GITHUB_AUTH
+        ) {
+          sendJson(res, 200, {
+            private: true,
+            default_branch: privateWiki.default_branch,
+          });
+          return;
+        }
         if (owner === publicWiki.owner && repo === publicWiki.repo) {
           sendJson(res, 200, {
             private: false,
@@ -95,13 +128,16 @@ export function startMockServer(port = MOCK_PORT) {
     if (pathname === "/rest/v1/wikis") {
       const owner = url.searchParams.get("owner")?.replace(/^eq\./, "");
       const repo = url.searchParams.get("repo")?.replace(/^eq\./, "");
+      // supabase-js .single() asks PostgREST for a bare object
+      const rows = (wiki) =>
+        req.headers.accept?.includes("vnd.pgrst.object") ? wiki : [wiki];
 
       if (owner === publicWiki.owner && repo === publicWiki.repo) {
-        sendJson(res, 200, [publicWiki]);
+        sendJson(res, 200, rows(publicWiki));
         return;
       }
       if (owner === privateWiki.owner && repo === privateWiki.repo) {
-        sendJson(res, 200, [privateWiki]);
+        sendJson(res, 200, rows(privateWiki));
         return;
       }
       sendJson(res, 200, []);
