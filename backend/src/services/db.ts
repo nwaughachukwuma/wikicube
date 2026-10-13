@@ -223,6 +223,47 @@ export async function failRefresh(
   });
 }
 
+/** Finished public wikis, least recently generated first */
+export async function listRefreshCandidates(): Promise<Wiki[]> {
+  const { data, error } = await getServerClient()
+    .from("wikis")
+    .select("*")
+    .eq("status", "done")
+    .eq("visibility", "public")
+    .order("generated_at", { ascending: true, nullsFirst: true });
+  if (error) throw error;
+  return (data || []) as Wiki[];
+}
+
+/**
+ * Store the default-branch HEAD seen by a freshness check, and the source
+ * commit worked out for a wiki that predates commit tracking
+ */
+export async function recordFreshnessCheck(
+  wikiId: string,
+  params: { latestSha: string; backfillSourceSha?: string },
+): Promise<void> {
+  const db = getServerClient();
+  const { error } = await db
+    .from("wikis")
+    .update({
+      latest_commit_sha: params.latestSha,
+      checked_at: new Date().toISOString(),
+    })
+    .eq("id", wikiId);
+  if (error) throw error;
+
+  if (params.backfillSourceSha) {
+    // Never overwrite a commit recorded by a generation that just finished
+    const { error } = await db
+      .from("wikis")
+      .update({ source_commit_sha: params.backfillSourceSha })
+      .eq("id", wikiId)
+      .is("source_commit_sha", null);
+    if (error) throw error;
+  }
+}
+
 export async function deleteChunks(wikiId: string) {
   await withRetry("delete chunks", async () => {
     const { error } = await getServerClient()

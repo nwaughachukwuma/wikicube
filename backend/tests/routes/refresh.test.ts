@@ -6,6 +6,7 @@ import * as db from "../../src/services/db.js";
 import * as auth from "../../src/services/auth.js";
 import * as supabase from "../../src/services/supabase.js";
 import * as refresh from "../../src/services/refresh.js";
+import * as refreshQueue from "../../src/services/queue/refresh.queue.js";
 
 vi.mock("@shared/github.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@shared/github.js")>()),
@@ -30,6 +31,10 @@ vi.mock("../../src/services/supabase.js", () => ({
 
 vi.mock("../../src/services/refresh.js", () => ({
   runRefresh: vi.fn(),
+}));
+
+vi.mock("../../src/services/queue/refresh.queue.js", () => ({
+  triggerFreshnessSweep: vi.fn(),
 }));
 
 vi.mock("../../src/services/queue/index.js", () => ({
@@ -113,5 +118,29 @@ describe("POST /api/refresh", () => {
     const res = await postRefresh();
     expect(res.statusCode).toBe(409);
     expect(refresh.runRefresh).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/refresh-stale", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("is admin-only", async () => {
+    vi.mocked(auth.adminRouteGuard).mockResolvedValue(null);
+    const res = await buildApp().inject({
+      method: "POST",
+      url: "/api/refresh-stale",
+    });
+    expect(res.statusCode).toBe(403);
+    expect(refreshQueue.triggerFreshnessSweep).not.toHaveBeenCalled();
+  });
+
+  it("triggers a sweep for admins", async () => {
+    vi.mocked(auth.adminRouteGuard).mockResolvedValue(user("a@example.com"));
+    const res = await buildApp().inject({
+      method: "POST",
+      url: "/api/refresh-stale",
+    });
+    expect(res.statusCode).toBe(202);
+    expect(refreshQueue.triggerFreshnessSweep).toHaveBeenCalled();
   });
 });

@@ -96,6 +96,54 @@ export async function getBranchHeadSha(
   return (await res.text()).trim();
 }
 
+/**
+ * Paths changed between two commits (GitHub lists at most 300), or null when
+ * GitHub can't compare them, e.g. the base commit was force-pushed away.
+ */
+export async function getChangedFiles(
+  owner: string,
+  repo: string,
+  base: string,
+  head: string,
+  token?: string,
+): Promise<string[] | null> {
+  const res = await fetch(
+    `${GITHUB_API}/repos/${owner}/${repo}/compare/${base}...${head}`,
+    { headers: headers(token) },
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    throw new HttpError(
+      res,
+      `GitHub API error ${res.status}: ${await res.text()}`,
+    );
+  }
+  const data = (await res.json()) as { files?: Array<{ filename: string }> };
+  return (data.files || []).map((f) => f.filename);
+}
+
+/** Whether a branch has commits dated after `since` (an ISO timestamp) */
+export async function hasCommitsSince(
+  owner: string,
+  repo: string,
+  branch: string,
+  since: string,
+  token?: string,
+): Promise<boolean> {
+  const params = new URLSearchParams({ sha: branch, since, per_page: "1" });
+  const res = await fetch(
+    `${GITHUB_API}/repos/${owner}/${repo}/commits?${params}`,
+    { headers: headers(token) },
+  );
+  if (!res.ok) {
+    throw new HttpError(
+      res,
+      `GitHub API error ${res.status}: ${await res.text()}`,
+    );
+  }
+  return ((await res.json()) as unknown[]).length > 0;
+}
+
 /** Fetch full file tree */
 export async function getRepoTree(
   owner: string,
