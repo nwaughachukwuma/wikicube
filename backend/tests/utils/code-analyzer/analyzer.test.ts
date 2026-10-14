@@ -12,6 +12,7 @@ vi.mock("../../../src/services/db.js", () => ({
   completeGeneration: vi.fn(),
   deleteChunks: vi.fn(),
   deleteFeaturesBelowGeneration: vi.fn(),
+  releaseRefresh: vi.fn(),
 }));
 
 vi.mock("../../../src/utils/code-analyzer/gatherContext.js", () => ({
@@ -51,6 +52,8 @@ beforeEach(() => {
     sourceFiles: new Map(),
   } as any);
   vi.mocked(db.deleteChunks).mockResolvedValue(undefined);
+  vi.mocked(db.deleteFeaturesBelowGeneration).mockResolvedValue(undefined);
+  vi.mocked(db.releaseRefresh).mockResolvedValue(undefined);
 });
 
 describe("runAnalysisPipeline", () => {
@@ -93,6 +96,44 @@ describe("runAnalysisPipeline", () => {
     expect(
       vi.mocked(db.completeGeneration).mock.invocationCallOrder[0],
     ).toBeLessThan(vi.mocked(db.deleteChunks).mock.invocationCallOrder[0]);
+  });
+
+  it("holds a refresh's lock until the search index is rebuilt", async () => {
+    let finishEmbedding!: () => void;
+    vi.mocked(embedder.embedWikiAndCode).mockReturnValue(
+      new Promise<void>((resolve) => (finishEmbedding = resolve)),
+    );
+
+    await runAnalysisPipeline("o", "r", () => {}, { refresh: true });
+    await vi.waitFor(() =>
+      expect(embedder.embedWikiAndCode).toHaveBeenCalled(),
+    );
+    expect(db.releaseRefresh).not.toHaveBeenCalled();
+
+    finishEmbedding();
+    await vi.waitFor(() =>
+      expect(db.releaseRefresh).toHaveBeenCalledWith("wiki-1"),
+    );
+  });
+
+  it("doesn't touch the lock on a first-time generation", async () => {
+    await runAnalysisPipeline("o", "r", () => {});
+    await vi.waitFor(() =>
+      expect(embedder.embedWikiAndCode).toHaveBeenCalled(),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(db.releaseRefresh).not.toHaveBeenCalled();
+  });
+
+  it("succeeds when cleanup fails after the new generation went live", async () => {
+    vi.mocked(db.deleteFeaturesBelowGeneration).mockRejectedValue(
+      new Error("supabase down"),
+    );
+
+    await expect(
+      runAnalysisPipeline("o", "r", () => {}, { refresh: true }),
+    ).resolves.toBe("wiki-1");
   });
 
   it("keeps the live wiki when a refresh produces no pages", async () => {

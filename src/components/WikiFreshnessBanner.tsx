@@ -80,12 +80,17 @@ export default function WikiFreshnessBanner({
       method: "POST",
     }).finally(() => setStarting(false));
 
+    const body = await res.json().catch(() => ({}));
+    if (body.status === "up_to_date") {
+      toast.success("This wiki is already up to date");
+      setFreshness((f) => f && { ...f, stale: false });
+      return;
+    }
     // 409: someone else already started it
     if (res.ok || res.status === 409) {
       setFreshness((f) => f && { ...f, refreshing: true, refreshError: null });
       return;
     }
-    const body = await res.json().catch(() => ({}));
     toast.error("Couldn't start regeneration", {
       description: body.error || HttpError.getHumanReadableMessage(res),
     });

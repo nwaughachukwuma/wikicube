@@ -109,9 +109,12 @@ export async function runFreshnessSweep() {
     5,
   ).then((results) => wikis.filter((_, i) => results[i]));
 
-  // Candidates are ordered least recently generated first
+  // Candidates are ordered least recently generated first. A wiki whose last
+  // refresh failed waits for an admin to regenerate it, so it can't burn the
+  // budget failing every day.
   const refreshed: string[] = [];
-  for (const wiki of stale.slice(0, MAX_REFRESHES_PER_SWEEP)) {
+  const retryable = stale.filter((wiki) => !wiki.refresh_error);
+  for (const wiki of retryable.slice(0, MAX_REFRESHES_PER_SWEEP)) {
     const claimed = await claimRefresh(wiki.id);
     if (!claimed) continue;
     // runRefresh records failures on the wiki; carry on with the rest

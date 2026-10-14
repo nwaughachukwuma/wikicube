@@ -13,6 +13,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import type { Wiki } from "@shared/types";
+import { isRefreshing } from "@shared/constants";
 import { dayAgo } from "@/lib/timing";
 import { toast } from "sonner";
 import { HttpError } from "@shared/error";
@@ -392,7 +393,7 @@ function AdminReposContent() {
                         >
                           {wiki.status}
                         </span>
-                        {wiki.refresh_started_at ? (
+                        {isRefreshing(wiki) ? (
                           <span className="block text-[10px] uppercase tracking-wider text-text-muted">
                             regenerating
                           </span>
@@ -589,7 +590,7 @@ function AdminReposContent() {
                 onClick={() => handleRegenerate(detailWiki)}
                 disabled={
                   detailWiki.status !== "done" ||
-                  !!detailWiki.refresh_started_at ||
+                  isRefreshing(detailWiki) ||
                   regenerating === detailWiki.id
                 }
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-border text-xs font-display
@@ -598,13 +599,12 @@ function AdminReposContent() {
               >
                 <RefreshCw
                   className={`w-3.5 h-3.5 ${
-                    regenerating === detailWiki.id ||
-                    detailWiki.refresh_started_at
+                    regenerating === detailWiki.id || isRefreshing(detailWiki)
                       ? "animate-spin"
                       : ""
                   }`}
                 />
-                {detailWiki.refresh_started_at ? "Regenerating…" : "Regenerate"}
+                {isRefreshing(detailWiki) ? "Regenerating…" : "Regenerate"}
               </button>
               <button
                 onClick={() => handleReindex(detailWiki)}

@@ -7,6 +7,7 @@ import { runRefresh } from "../../src/services/refresh.js";
 vi.mock("../../src/services/db.js", () => ({
   deleteFeaturesAboveGeneration: vi.fn(),
   failRefresh: vi.fn(),
+  getWikiById: vi.fn(),
 }));
 
 vi.mock("../../src/utils/code-analyzer/analyzer.js", () => ({
@@ -15,7 +16,12 @@ vi.mock("../../src/utils/code-analyzer/analyzer.js", () => ({
 
 const wiki = { id: "wiki-1", owner: "o", repo: "r", generation: 2 } as Wiki;
 
-beforeEach(() => vi.clearAllMocks());
+beforeEach(() => {
+  vi.clearAllMocks();
+  vi.mocked(db.deleteFeaturesAboveGeneration).mockResolvedValue(undefined);
+  // by default the failed refresh never went live
+  vi.mocked(db.getWikiById).mockResolvedValue(wiki);
+});
 
 describe("runRefresh", () => {
   it("clears leftovers and runs the pipeline in refresh mode", async () => {
@@ -42,5 +48,30 @@ describe("runRefresh", () => {
 
     expect(db.deleteFeaturesAboveGeneration).toHaveBeenCalledTimes(2);
     expect(db.failRefresh).toHaveBeenCalledWith("wiki-1", "LLM quota exceeded");
+  });
+
+  it("never deletes pages that already went live", async () => {
+    vi.mocked(analyzer.runAnalysisPipeline).mockRejectedValue(
+      new Error("boom"),
+    );
+    vi.mocked(db.getWikiById).mockResolvedValue({ ...wiki, generation: 3 });
+
+    await expect(runRefresh(wiki)).rejects.toThrow("boom");
+
+    // only the leftover cleanup at the start ran
+    expect(db.deleteFeaturesAboveGeneration).toHaveBeenCalledTimes(1);
+    expect(db.failRefresh).toHaveBeenCalledWith("wiki-1", "boom");
+  });
+
+  it("releases the lock even when discarding partial pages fails", async () => {
+    vi.mocked(analyzer.runAnalysisPipeline).mockRejectedValue(
+      new Error("boom"),
+    );
+    vi.mocked(db.deleteFeaturesAboveGeneration)
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error("supabase down"));
+
+    await expect(runRefresh(wiki)).rejects.toThrow("boom");
+    expect(db.failRefresh).toHaveBeenCalledWith("wiki-1", "boom");
   });
 });

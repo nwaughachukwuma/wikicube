@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getWiki, recordLatestCommit } from "@/lib/db";
 import { getSupabaseSession } from "@/lib/supabase/server";
 import { getBranchHeadSha, hasCommitsSince } from "@shared/github";
+import { isRefreshing } from "@shared/constants";
 
 /**
  * Whether a private wiki is behind its repo. Checked live with the viewer's
@@ -58,7 +59,7 @@ export async function GET(
   return NextResponse.json(
     {
       stale,
-      refreshing: !!wiki.refresh_started_at,
+      refreshing: isRefreshing(wiki),
       refreshError: wiki.refresh_error,
       sourceSha: wiki.source_commit_sha,
       latestSha,

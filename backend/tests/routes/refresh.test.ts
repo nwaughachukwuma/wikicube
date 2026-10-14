@@ -11,6 +11,7 @@ import * as refreshQueue from "../../src/services/queue/refresh.queue.js";
 vi.mock("@shared/github.js", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@shared/github.js")>()),
   repoGuard: vi.fn(),
+  getBranchHeadSha: vi.fn(),
 }));
 
 vi.mock("../../src/services/db.js", () => ({
@@ -71,6 +72,7 @@ describe("POST /api/refresh", () => {
     );
     vi.mocked(auth.getProviderToken).mockReturnValue("gh-token");
     vi.mocked(github.repoGuard).mockResolvedValue({} as Response);
+    vi.mocked(github.getBranchHeadSha).mockResolvedValue("new-head");
     vi.mocked(db.getWiki).mockResolvedValue(makeWiki());
     vi.mocked(db.claimRefresh).mockImplementation(async () => makeWiki());
     vi.mocked(refresh.runRefresh).mockResolvedValue(undefined);
@@ -87,6 +89,18 @@ describe("POST /api/refresh", () => {
     expect(res.statusCode).toBe(202);
     expect(github.repoGuard).toHaveBeenCalledWith("o", "r", "gh-token");
     expect(refresh.runRefresh).toHaveBeenCalledWith(makeWiki(), "gh-token");
+  });
+
+  it("doesn't regenerate a private wiki that's already up to date", async () => {
+    vi.mocked(db.getWiki).mockResolvedValue(
+      makeWiki({ source_commit_sha: "new-head" }),
+    );
+
+    const res = await postRefresh();
+
+    expect(res.statusCode).toBe(200);
+    expect(JSON.parse(res.payload)).toEqual({ status: "up_to_date" });
+    expect(db.claimRefresh).not.toHaveBeenCalled();
   });
 
   it("rejects users without GitHub access to the private repo", async () => {

@@ -10,3 +10,17 @@ export function isAdminEmail(email: string): boolean {
     .filter(Boolean)
     .includes(email.toLowerCase());
 }
+
+/** A refresh that dies without releasing its lock stops blocking after this */
+export const REFRESH_LOCK_TTL_MS = 3 * 60 * 60 * 1000;
+
+/** Whether a live refresh holds the wiki's lock; an expired lock doesn't count */
+export function isRefreshing(
+  wiki: { refresh_started_at: string | null },
+  now = Date.now(),
+): boolean {
+  return (
+    !!wiki.refresh_started_at &&
+    now - Date.parse(wiki.refresh_started_at) < REFRESH_LOCK_TTL_MS
+  );
+}

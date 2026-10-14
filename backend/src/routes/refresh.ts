@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z, treeifyError } from "zod";
-import { repoGuard } from "@shared/github.js";
+import { getBranchHeadSha, repoGuard } from "@shared/github.js";
 import { isAdminEmail } from "@shared/constants.js";
 import { claimRefresh, getWiki } from "../services/db.js";
 import {
@@ -48,6 +48,17 @@ export default function refreshRoutes(fastify: FastifyInstance) {
         ));
       if (!canRead) {
         return reply.status(403).send({ error: "Forbidden" });
+      }
+
+      // Each regeneration costs a full LLM run: skip it when nothing changed
+      const head = await getBranchHeadSha(
+        owner,
+        repo,
+        wiki.default_branch,
+        githubToken,
+      ).catch(() => null);
+      if (head && head === wiki.source_commit_sha) {
+        return reply.send({ status: "up_to_date" });
       }
     }
 

@@ -1,5 +1,6 @@
 import { batchAll } from "@shared/batch-ops.js";
 import { logger } from "@shared/logger.js";
+import { REFRESH_LOCK_TTL_MS } from "@shared/constants.js";
 import { getServerClient } from "./supabase.js";
 import type {
   Wiki,
@@ -172,7 +173,7 @@ export async function completeGeneration(
         // the search index is rebuilt for the new generation right after
         search_ready: false,
         search_error: null,
-        refresh_started_at: null,
+        // a refresh keeps its lock until the search index is rebuilt
         refresh_error: null,
         updated_at: now,
       })
@@ -180,9 +181,6 @@ export async function completeGeneration(
     if (error) throw error;
   });
 }
-
-// A refresh that dies without releasing its lock stops blocking after this
-const REFRESH_LOCK_TTL_MS = 3 * 60 * 60 * 1000;
 
 /**
  * Take the refresh lock on a finished wiki. Returns the locked wiki, or null
@@ -204,6 +202,17 @@ export async function claimRefresh(wikiId: string): Promise<Wiki | null> {
     .maybeSingle();
   if (error) throw error;
   return data as Wiki | null;
+}
+
+/** Release the refresh lock once a refresh's search index is rebuilt */
+export async function releaseRefresh(wikiId: string): Promise<void> {
+  await withRetry("release refresh", async () => {
+    const { error } = await getServerClient()
+      .from("wikis")
+      .update({ refresh_started_at: null })
+      .eq("id", wikiId);
+    if (error) throw error;
+  });
 }
 
 /** Release the refresh lock after a failed refresh */

@@ -160,3 +160,24 @@ describe("runFreshnessSweep", () => {
     expect(refresh.runRefresh).not.toHaveBeenCalled();
   });
 });
+
+describe("runFreshnessSweep retries", () => {
+  it("leaves wikis whose last refresh failed for an admin", async () => {
+    const wikis = [
+      makeWiki({ id: "failing", refresh_error: "Refresh generated no pages" }),
+      makeWiki({ id: "healthy" }),
+    ];
+    vi.mocked(db.listRefreshCandidates).mockResolvedValue(wikis);
+    vi.mocked(github.getBranchHeadSha).mockResolvedValue("new");
+    vi.mocked(github.getChangedFiles).mockResolvedValue(null);
+    vi.mocked(db.claimRefresh).mockImplementation(
+      async (id) => wikis.find((w) => w.id === id)!,
+    );
+    vi.mocked(refresh.runRefresh).mockResolvedValue(undefined);
+
+    await runFreshnessSweep();
+
+    expect(db.claimRefresh).toHaveBeenCalledTimes(1);
+    expect(db.claimRefresh).toHaveBeenCalledWith("healthy");
+  });
+});

@@ -1,7 +1,11 @@
 import { ensureError } from "@shared/error.js";
 import { logger } from "@shared/logger.js";
 import type { Wiki } from "@shared/types.js";
-import { deleteFeaturesAboveGeneration, failRefresh } from "./db.js";
+import {
+  deleteFeaturesAboveGeneration,
+  failRefresh,
+  getWikiById,
+} from "./db.js";
 import { runAnalysisPipeline } from "../utils/code-analyzer/analyzer.js";
 
 const log = logger("repo:refresh");
@@ -26,7 +30,21 @@ export async function runRefresh(wiki: Wiki, githubToken?: string) {
   }).catch(async (err) => {
     const error = ensureError(err, "Refresh failed");
     log.error("refresh failed", { wikiId: wiki.id, error: error.message });
-    await deleteFeaturesAboveGeneration(wiki.id, wiki.generation);
+    // Discard the new pages only if they never went live; leftovers are
+    // also cleared at the start of the next refresh
+    const live = await getWikiById(wiki.id).catch(() => null);
+    if (live?.generation === wiki.generation) {
+      await deleteFeaturesAboveGeneration(wiki.id, wiki.generation).catch(
+        (cleanupErr: unknown) =>
+          log.warn("partial page cleanup failed", {
+            wikiId: wiki.id,
+            error:
+              cleanupErr instanceof Error
+                ? cleanupErr.message
+                : String(cleanupErr),
+          }),
+      );
+    }
     await failRefresh(wiki.id, error.message);
     throw error;
   });

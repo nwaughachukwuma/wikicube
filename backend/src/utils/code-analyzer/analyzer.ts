@@ -12,6 +12,7 @@ import {
   completeGeneration,
   deleteChunks,
   deleteFeaturesBelowGeneration,
+  releaseRefresh,
 } from "../../services/db.js";
 import { embedWikiAndCode, generateOverviewPage } from "./embedder.js";
 import { generateAllPages } from "./pageGenerator.js";
@@ -83,8 +84,15 @@ export async function runAnalysisPipeline(
       commitSha,
     });
     // Keep the previous generation so readers holding the old wiki row (or a
-    // cached copy) can still load its pages; anything older goes
-    await deleteFeaturesBelowGeneration(wikiId, generation - 1);
+    // cached copy) can still load its pages; anything older goes. The new
+    // generation is live now, so a failed cleanup must not fail the run.
+    await deleteFeaturesBelowGeneration(wikiId, generation - 1).catch(
+      (err: unknown) =>
+        log.warn("old feature cleanup failed", {
+          wikiId,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+    );
     pipelineDone({ wikiId, featureCount: features.length, generation });
     onEvent({ type: "done", wikiId });
 
@@ -106,7 +114,16 @@ export async function runAnalysisPipeline(
           message: "Background embedding failed.",
         });
         await markSearchFailed(wikiId, normalizedError.message);
-      });
+      })
+      // Hold a refresh's lock until its index is rebuilt, so a second
+      // refresh can't interleave with this one's chunk deletes and inserts
+      .finally(() => (opts.refresh ? releaseRefresh(wikiId) : undefined))
+      .catch((err: unknown) =>
+        log.error("post-generation cleanup failed", {
+          wikiId,
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
 
     return wikiId;
   } catch (err) {

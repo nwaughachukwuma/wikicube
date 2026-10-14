@@ -11,9 +11,11 @@ alter table public.wikis
   add column if not exists refresh_started_at timestamptz,
   add column if not exists refresh_error text;
 
--- Best available generation time for wikis built before this migration
+-- Earliest possible generation time for wikis built before this migration.
+-- updated_at would overstate it (reindexing bumps it), making stale wikis
+-- look fresh; created_at errs towards checking them.
 update public.wikis
-  set generated_at = updated_at
+  set generated_at = created_at
   where generated_at is null and status = 'done';
 
 alter table public.features
