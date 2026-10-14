@@ -164,6 +164,18 @@ export async function markSearchFailed(
   });
 }
 
+/** Store the default-branch HEAD seen by a freshness check */
+export async function recordLatestCommit(wikiId: string, sha: string) {
+  const { error } = await getServerClient()
+    .from("wikis")
+    .update({
+      latest_commit_sha: sha,
+      checked_at: new Date().toISOString(),
+    })
+    .eq("id", wikiId);
+  if (error) throw error;
+}
+
 export async function getWiki(
   owner: string,
   repo: string,
@@ -202,11 +214,15 @@ export async function insertFeature(
   return data as Feature;
 }
 
-export async function getFeatures(wikiId: string): Promise<Feature[]> {
+export async function getFeatures(
+  wikiId: string,
+  generation: number,
+): Promise<Feature[]> {
   const { data, error } = await getServerClient()
     .from("features")
     .select("*")
     .eq("wiki_id", wikiId)
+    .eq("generation", generation)
     .order("sort_order", { ascending: true });
 
   if (error) throw error;
@@ -216,12 +232,14 @@ export async function getFeatures(wikiId: string): Promise<Feature[]> {
 
 export async function getFeatureBySlug(
   wikiId: string,
+  generation: number,
   slug: string,
 ): Promise<Feature | null> {
   const { data } = await getServerClient()
     .from("features")
     .select("*")
     .eq("wiki_id", wikiId)
+    .eq("generation", generation)
     .eq("slug", slug)
     .single();
 

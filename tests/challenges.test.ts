@@ -31,6 +31,7 @@ const makeWiki = (overrides: Partial<Wiki> = {}): Wiki =>
     search_ready: true,
     search_error: null,
     indexed_by: null,
+    generation: 2,
     created_at: "2024-01-01T00:00:00Z",
     updated_at: "2024-01-01T00:00:00Z",
     ...overrides,
@@ -78,7 +79,7 @@ describe("generateAndStoreChallenges", () => {
 
     const result = await generateAndStoreChallenges(wiki, "marcelroed", "gigatoken");
 
-    expect(db.getFeatures).toHaveBeenCalledWith(wiki.id);
+    expect(db.getFeatures).toHaveBeenCalledWith(wiki.id, 2);
     expect(github.getRecentIssues).toHaveBeenCalledWith("marcelroed", "gigatoken", undefined);
     expect(github.getRecentPullRequests).toHaveBeenCalledWith("marcelroed", "gigatoken", undefined);
     expect(generateChallengesModule.generateChallenges).toHaveBeenCalledWith(

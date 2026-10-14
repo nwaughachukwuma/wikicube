@@ -7,6 +7,7 @@ const log = logger("queue:utils");
 
 export const QUEUES = Object.freeze({
   REINDEX: "reindex",
+  REFRESH: "refresh",
 } as const);
 
 export interface JobParams<T extends string> {
@@ -66,7 +67,7 @@ export function getRedis(force = false) {
 export const getWorkerRedis = () => createRedis(WorkerRedisOptions);
 
 /** Resolve once the connection is usable, or false once it has given up. */
-async function redisReady(): Promise<boolean> {
+export async function redisReady(): Promise<boolean> {
   const redis = getRedis();
   if (redis.status === "ready") return Promise.resolve(true);
   if (redis.status === "end") return Promise.resolve(false);

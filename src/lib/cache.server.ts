@@ -8,7 +8,7 @@ export const getCachedWiki = unstable_cache(
 );
 
 export const getCachedFeatures = unstable_cache(
-  async (wikiId: string) => getFeatures(wikiId),
+  async (wikiId: string, generation: number) => getFeatures(wikiId, generation),
   ["features"],
   { revalidate: 3600 },
 );

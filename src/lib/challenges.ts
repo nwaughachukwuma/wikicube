@@ -10,7 +10,7 @@ export async function generateAndStoreChallenges(
   repo: string,
   token?: string,
 ): Promise<Challenge[]> {
-  const features = await getFeatures(wiki.id);
+  const features = await getFeatures(wiki.id, wiki.generation);
   const [issues, pullRequests] = await Promise.all([
     getRecentIssues(owner, repo, token),
     getRecentPullRequests(owner, repo, token),

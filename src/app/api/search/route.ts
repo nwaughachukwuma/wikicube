@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     matchThreshold: 0.5,
   });
   // Get features to map feature_id to feature info
-  const features = await getFeatures(wikiId);
+  const features = await getFeatures(wikiId, wiki.generation);
   const featureMap = new Map(features.map((f) => [f.id, f]));
 
   const results = chunks.map((chunk) => {

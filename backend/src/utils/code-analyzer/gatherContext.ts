@@ -4,21 +4,25 @@ import type {
   AnalysisEvent,
   PipelineOptions,
   RepoMeta,
+  Wiki,
 } from "@shared/types.js";
 import {
   getRepoMeta,
   getRepoTree,
+  getBranchHeadSha,
   filterTree,
   formatTreeString,
   fetchProjectContext,
 } from "@shared/github.js";
-import { upsertWiki } from "../../services/db.js";
+import { getWiki, upsertWiki } from "../../services/db.js";
 
 const log = logger("repo:gather-context");
 
 export interface GatheredContext {
   meta: RepoMeta;
-  wikiId: string;
+  wiki: Wiki;
+  /** Default-branch HEAD the wiki is generated from (null if unavailable) */
+  commitSha: string | null;
   treeString: string;
   treePaths: string[];
   readme: string;
@@ -48,12 +52,24 @@ export async function gatherContext(
   });
 
   const upsertAndTreeDone = log.time("upsertWiki:+:getRepoTree");
-  const [wiki, rawTree] = await Promise.all([
-    upsertWiki(owner, repo, meta.defaultBranch, {
-      visibility: meta.isPrivate ? "private" : "public",
-      indexedBy: opts.userId || undefined,
-    }),
+  const [wiki, rawTree, commitSha] = await Promise.all([
+    opts.refresh
+      ? getRefreshableWiki(owner, repo)
+      : upsertWiki(owner, repo, meta.defaultBranch, {
+          visibility: meta.isPrivate ? "private" : "public",
+          indexedBy: opts.userId || undefined,
+        }),
     getRepoTree(owner, repo, meta.defaultBranch, opts.githubToken),
+    getBranchHeadSha(owner, repo, meta.defaultBranch, opts.githubToken).catch(
+      (err: unknown) => {
+        log.warn("could not resolve default-branch HEAD", {
+          owner,
+          repo,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return null;
+      },
+    ),
   ]);
 
   upsertAndTreeDone({ wikiId: wiki.id, rawTreeSize: rawTree.length });
@@ -87,10 +103,20 @@ export async function gatherContext(
 
   return {
     meta,
-    wikiId,
+    wiki,
+    commitSha,
     treeString: formatTreeString(tree),
     treePaths,
     readme,
     manifests,
   };
+}
+
+// Unlike upsertWiki, never resets: a refresh must leave the live wiki alone
+async function getRefreshableWiki(owner: string, repo: string) {
+  const wiki = await getWiki(owner, repo);
+  if (wiki?.status !== "done") {
+    throw new Error(`Only finished wikis can be refreshed: ${owner}/${repo}`);
+  }
+  return wiki;
 }

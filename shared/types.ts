@@ -11,6 +11,17 @@ export interface Wiki {
   indexed_by: string | null;
   search_ready: boolean;
   search_error: string | null;
+  /** Live feature generation; features of any other generation are hidden */
+  generation: number;
+  /** Commit the live generation was built from */
+  source_commit_sha: string | null;
+  /** Default-branch HEAD as of the last freshness check */
+  latest_commit_sha: string | null;
+  generated_at: string | null;
+  checked_at: string | null;
+  /** Set while a refresh is building the next generation */
+  refresh_started_at: string | null;
+  refresh_error: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -31,6 +42,8 @@ export interface PipelineOptions {
   userId?: string;
   /** Whether the repo is private */
   visibility?: "public" | "private";
+  /** Regenerate a finished wiki without touching its live pages until done */
+  refresh?: boolean;
 }
 
 export type WikiStatus =
@@ -66,6 +79,7 @@ export interface Feature {
   entry_points: EntryPoint[];
   citations: Citation[];
   sort_order: number;
+  generation: number;
 }
 
 export interface Chunk {
