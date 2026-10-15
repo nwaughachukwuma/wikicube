@@ -44,7 +44,7 @@ export default function OverviewPage({
         <h1 className="font-display text-4xl md:text-5xl uppercase tracking-tight">
           {owner}/{repo}
         </h1>
-        <p className="mt-3 text-sm text-text-muted">
+        <p className="mt-2.5 text-sm text-text-muted">
           Updated{" "}
           <time
             dateTime={generatedAt}
