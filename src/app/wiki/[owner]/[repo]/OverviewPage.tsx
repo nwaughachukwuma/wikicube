@@ -3,6 +3,7 @@
 import Link from "next/link";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 import { wikiStore } from "@/lib/stores/wikiStore";
+import { dayAgo } from "@/lib/timing";
 
 export default function OverviewPage({
   owner,
@@ -31,6 +32,7 @@ export default function OverviewPage({
   }
 
   if (!wiki) return null;
+  const generatedAt = wiki.generated_at ?? wiki.created_at;
 
   return (
     <div className="max-w-4xl mx-auto px-6 md:px-10 py-10">
@@ -42,6 +44,15 @@ export default function OverviewPage({
         <h1 className="font-display text-4xl md:text-5xl uppercase tracking-tight">
           {owner}/{repo}
         </h1>
+        <p className="mt-3 text-sm text-text-muted">
+          Updated{" "}
+          <time
+            dateTime={generatedAt}
+            title={new Date(generatedAt).toLocaleString()}
+          >
+            {dayAgo(generatedAt)}
+          </time>
+        </p>
       </div>
 
       {/* Overview content */}
