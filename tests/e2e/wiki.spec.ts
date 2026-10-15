@@ -59,6 +59,17 @@ test.describe("/wiki/[owner]/[repo] metadata", () => {
     );
   });
 
+  test("overview shows when the wiki was last generated", async ({ page }) => {
+    await page.goto(`/wiki/${PUBLIC_WIKI_OWNER}/${PUBLIC_WIKI_REPO}`);
+
+    const updated = page.getByText(/^Updated /);
+    await expect(updated).toBeVisible();
+    await expect(updated.locator("time")).toHaveAttribute(
+      "datetime",
+      /^2024-01-01/,
+    );
+  });
+
   test("public wiki meta tags are not the generic site defaults", async ({
     page,
   }) => {
