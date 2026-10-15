@@ -76,10 +76,10 @@ describe("segmentByTime", () => {
     vi.setSystemTime(now);
 
     const wikis = [
-      { id: "1", updated_at: "2024-01-17T10:00:00Z" },
-      { id: "2", updated_at: "2024-01-16T10:00:00Z" },
-      { id: "3", updated_at: "2024-01-15T10:00:00Z" },
-      { id: "4", updated_at: "2024-01-08T10:00:00Z" },
+      { id: "1", created_at: "2024-01-17T10:00:00Z" },
+      { id: "2", created_at: "2024-01-16T10:00:00Z" },
+      { id: "3", created_at: "2024-01-15T10:00:00Z" },
+      { id: "4", created_at: "2024-01-08T10:00:00Z" },
     ] as unknown as WikiEntry[];
 
     const groups = segmentByTime(wikis);
@@ -93,6 +93,20 @@ describe("segmentByTime", () => {
     expect(groups.find((g) => g.label === "Yesterday")?.wikis).toHaveLength(1);
     expect(groups.find((g) => g.label === "This Week")?.wikis).toHaveLength(1);
     expect(groups.find((g) => g.label === "Last Week")?.wikis).toHaveLength(1);
+
+    vi.useRealTimers();
+  });
+
+  it("groups by creation time, so a regenerated wiki stays where it was", () => {
+    vi.setSystemTime(new Date("2024-01-17T12:00:00Z"));
+
+    const regenerated = {
+      id: "1",
+      created_at: "2023-11-02T10:00:00Z",
+      updated_at: "2024-01-17T03:00:00Z",
+    } as unknown as WikiEntry;
+
+    expect(segmentByTime([regenerated]).map((g) => g.label)).toEqual(["Older"]);
 
     vi.useRealTimers();
   });

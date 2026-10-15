@@ -67,7 +67,7 @@ export function segmentByTime(wikis: WikiEntry[]): TimeGroup[] {
   };
 
   for (const wiki of wikis) {
-    const d = new Date(wiki.updated_at);
+    const d = new Date(wiki.created_at);
 
     if (d >= startOfToday) {
       buckets["Today"].push(wiki);

@@ -7,7 +7,7 @@ export async function GET() {
     .select("id, owner, repo, status, created_at, updated_at")
     .eq("status", "done")
     .eq("visibility", "public")
-    .order("updated_at", { ascending: false });
+    .order("created_at", { ascending: false });
 
   if (error) throw error;
 
