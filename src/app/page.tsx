@@ -152,8 +152,19 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border px-6 py-4 text-center text-xs text-text-muted">
-        Wikicube — powered by Gemini & Supabase
+      <footer className="border-t border-border px-6 py-4 text-xs text-text-muted">
+        <div className="mx-auto flex w-full max-w-3xl flex-col items-center gap-1 text-center sm:flex-row sm:justify-between sm:text-left">
+          <span>Wikicube — powered by Gemini & Supabase</span>
+          <span>
+            A VeedoAI product —{" "}
+            <a
+              href="mailto:products@veedo.ai"
+              className="underline underline-offset-2 hover:text-text"
+            >
+              products@veedo.ai
+            </a>
+          </span>
+        </div>
       </footer>
     </main>
   );
