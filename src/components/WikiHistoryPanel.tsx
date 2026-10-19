@@ -1,16 +1,26 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
-import { PanelLeft, X, BookOpen } from "lucide-react";
+import { useEffect, useState, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
+import Fuse from "fuse.js";
+import { debounce } from "throttle-debounce";
+import { PanelLeft, X, BookOpen, SearchIcon } from "lucide-react";
 import { OptimLink } from "@/components/OptimisticLink";
 import { fetchWithSWR } from "@/lib/cache.client";
 import { segmentByTime } from "@/lib/timing";
 import type { WikiEntry } from "@shared/types";
 
 export default function WikiHistoryPanel() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [wikis, setWikis] = useState<WikiEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  // Lags `query` while typing so filtering runs once the user pauses
+  const [searchTerm, setSearchTerm] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const updateSearchTerm = useRef(debounce(200, setSearchTerm)).current;
 
   // Prefetch on mount
   useEffect(() => {
@@ -28,7 +38,84 @@ export default function WikiHistoryPanel() {
     };
   }, []);
 
+  // Focus search on open, but skip touch devices where the keyboard would cover the list
+  useEffect(() => {
+    if (open && window.matchMedia("(pointer: fine)").matches) {
+      inputRef.current?.focus();
+    }
+  }, [open]);
+
+  // Keyword search with light typo tolerance: space-separated terms are ANDed,
+  // each matched fuzzily anywhere in owner, repo, or "owner/repo"
+  const fuse = useMemo(
+    () =>
+      new Fuse(wikis, {
+        keys: [
+          { name: "repo", weight: 2 },
+          { name: "owner", weight: 1 },
+          {
+            name: "fullName",
+            weight: 1,
+            getFn: (w) => `${w.owner}/${w.repo}`,
+          },
+        ],
+        threshold: 0.3,
+        ignoreLocation: true,
+        useExtendedSearch: true,
+      }),
+    [wikis],
+  );
+
+  const trimmedTerm = searchTerm.trim();
+  const results = useMemo(
+    () => (trimmedTerm ? fuse.search(trimmedTerm).map((r) => r.item) : null),
+    [fuse, trimmedTerm],
+  );
+
   const groups = useMemo(() => segmentByTime(wikis), [wikis]);
+
+  const changeQuery = (value: string) => {
+    setQuery(value);
+    if (value.trim()) {
+      updateSearchTerm(value);
+    } else {
+      // Clearing should restore the full list without waiting
+      updateSearchTerm.cancel({ upcomingOnly: true });
+      setSearchTerm("");
+    }
+  };
+
+  const close = () => {
+    setOpen(false);
+    changeQuery("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") {
+      if (query) changeQuery("");
+      else close();
+    } else if (e.key === "Enter" && query.trim()) {
+      // Search the live input so Enter doesn't act on a pending debounce
+      const [top] = fuse.search(query.trim());
+      if (!top) return;
+      router.push(`/wiki/${top.item.owner}/${top.item.repo}`);
+      close();
+    }
+  };
+
+  const renderWikiLink = (wiki: WikiEntry) => (
+    <li key={wiki.id}>
+      <OptimLink
+        href={`/wiki/${wiki.owner}/${wiki.repo}`}
+        onClick={close}
+        className="block px-3 py-2 rounded text-sm font-mono
+          hover:bg-bg-alt transition truncate"
+      >
+        <span className="text-text-muted">{wiki.owner}/</span>
+        <span className="text-text font-medium">{wiki.repo}</span>
+      </OptimLink>
+    </li>
+  );
 
   return (
     <>
@@ -45,23 +132,23 @@ export default function WikiHistoryPanel() {
       {open && (
         <div
           className="fixed inset-0 bg-black/20 z-40 transition-opacity"
-          onClick={() => setOpen(false)}
+          onClick={close}
         />
       )}
 
       {/* Slide-out panel */}
       <div
         className={`fixed top-0 left-0 h-full w-80 bg-card border-r border-border z-50
-          transform transition-transform duration-200 ease-out
+          flex flex-col transform transition-transform duration-200 ease-out
           ${open ? "translate-x-0" : "-translate-x-full"}`}
       >
         {/* Panel header */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-border shrink-0">
           <h2 className="font-display text-sm uppercase tracking-wide">
             Generated Wikis
           </h2>
           <button
-            onClick={() => setOpen(false)}
+            onClick={close}
             className="p-1 rounded hover:bg-bg-alt transition text-text-muted hover:text-text"
             aria-label="Close panel"
           >
@@ -69,8 +156,44 @@ export default function WikiHistoryPanel() {
           </button>
         </div>
 
+        {/* Search — pinned above the scrolling list */}
+        {(loading || wikis.length > 0) && (
+          <div className="px-4 py-3 border-b border-border shrink-0">
+            <div
+              className="flex items-center gap-2 border border-border px-2.5 py-1.5 bg-bg
+                focus-within:border-border-strong transition"
+            >
+              <SearchIcon className="w-3.5 h-3.5 text-text-muted shrink-0" />
+              <input
+                ref={inputRef}
+                type="search"
+                value={query}
+                onChange={(e) => changeQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Search repos..."
+                aria-label="Search repos"
+                className="flex-1 min-w-0 text-sm bg-transparent focus:outline-none
+                  placeholder:text-text-muted/50
+                  [&::-webkit-search-cancel-button]:appearance-none"
+              />
+              {query && (
+                <button
+                  onClick={() => {
+                    changeQuery("");
+                    inputRef.current?.focus();
+                  }}
+                  className="p-0.5 rounded text-text-muted hover:text-text transition"
+                  aria-label="Clear search"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Panel body */}
-        <div className="overflow-y-auto h-[calc(100%-57px)] px-4 py-3">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-4 py-3">
           {loading && (
             <div className="flex items-center gap-2 text-sm text-text-muted py-8 justify-center">
               <span className="animate-pulse">Loading…</span>
@@ -87,29 +210,33 @@ export default function WikiHistoryPanel() {
             </div>
           )}
 
+          {!loading && results && results.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-text-muted text-center">
+              <SearchIcon size={28} className="mb-3 opacity-40" />
+              <p className="text-sm">No repos match</p>
+              <p className="text-xs mt-1 opacity-70 font-mono break-all">
+                &ldquo;{trimmedTerm}&rdquo;
+              </p>
+            </div>
+          )}
+
+          {!loading && results && results.length > 0 && (
+            <div className="mb-5">
+              <p className="text-[11px] uppercase tracking-widest text-text-muted mb-2 font-medium">
+                {results.length} {results.length === 1 ? "result" : "results"}
+              </p>
+              <ul className="space-y-1">{results.map(renderWikiLink)}</ul>
+            </div>
+          )}
+
           {!loading &&
+            !results &&
             groups.map((group) => (
               <div key={group.label} className="mb-5">
                 <p className="text-[11px] uppercase tracking-widest text-text-muted mb-2 font-medium">
                   {group.label}
                 </p>
-                <ul className="space-y-1">
-                  {group.wikis.map((wiki) => (
-                    <li key={wiki.id}>
-                      <OptimLink
-                        href={`/wiki/${wiki.owner}/${wiki.repo}`}
-                        onClick={() => setOpen(false)}
-                        className="block px-3 py-2 rounded text-sm font-mono
-                          hover:bg-bg-alt transition truncate"
-                      >
-                        <span className="text-text-muted">{wiki.owner}/</span>
-                        <span className="text-text font-medium">
-                          {wiki.repo}
-                        </span>
-                      </OptimLink>
-                    </li>
-                  ))}
-                </ul>
+                <ul className="space-y-1">{group.wikis.map(renderWikiLink)}</ul>
               </div>
             ))}
         </div>
