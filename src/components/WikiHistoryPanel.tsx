@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Fuse from "fuse.js";
+import { debounce } from "throttle-debounce";
 import { PanelLeft, X, BookOpen, SearchIcon } from "lucide-react";
 import { OptimLink } from "@/components/OptimisticLink";
 import { fetchWithSWR } from "@/lib/cache.client";
@@ -15,7 +16,11 @@ export default function WikiHistoryPanel() {
   const [wikis, setWikis] = useState<WikiEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
+  // Lags `query` while typing so filtering runs once the user pauses
+  const [searchTerm, setSearchTerm] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const updateSearchTerm = useRef(debounce(200, setSearchTerm)).current;
 
   // Prefetch on mount
   useEffect(() => {
@@ -61,26 +66,39 @@ export default function WikiHistoryPanel() {
     [wikis],
   );
 
-  const trimmedQuery = query.trim();
+  const trimmedTerm = searchTerm.trim();
   const results = useMemo(
-    () =>
-      trimmedQuery ? fuse.search(trimmedQuery).map((r) => r.item) : null,
-    [fuse, trimmedQuery],
+    () => (trimmedTerm ? fuse.search(trimmedTerm).map((r) => r.item) : null),
+    [fuse, trimmedTerm],
   );
 
   const groups = useMemo(() => segmentByTime(wikis), [wikis]);
 
+  const changeQuery = (value: string) => {
+    setQuery(value);
+    if (value.trim()) {
+      updateSearchTerm(value);
+    } else {
+      // Clearing should restore the full list without waiting
+      updateSearchTerm.cancel({ upcomingOnly: true });
+      setSearchTerm("");
+    }
+  };
+
   const close = () => {
     setOpen(false);
-    setQuery("");
+    changeQuery("");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Escape") {
-      if (query) setQuery("");
+      if (query) changeQuery("");
       else close();
-    } else if (e.key === "Enter" && results?.[0]) {
-      router.push(`/wiki/${results[0].owner}/${results[0].repo}`);
+    } else if (e.key === "Enter" && query.trim()) {
+      // Search the live input so Enter doesn't act on a pending debounce
+      const [top] = fuse.search(query.trim());
+      if (!top) return;
+      router.push(`/wiki/${top.item.owner}/${top.item.repo}`);
       close();
     }
   };
@@ -150,7 +168,7 @@ export default function WikiHistoryPanel() {
                 ref={inputRef}
                 type="search"
                 value={query}
-                onChange={(e) => setQuery(e.target.value)}
+                onChange={(e) => changeQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Search repos..."
                 aria-label="Search repos"
@@ -161,7 +179,7 @@ export default function WikiHistoryPanel() {
               {query && (
                 <button
                   onClick={() => {
-                    setQuery("");
+                    changeQuery("");
                     inputRef.current?.focus();
                   }}
                   className="p-0.5 rounded text-text-muted hover:text-text transition"
@@ -197,7 +215,7 @@ export default function WikiHistoryPanel() {
               <SearchIcon size={28} className="mb-3 opacity-40" />
               <p className="text-sm">No repos match</p>
               <p className="text-xs mt-1 opacity-70 font-mono break-all">
-                &ldquo;{trimmedQuery}&rdquo;
+                &ldquo;{trimmedTerm}&rdquo;
               </p>
             </div>
           )}

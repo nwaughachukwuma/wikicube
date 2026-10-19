@@ -62,6 +62,23 @@ test.describe("Wiki history search", () => {
     await expect(page.getByText("Today")).toBeVisible();
   });
 
+  test("waits for a pause in typing before filtering", async ({ page }) => {
+    const search = page.getByRole("searchbox", { name: "Search repos" });
+    await expect(page.getByText("Today")).toBeVisible();
+    await page.clock.install();
+
+    await search.pressSequentially("zod");
+    await expect(page.getByText("Today")).toBeVisible();
+    await expect(page.getByText(/\d+ results?/)).toHaveCount(0);
+
+    await page.clock.runFor(250);
+    await expect(page.getByText("1 result")).toBeVisible();
+
+    // Clearing restores the full list immediately
+    await page.getByRole("button", { name: "Clear search" }).click();
+    await expect(page.getByText("Today")).toBeVisible();
+  });
+
   test("Enter opens the top match", async ({ page }) => {
     const search = page.getByRole("searchbox", { name: "Search repos" });
     await search.fill("gigatoken");
